@@ -25,4 +25,24 @@ Los artefactos quedan en `migration/`. Los `index.md` quedan en la raíz de cada
 
 ## Pruebas
 
-Ver la sección al final de este archivo (se completa en Task 7).
+Requisitos: Git Bash, `claude` en el PATH.
+
+```bash
+bash scripts/test-check-agent.sh     # validador de agentes
+bash scripts/test-fixture.sh         # fixture y reset
+bash scripts/run-all.sh              # flujo completo sobre el fixture con verificadores
+bash scripts/verify-idempotency.sh   # un spec revisado sobrevive a una segunda corrida
+```
+
+Cada `scripts/verify-<agente>.sh` se puede correr por separado tras `scripts/run-agent.sh <agente>`. El workspace de prueba vive en `.work/sample-workspace/` (ignorado por git) y `scripts/fixture-reset.sh` lo reconstruye. Las corridas de agentes usan `claude -p` con permisos desactivados, así que solo deben ejecutarse sobre ese workspace descartable.
+
+## Estructura
+
+- `agents/`: los cuatro subagentes. Es el producto.
+- `fixtures/sample-workspace/`: frontend y BFF mínimos para probar. No se ejecutan, solo se leen.
+- `scripts/`: instalación, corrida y verificación.
+- `docs/specs/`: diseño. `docs/plans/`: plan de implementación.
+
+## Revisión entre pasos
+
+Tras cada agente, revisa lo generado y marca con `estado: revisado` en el frontmatter lo que validaste. Los agentes no sobreescriben artefactos en ese estado. Los ADRs `propuesto` requieren una decisión humana: edita la decisión y cambia el estado a `revisado` para desbloquear las tareas que dependen de ellos. El lenguaje destino se indica en el prompt del tech lead o en el campo `destino:` de `migration/README.md`.

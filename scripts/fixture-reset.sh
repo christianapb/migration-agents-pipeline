@@ -5,9 +5,20 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 WORK="$ROOT/.work/sample-workspace"
 
-rm -rf "$WORK"
-mkdir -p "$ROOT/.work"
-cp -r "$ROOT/fixtures/sample-workspace" "$WORK"
+# En Windows (OneDrive, procesos recién cerrados) el directorio puede quedar
+# con un handle abierto: se vacía el contenido y se reutiliza si no se puede borrar.
+if [ -d "$WORK" ]; then
+  rm -rf "$WORK" 2>/dev/null || true
+fi
+if [ -d "$WORK" ]; then
+  find "$WORK" -mindepth 1 -maxdepth 1 -exec rm -rf {} + 2>/dev/null || true
+  if [ -n "$(ls -A "$WORK" 2>/dev/null)" ]; then
+    echo "ERROR: no se pudo vaciar $WORK (¿algún proceso lo tiene abierto?)" >&2
+    exit 1
+  fi
+fi
+mkdir -p "$WORK"
+cp -r "$ROOT/fixtures/sample-workspace/." "$WORK/"
 
 for repo in "$WORK"/*/; do
   (

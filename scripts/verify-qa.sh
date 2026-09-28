@@ -29,7 +29,8 @@ for s in $specs; do
   cubre=$(grep -c '^- Cubre: ' "$p" || true)
   [ "$cubre" -ge "$cases" ] || fail "$slug: casos sin línea Cubre"
   # Toda RN y CB del spec aparece en el plan o en _cobertura.md como sin cubrir
-  for id in $(grep -oE '\b(RN|CB)-[0-9]+' "$s" | sort -u); do
+  # Solo los requisitos definidos en el spec (líneas "RN-n:" o "CB-n:"), no las referencias cruzadas a otros specs
+  for id in $(grep -oE '^(- )?(RN|CB)-[0-9]+:' "$s" | sed -E 's/^- //; s/:$//' | sort -u); do
     grep -q "$id" "$p" || grep -q "$id" "$M/test-plans/_cobertura.md" || fail "$slug: $id no aparece ni en el plan ni en _cobertura.md"
   done
   # Preguntas abiertas → casos pendientes
