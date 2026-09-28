@@ -289,9 +289,9 @@ El indexador escribe cinco plantillas en `migration/templates/`. Cada una es un 
 - Archivos a excluir: lockfile, `dist/` con un bundle, una imagen, un snapshot de test.
 - Una ambigüedad deliberada: un endpoint que devuelve 200 con cuerpo vacío en un caso y 404 en otro, sin comentario que lo explique, para verificar que aparece como pregunta abierta.
 - Sin `node_modules`; el fixture no se ejecuta, solo se lee.
-- Cada carpeta del fixture lleva un `.git` inicializado con un commit, para que `git ls-files` funcione y la detección de repos se pruebe por la vía principal.
+- El fixture no contiene `.git`. Un script (`scripts/fixture-reset.sh`) lo copia a `.work/sample-workspace/` (carpeta ignorada por git), inicializa un repo git con un commit en cada subcarpeta y copia los agentes a `.work/sample-workspace/.claude/agents/`. Así `git ls-files` y la detección de repos se prueban por la vía principal sin anidar repos dentro de `spec-agent`, y cada corrida parte de un estado limpio.
 
-**Procedimiento.** Correr los cuatro agentes en orden dentro del fixture y verificar con esta lista:
+**Procedimiento.** Correr los cuatro agentes en orden dentro de `.work/sample-workspace/` y verificar con esta lista (automatizada en `scripts/verify-<agente>.sh` donde sea posible):
 
 | Agente | Verificaciones |
 |---|---|
