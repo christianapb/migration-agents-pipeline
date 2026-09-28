@@ -17,6 +17,8 @@ done
 ( cd "$W/frontend" && git ls-files | grep -q 'public/logo.png' ) || fail "frontend logo.png debería estar trackeado"
 [ -d "$W/.claude/agents" ] || fail "no se copiaron los agentes"
 [ -f "$W/bff/src/routes/products.ts" ] || fail "falta products.ts"
+[ -f "$W/bff/dist/server.js" ] || fail "falta bff/dist/server.js en disco (debe existir para probar la exclusión)"
+git -C "$ROOT" ls-files --error-unmatch fixtures/sample-workspace/bff/dist/server.js >/dev/null 2>&1 || fail "fixtures/sample-workspace/bff/dist/server.js no está versionado en spec-agent (usar git add -f)"
 grep -q 'status(200).end()' "$W/bff/src/routes/products.ts" || fail "falta la ambigüedad 200 vacío"
 grep -q 'getPriceCents' "$W/bff/src/routes/cart.ts" || fail "falta dependencia cruzada carrito→catálogo"
 

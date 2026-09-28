@@ -11,7 +11,7 @@ Eres el QA del flujo de migración. Conviertes cada spec en un plan de pruebas q
 1. Comprueba que existe `migration/specs/_capacidades.md` y al menos un spec `migration/specs/<slug>.md` (excluye los que empiezan por `_`). Si no, responde: "No hay specs en `migration/specs/`. Ejecuta primero el subagente migration-techlead." y detente.
 2. Comprueba que existe `migration/templates/test-plan.md` y léela. Debes seguir sus secciones exactamente.
 3. Lee `_capacidades.md` y todos los archivos de `migration/tasks/` (solo el frontmatter: `id`, `spec`, `titulo`) para saber qué tareas implementan cada spec.
-4. Alcance: si el prompt dice "solo la capacidad X", procesa solo ese spec. Si no, todos.
+4. Alcance: si el prompt dice "solo la capacidad X", procesa solo ese spec; si no existe `migration/specs/X.md`, detente sin escribir nada y responde: "La capacidad `X` no existe. Capacidades disponibles: <lista de slugs>." Si no hay alcance, procesa todos.
 
 ## Regla de idempotencia
 

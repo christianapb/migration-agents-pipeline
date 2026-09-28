@@ -41,10 +41,13 @@ for t in "$M"/tasks/T-*.md; do
   grep -q "$id" "$M/backlog.md" 2>/dev/null || fail "$id no aparece en el backlog"
 done
 
-# Tareas bloqueadas aparecen en la sección Bloqueos
-for t in $(grep -l '^bloqueada_por: \[.\+\]' "$M"/tasks/T-*.md 2>/dev/null); do
+# Tareas bloqueadas aparecen en la sección Bloqueos (rutas con espacios: sin word-splitting)
+for t in "$M"/tasks/T-*.md; do
+  [ -f "$t" ] || break
+  grep -q '^bloqueada_por: \[.\+\]' "$t" || continue
   id=$(sed -n 's/^id:[[:space:]]*//p' "$t" | head -n1)
-  awk '/^## Bloqueos/{f=1;next} /^## /{f=0} f' "$M/backlog.md" 2>/dev/null | grep -q "$id" || fail "$id está bloqueada pero no aparece en Bloqueos"
+  [ -n "$id" ] || { fail "$(basename "$t"): sin id"; continue; }
+  awk '/^## Bloqueos/{f=1;next} /^## /{f=0} f' "$M/backlog.md" 2>/dev/null | grep -Eq "\b${id}\b" || fail "$id está bloqueada pero no aparece en Bloqueos"
 done
 
 [ "$fails" -eq 0 ] && { echo "OK: pm"; exit 0; }

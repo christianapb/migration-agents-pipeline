@@ -16,7 +16,9 @@ out="$(claude -p "Invoca el subagente $AGENT con la herramienta Agent, sobre la 
   --dangerously-skip-permissions < /dev/null 2>&1)"
 status=$?
 printf '%s\n' "$out"
-if printf '%s' "$out" | grep -Eqi "hit your (weekly|daily|usage)? ?limit|usage limit|rate limit"; then
+# Solo el aviso propio de Claude ("You've hit your weekly limit · resets ...") al inicio de una
+# línea y en una respuesta corta; un resumen legítimo que mencione "rate limit" no dispara.
+if [ "${#out}" -lt 600 ] && printf '%s\n' "$out" | grep -Eq "^You('ve| have)? hit your [a-z ]*limit"; then
   echo "ERROR: claude respondió con un aviso de límite de uso; la corrida de $AGENT no se ejecutó." >&2
   exit 2
 fi

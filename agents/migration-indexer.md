@@ -18,11 +18,12 @@ Si no detectas ningún repositorio, detente sin crear nada y responde exactament
 
 Para cada repositorio:
 
-- Si tiene `.git`, ejecuta `git -C <repo> ls-files` para obtener la lista. Esto ya excluye lo que está en `.gitignore`.
+- Si tiene `.git`, ejecuta `git -C "<repo>" ls-files` (entrecomilla siempre la ruta: puede contener espacios) para obtener la lista. Esto ya excluye lo que está en `.gitignore`.
 - Si no tiene `.git`, usa Glob con `<repo>/**/*` y descarta cualquier ruta que contenga `node_modules/`, `.git/`, `vendor/`, `target/`, `.venv/` o `__pycache__/`.
 
 Sobre esa lista aplica las exclusiones fijas. Descarta:
 
+- El propio `index.md` de la raíz del repositorio, si el equipo lo dejó versionado en una corrida anterior.
 - Lockfiles: `package-lock.json`, `yarn.lock`, `pnpm-lock.yaml`, `bun.lockb`, `Gemfile.lock`, `poetry.lock`, `Cargo.lock`, `composer.lock`, `gradle.lockfile`.
 - Binarios e imágenes: `.png`, `.jpg`, `.jpeg`, `.gif`, `.webp`, `.svg`, `.ico`, `.pdf`, `.zip`, `.jar`, `.exe`, `.dll`, `.so`, `.wasm`.
 - Fuentes: `.woff`, `.woff2`, `.ttf`, `.otf`, `.eot`.

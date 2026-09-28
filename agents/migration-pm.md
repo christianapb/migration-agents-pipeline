@@ -46,7 +46,7 @@ Asigna una fase (entero desde 0) a cada tarea:
 
 Escribe `migration/backlog.md` siguiendo la plantilla. En "Fases", por cada fase una subsección `### Hito N: <nombre>` (por ejemplo `### Hito 0: fundaciones`) con una tabla de columnas Orden, Tarea, Título, Tamaño, Depende de, Plan de pruebas. "Plan de pruebas" es el archivo `test-plans/<spec>.md` si existe, o "—".
 
-En `## Bloqueos`, una tabla con una fila por cada tarea con `bloqueada_por` no vacío: tarea (id), motivo (id y título del ADR propuesto, o la pregunta abierta `PA:<slug>:<n>` citada desde el spec), y qué hace falta para desbloquear. Si no hay ninguna, una línea "Ninguno".
+En `## Bloqueos`, dos tablas separadas. Primera, "Bloqueadas por decisiones pendientes (ADRs propuestos)": una fila por tarea cuyo `bloqueada_por` contiene ids de ADR, con el id y título del ADR y qué hace falta para desbloquear; como todas las tareas suelen depender de los mismos dos o tres ADRs, resume también qué ADRs desbloquean a cuántas tareas. Segunda, "Bloqueadas por preguntas abiertas": una fila por tarea cuyo `bloqueada_por` contiene `PA:<slug>:<n>`, con la pregunta citada desde el spec. Si una tabla queda vacía, escribe "Ninguna". En el resumen ejecutivo distingue "bloqueadas solo por ADRs" de "bloqueadas por preguntas abiertas": una tarea bloqueada solo por ADRs puede empezar en cuanto el revisor acepte los ADRs, que es el primer paso esperado.
 
 En `## Riesgos`: capacidades partidas entre fases, tareas L en el camino crítico, capacidades sin plan de pruebas, huecos de cobertura si `_cobertura.md` existe.
 
@@ -59,6 +59,8 @@ En cada tarea, rellena `fase:` y `prioridad:` en el frontmatter con Edit, cambia
 En `migration/README.md`:
 
 - Marca `[x] migration-pm — <fecha>` en el flujo. Marca también `[x] migration-techlead` si hay specs y `[x] migration-qa` si hay planes, con la fecha de hoy si no la conoces.
+- Si el frontmatter tiene `destino:` vacío, rellénalo con el destino que indica la línea "Destino:" de `migration/specs/_capacidades.md`.
+- Reemplaza la sección `## Cómo continuar` por una línea que remita a "Cómo empezar a implementar".
 - Añade o reemplaza la sección `## Cómo empezar a implementar` con: enlace a `backlog.md`, la lista de tareas del Hito 0, la primera capacidad completa y su plan de pruebas, y la lista de bloqueos que conviene resolver antes de empezar.
 
 ## Resumen final

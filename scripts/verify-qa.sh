@@ -7,12 +7,13 @@ M="$W/migration"
 fails=0
 fail() { echo "FAIL: $*"; fails=$((fails+1)); }
 
-specs=$(ls "$M"/specs/*.md 2>/dev/null | grep -v '/_' || true)
-[ -n "$specs" ] || fail "no hay specs; corre migration-techlead"
+specs=()
+for f in "$M"/specs/[!_]*.md; do [ -f "$f" ] && specs+=("$f"); done
+[ "${#specs[@]}" -gt 0 ] || fail "no hay specs; corre migration-techlead"
 [ -f "$M/test-plans/_cobertura.md" ] || fail "_cobertura.md no existe"
 
 pending_total=0
-for s in $specs; do
+for s in "${specs[@]}"; do
   slug=$(basename "$s" .md)
   p="$M/test-plans/$slug.md"
   [ -f "$p" ] || { fail "falta test-plans/$slug.md"; continue; }
@@ -28,10 +29,12 @@ for s in $specs; do
   [ "$dado" -ge "$cases" ] && [ "$cuando" -ge "$cases" ] && [ "$entonces" -ge "$cases" ] || fail "$slug: casos sin Dado/Cuando/Entonces completos ($dado/$cuando/$entonces de $cases)"
   cubre=$(grep -c '^- Cubre: ' "$p" || true)
   [ "$cubre" -ge "$cases" ] || fail "$slug: casos sin línea Cubre"
-  # Toda RN y CB del spec aparece en el plan o en _cobertura.md como sin cubrir
-  # Solo los requisitos definidos en el spec (líneas "RN-n:" o "CB-n:"), no las referencias cruzadas a otros specs
-  for id in $(grep -oE '^(- )?(RN|CB)-[0-9]+:' "$s" | sed -E 's/^- //; s/:$//' | sort -u); do
-    grep -q "$id" "$p" || grep -q "$id" "$M/test-plans/_cobertura.md" || fail "$slug: $id no aparece ni en el plan ni en _cobertura.md"
+  # Toda RN y CB definida en el spec (líneas "RN-n:" o "CB-n:", no referencias cruzadas)
+  # aparece en el plan o en _cobertura.md como sin cubrir. Coincidencia exacta del id.
+  ids=$(grep -oE '^(- )?(RN|CB)-[0-9]+:' "$s" | sed -E 's/^- //; s/:$//' | sort -u)
+  [ -n "$ids" ] || fail "$slug: el spec no tiene ninguna RN/CB con formato 'RN-n:' o 'CB-n:'"
+  for id in $ids; do
+    grep -Eq "\b${id}\b" "$p" || grep -Eq "\b${id}\b" "$M/test-plans/_cobertura.md" || fail "$slug: $id no aparece ni en el plan ni en _cobertura.md"
   done
   # Preguntas abiertas → casos pendientes
   qa=$(awk '/^## 12\. Preguntas abiertas/{f=1;next} f' "$s" | grep -c '^- ' || true)
