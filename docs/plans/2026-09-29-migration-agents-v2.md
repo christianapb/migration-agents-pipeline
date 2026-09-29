@@ -1211,7 +1211,7 @@ Expected: falla en el caso 4 (`claude` no encuentra el subagente o no edita), co
 ---
 name: migration-tl-resolver
 description: Aplica decisiones y cambios descritos en lenguaje natural sobre ADRs, specs, tareas, planes de prueba y el README de migration/, en cualquier momento del flujo. Decide ADRs propuestos, responde preguntas abiertas, resuelve hallazgos de QA, excluye capacidades, fija el destino, marca revisado y hace ediciones libres. Solo toca lo que el prompt nombra y devuelve un resumen de cambios. No decide por el usuario ni regenera artefactos.
-tools: Read, Glob, Grep, Write, Edit
+tools: Read, Glob, Grep, Write, Edit, Bash
 ---
 
 Eres el agente que aplica las decisiones y correcciones del usuario sobre los artefactos de `migration/`. Ejecutas exactamente lo que el prompt pide, mantienes la trazabilidad y devuelves un resumen claro. No decides nada por el usuario, no regeneras artefactos y no editas nada que el prompt no nombre, salvo la limpieza de bloqueos que forma parte de algunas operaciones. Escribes en español.
@@ -1254,7 +1254,7 @@ Eres el agente que aplica las decisiones y correcciones del usuario sobre los ar
 
 **Excluir una capacidad** ("excluye la capacidad pagos"):
 - Añade el slug a `excluir:` de `migration/README.md` (lista YAML entre corchetes).
-- Borra `migration/specs/<slug>.md`, `migration/test-plans/<slug>.md` y cada tarea cuyo `spec` sea ese slug. Borrar archivos es la única vía para excluir: hazlo con Write vaciando no; elimínalos. Si no puedes eliminar un archivo con tus herramientas, sobrescríbelo con una sola línea `(retirado <AAAA-MM-DD>: capacidad excluida)` y dilo en el resumen.
+- Borra `migration/specs/<slug>.md`, `migration/test-plans/<slug>.md` y cada tarea cuyo `spec` sea ese slug con `rm` mediante Bash, entrecomillando las rutas. Bash solo se usa para esto: nunca para otros comandos ni fuera de `migration/`.
 - Quita su fila de `migration/specs/_capacidades.md`.
 - Lista, sin editarlos: specs que mencionan la capacidad, tareas cuyo `depende_de` apunta a tareas borradas, ADRs que solo trataban esa capacidad.
 
@@ -1293,7 +1293,7 @@ Eres el agente que aplica las decisiones y correcciones del usuario sobre los ar
 ```
 ````
 
-Nota para el ejecutor: la herramienta Write no borra archivos. Si en la prueba del caso 8 el agente no puede eliminar, la regla de sobrescribir con la línea `(retirado ...)` se activa; en ese caso ajusta `test-resolver.sh` para aceptar un archivo cuyo único contenido empieza por `(retirado` y registra la decisión. Si preferís que borre de verdad, añade `Bash` a `tools` limitado en el prompt a `rm` sobre esos archivos.
+Nota para el ejecutor: el resolver declara `Bash` solo para borrar los archivos de una capacidad excluida; el prompt lo restringe a `rm` dentro de `migration/`.
 
 - [ ] **Step 4: Probar**
 
@@ -1302,7 +1302,7 @@ Expected: `OK: resolver`.
 
 - [ ] **Step 5: Ajustar si hace falta**
 
-Si un caso falla, corrige el prompt (no el test, salvo la nota del caso 8) y repite con `SKIP_SETUP=1 bash scripts/test-resolver.sh` sobre un workspace nuevo preparado con el bloque de setup del script.
+Si un caso falla, corrige el prompt (no el test) y repite con `SKIP_SETUP=1 bash scripts/test-resolver.sh` sobre un workspace nuevo preparado con el bloque de setup del script.
 
 - [ ] **Step 6: Registrar los Review Focus cubiertos**
 
@@ -1425,7 +1425,7 @@ Orden de pasos y qué los evidencia:
    - Preguntas abiertas sin línea `Respuesta` debajo, por spec (cuántas y cuáles bloquean tareas según `bloqueada_por`).
    - Hallazgos `H-n` sin `(resuelto: ...)`, por plan.
    - Capacidades en `excluir:` que aún tienen spec, plan o tareas.
-3. **Desactualizado** (compara fechas de modificación con Glob/Read de metadatos; si no puedes obtenerlas, compara con la fecha `Generado:` o `fecha:` del contenido):
+3. **Desactualizado.** Glob devuelve los archivos ordenados por fecha de modificación: usa ese orden para comparar dos archivos (por ejemplo, un Glob cuyo patrón abarque el spec y su plan). Si el orden no es concluyente, compara las fechas `Generado:` o `fecha:` del contenido. Casos:
    - Un plan más antiguo que su spec.
    - Tareas de un spec más antiguas que el spec, o más antiguas que un ADR que pasó a `revisado`.
    - `backlog.md` más antiguo que alguna tarea.
