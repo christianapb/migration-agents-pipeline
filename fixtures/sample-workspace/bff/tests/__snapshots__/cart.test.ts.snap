@@ -1,0 +1,7 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`cart total 1`] = `
+Object {
+  "totalCents": 6980,
+}
+`;
