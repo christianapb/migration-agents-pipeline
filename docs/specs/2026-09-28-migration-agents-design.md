@@ -100,7 +100,7 @@ Aplican a los cuatro agentes.
 - **Verificación de insumos.** Cada agente comprueba que existan los artefactos del paso anterior. Si faltan, se detiene con un mensaje que nombra el agente a correr antes.
 - **Resumen final.** Cada agente termina con: archivos creados, archivos modificados, lo que no pudo resolver, y el siguiente paso.
 - **Idempotencia y respeto del trabajo humano.** Todo artefacto generado lleva frontmatter con `estado`. Los valores posibles son `generado` (lo escribió un agente), `revisado` (un humano lo validó) y, solo en ADRs, `observado` y `propuesto`. Al volver a correr, un agente regenera los artefactos en `generado`, `observado` y `propuesto`, y no toca los marcados `revisado`. Los artefactos puramente derivados (`index.md`, `_capacidades.md`, `_cobertura.md`, `backlog.md`) se regeneran siempre.
-- **Acotación.** Tech lead y QA aceptan un alcance en el prompt ("solo la capacidad checkout", "solo la fase 1"). Sin alcance, hacen todo.
+- **Acotación.** Tech lead y QA aceptan un alcance en el prompt ("solo la capacidad checkout", "solo la etapa 1"). Sin alcance, hacen todo.
 - **Idioma.** Todo el contenido generado va en español. Los identificadores técnicos (rutas, nombres de campos, códigos de error) se conservan tal como están en el código.
 - **Sin código de origen en specs.** Los specs describen comportamiento, contratos y datos. No incluyen fragmentos del lenguaje origen. La sección de evidencia cita rutas de archivo, no contenido.
 - **Herramientas.** Los agentes usan Read, Glob, Grep, Bash (solo para `git ls-files` y listados) y Write/Edit. No instalan nada ni ejecutan el código del proyecto.
@@ -167,7 +167,7 @@ generado: <fecha>
 
 Si falta algún índice, se detiene y pide correr el indexador. Si no hay destino, se detiene y lo pide.
 
-**Fase 1: investigación y mapa de capacidades.**
+**Etapa 1: investigación y mapa de capacidades.**
 
 Lee los índices y, a partir de ellos, los archivos relevantes: rutas y controladores del backend, páginas y flujos del frontend, módulos de dominio, clientes de servicios externos. Identifica capacidades funcionales cruzando repos: una capacidad es algo que un usuario o sistema externo puede hacer de principio a fin (autenticarse, buscar productos, pagar). Escribe `migration/specs/_capacidades.md`:
 
@@ -181,14 +181,14 @@ Lee los índices y, a partir de ellos, los archivos relevantes: rutas y controla
 
 Este archivo se regenera siempre y es lo primero que el revisor mira, porque define cuántos specs habrá.
 
-**Fase 2: ADRs.**
+**Etapa 2: ADRs.**
 
 Archivos `migration/adr/NNNN-<slug>.md`, numerados desde 0001 en orden de generación. Dos tipos:
 
 - `estado: observado`. Decisiones implícitas en el código: patrón BFF, autenticación, manejo de estado, convención de errores, validación de entrada, estilo de contratos, integraciones externas, manejo de configuración, logging. Cada uno incluye contexto, decisión observada, evidencia (rutas de archivo), consecuencias, e **implicación para la migración** con uno de tres valores: conservar, reemplazar o reevaluar, con justificación.
 - `estado: propuesto`. Decisiones que la migración obliga a tomar y que el código origen no responde: framework destino, estrategia de despliegue, herramienta de build, estrategia de tests. El agente lista opciones con ventajas y desventajas y marca una recomendación. No decide. El revisor lo cambia a `revisado` cuando acepta o edita la decisión.
 
-**Fase 3: specs.**
+**Etapa 3: specs.**
 
 Un archivo `migration/specs/<capacidad>.md` por fila de `_capacidades.md`. Secciones, en este orden:
 
@@ -205,7 +205,7 @@ Un archivo `migration/specs/<capacidad>.md` por fila de `_capacidades.md`. Secci
 11. Evidencia en el código original (rutas de archivo).
 12. Preguntas abiertas: todo lo que el agente no pudo determinar con certeza. Nunca inventa comportamiento; lo anota aquí.
 
-**Fase 4: tareas.**
+**Etapa 4: tareas.**
 
 Archivos `migration/tasks/T-NNN-<slug>.md`. Frontmatter:
 
@@ -226,7 +226,7 @@ Cuerpo: objetivo, criterios de aceptación (verificables, citan RN y CB del spec
 
 Las tareas fundacionales (estructura del proyecto destino, CI, configuración, dependencias base) van numeradas al inicio y no tienen spec. Una tarea cuya implementación depende de un ADR con `estado: propuesto` lo cita en `bloqueada_por`.
 
-**Acotación.** "solo la fase N" ejecuta esa fase. "solo la capacidad X" ejecuta las fases 3 y 4 para esa capacidad. Respeta `estado: revisado` en ADRs, specs y tareas.
+**Acotación.** "solo la etapa N" ejecuta esa etapa. "solo la capacidad X" ejecuta las etapas 3 y 4 para esa capacidad. Las etapas van en orden y cada una lee lo que dejó la anterior; si falta el insumo, el agente se detiene y nombra la etapa previa. Se usa "etapa" para los pasos internos del tech lead y "fase" solo para las del backlog que asigna el PM. Se recomienda ejecutar las etapas una a una, revisando entre ellas, para que las tareas se generen una sola vez con las decisiones de los ADRs ya tomadas. Respeta `estado: revisado` en ADRs, specs y tareas.
 
 ## 8. Agente 3: `migration-qa`
 

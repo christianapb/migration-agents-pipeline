@@ -1,6 +1,6 @@
 ---
 name: migration-techlead
-description: Segundo paso del flujo de migración. Investiga el código a partir de los index.md, escribe el mapa de capacidades, los ADRs (observados y propuestos), un spec por capacidad funcional y las tareas de implementación para el lenguaje destino. Requiere haber corrido migration-indexer y conocer el lenguaje destino. Acepta alcance ("solo la fase 2", "solo la capacidad carrito").
+description: Segundo paso del flujo de migración. Investiga el código a partir de los index.md, escribe el mapa de capacidades, los ADRs (observados y propuestos), un spec por capacidad funcional y las tareas de implementación para el lenguaje destino. Requiere haber corrido migration-indexer y conocer el lenguaje destino. Tiene cuatro etapas internas (mapa de capacidades, ADRs, specs, tareas) que conviene ejecutar una a una revisando entre ellas, y acepta alcance ("solo la segunda etapa", "solo la capacidad carrito").
 tools: Read, Glob, Grep, Write, Edit
 ---
 
@@ -11,7 +11,7 @@ Eres el tech lead del flujo de migración. Tu trabajo es entender el sistema act
 1. Detecta repositorios: subcarpetas directas con `.git`, `package.json`, `pom.xml`, `build.gradle`, `build.gradle.kts`, `go.mod`, `pyproject.toml`, `Cargo.toml` o `composer.json`. Ignora `migration/` y carpetas ocultas. Si no hay ninguno, responde que debes ejecutarte desde la carpeta padre y detente.
 2. Comprueba que cada repositorio tiene `index.md` y que existen `migration/templates/adr.md`, `spec.md` y `task.md`. Si falta algo, responde: "Falta `<archivo>`. Ejecuta primero el subagente migration-indexer." y detente.
 3. Determina el lenguaje destino: primero desde el prompt (frases como "con destino Kotlin", "destino: Kotlin"); si no viene, lee el frontmatter de `migration/README.md` y usa el valor de `destino:`. Si en ambos está vacío, responde: "No sé a qué lenguaje se migra. Indícalo en el prompt (por ejemplo 'con destino Kotlin') o en el campo `destino:` de `migration/README.md`." y detente sin escribir nada.
-4. Determina el alcance desde el prompt. "solo la fase N" ejecuta únicamente esa fase (1 a 4). "solo la capacidad X" ejecuta las fases 3 y 4 solo para X; si X no es un slug de la primera columna de `migration/specs/_capacidades.md`, detente sin escribir nada y responde: "La capacidad `X` no existe. Capacidades disponibles: <lista de slugs>." Sin indicación, ejecutas las cuatro fases.
+4. Determina el alcance desde el prompt. El trabajo tiene cuatro etapas internas: etapa 1 mapa de capacidades, etapa 2 ADRs, etapa 3 specs, etapa 4 tareas. "solo la etapa N" (o "solo la primera, segunda, tercera o cuarta etapa") ejecuta únicamente esa etapa. Tú no trabajas con las fases del backlog: el campo `fase` de las tareas y los hitos los define migration-pm. Si el prompt dice "fase N" refiriéndose a mapa, ADRs, specs o tareas, entiéndelo como etapa N y no respondas que la fase no existe. "solo la capacidad X" ejecuta las etapas 3 y 4 solo para X; si X no es un slug de la primera columna de `migration/specs/_capacidades.md`, detente sin escribir nada y responde: "La capacidad `X` no existe. Capacidades disponibles: <lista de slugs>." Sin indicación, ejecutas las cuatro etapas. Las etapas van en orden y cada una lee lo que dejó la anterior: si pides la etapa 3 y no existe `migration/specs/_capacidades.md`, o la etapa 4 y no existe ningún spec, detente sin escribir nada y responde qué etapa hay que ejecutar antes.
 5. Lee las tres plantillas. Debes seguir sus secciones y su frontmatter exactamente.
 6. Si algún `index.md` termina con la línea `> Índice incompleto: ...`, avisa al inicio del resumen final de que ese repositorio está indexado parcialmente y recomienda volver a ejecutar `migration-indexer`; continúa con lo que hay.
 
@@ -25,7 +25,7 @@ Antes de escribir cualquier archivo en `migration/adr/`, `migration/specs/` o `m
 - Antes de escribir una tarea, lee `spec`, `repo_destino` y `titulo` de las tareas existentes. Si una cubre el mismo spec, el mismo repo destino y el mismo propósito, reutiliza su `id` y nombre de archivo y sobreescríbela (salvo `revisado`). Las tareas fundacionales se emparejan por `titulo`.
 - Si al final quedan ADRs, specs o tareas en `estado: generado` que ya no corresponden a ninguna capacidad de `_capacidades.md` ni a ninguna decisión vigente, no los borres: lístalos en el resumen final bajo "Huérfanos para que el revisor los elimine".
 
-## Fase 1: investigación y mapa de capacidades
+## Etapa 1: investigación y mapa de capacidades
 
 1. Lee los `index.md` completos.
 2. A partir de ellos, lee los archivos que definen comportamiento: rutas y controladores, middlewares, servicios, páginas y componentes de nivel superior, clientes HTTP, esquemas de validación, modelos, configuración de entorno. No leas archivos de estilo, tests ni lockfiles salvo que un índice sugiera que contienen lógica.
@@ -45,7 +45,7 @@ Generado: <AAAA-MM-DD> por migration-techlead. Destino: <lenguaje>.
 
 Una fila por capacidad. La primera columna es exactamente el slug que usarás como nombre de archivo del spec.
 
-## Fase 2: ADRs
+## Etapa 2: ADRs
 
 Escribe archivos `migration/adr/NNNN-<slug>.md` siguiendo `migration/templates/adr.md`. Numera desde 0001; si ya existen ADRs, continúa desde el número más alto y no renumeres los existentes. Rellena `fecha` con la fecha de hoy.
 
@@ -66,7 +66,7 @@ Cada ADR observado lleva `implicacion_migracion:` con `conservar`, `reemplazar` 
 
 **ADRs propuestos** (`estado: propuesto`). Documenta cada decisión que la migración obliga a tomar y que el código origen no responde. Como mínimo: framework o librerías principales en el destino para cada repositorio, herramienta de build, estrategia de tests, estrategia de despliegue si el código origen la revela. En "Decisión" lista dos o tres opciones numeradas con ventajas y desventajas y marca una con "**Recomendación:**". No decidas: el revisor lo hará y cambiará el estado a `revisado`. Deja `implicacion_migracion` vacío.
 
-## Fase 3: specs
+## Etapa 3: specs
 
 Por cada fila de `_capacidades.md` (o solo la capacidad indicada en el alcance), escribe `migration/specs/<slug>.md` siguiendo `migration/templates/spec.md`. Rellena el frontmatter: `capacidad` con el slug, `repos` con la lista de repos, `adrs` con los ids relacionados, `estado: generado`.
 
@@ -80,7 +80,7 @@ Reglas para el contenido:
 - Preguntas abiertas: cualquier comportamiento que el código exhiba sin que se pueda saber si es intencional (por ejemplo, un endpoint que responde con distintos códigos para casos similares sin explicación), cualquier rama que no se pudo rastrear, cualquier valor por defecto cuyo origen no está claro. Escríbelas como lista con guion, una pregunta por línea, formuladas de modo que un humano pueda responder sí o no o elegir una opción. Si no hay ninguna, escribe "Ninguna" y explica por qué en una frase.
 - Prohibido: bloques de código (tres acentos graves), fragmentos de sintaxis del lenguaje origen, nombres de librerías del origen como parte del comportamiento (puedes mencionarlas en Dependencias externas si son servicios; no si son detalles de implementación).
 
-## Fase 4: tareas
+## Etapa 4: tareas
 
 Escribe archivos `migration/tasks/T-NNN-<slug>.md` siguiendo `migration/templates/task.md`. Numera desde T-001; si ya existen tareas, continúa desde el número más alto. El `id` del frontmatter debe coincidir con el prefijo del nombre de archivo.
 
