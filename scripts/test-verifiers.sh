@@ -239,5 +239,17 @@ PATH="$FAKE:$PATH" FAKE_OUTPUT="$TMP/legit.txt" WORKDIR="$TMP/wd" bash "$ROOT/sc
 PATH="$FAKE:$PATH" FAKE_OUTPUT="$TMP/limit.txt" WORKDIR="$TMP/wd" bash "$ROOT/scripts/run-agent.sh" x >/dev/null 2>&1
 [ $? -eq 2 ] || fail "run-agent.sh no detecta el aviso real de límite de uso"
 
+# 5. run-agent.sh arranca el agente directamente, sin sesión intermedia que delegue
+cat > "$FAKE/claude" <<'EOF'
+#!/usr/bin/env bash
+printf '%s\n' "$@" > "$FAKE_ARGS"
+echo "Resumen"
+EOF
+PATH="$FAKE:$PATH" FAKE_ARGS="$TMP/args.txt" WORKDIR="$TMP/wd" bash "$ROOT/scripts/run-agent.sh" migration-qa "Solo la capacidad carrito." >/dev/null 2>&1
+grep -qx -- '--agent' "$TMP/args.txt" && grep -qx 'migration-qa' "$TMP/args.txt" || fail "run-agent.sh no usa --agent <nombre>"
+grep -qx -- '--no-session-persistence' "$TMP/args.txt" || fail "run-agent.sh no usa --no-session-persistence"
+grep -q 'Solo la capacidad carrito.' "$TMP/args.txt" || fail "run-agent.sh no pasa el texto adicional al agente"
+grep -q 'Invoca el subagente' "$TMP/args.txt" && fail "run-agent.sh sigue delegando desde una sesión principal"
+
 [ "$fails" -eq 0 ] && { echo "OK: verificadores"; exit 0; }
 exit 1
