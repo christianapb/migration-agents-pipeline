@@ -9,13 +9,31 @@ Dos agentes te acompañan en todo momento:
 
 ## 1. Instalación
 
-```bash
-git clone https://github.com/christianapb/migration-agents-pipeline.git
-cd migration-agents-pipeline
-bash scripts/install.sh
+Copia los subagentes de la carpeta `agents/` de este repositorio dentro de `.claude/agents/` en la raíz del proyecto, es decir, en la carpeta padre que contiene los repositorios (sección 2):
+
+```
+mi-proyecto/
+├── .claude/
+│   └── agents/
+│       ├── migration-orchestrator.md
+│       └── ...
+├── frontend/
+└── bff/
 ```
 
-Abre una sesión nueva de Claude Code para que carguen los agentes.
+Son 9 subagentes:
+
+- `migration-orchestrator`: diagnostica en qué paso estás y te da el prompt del siguiente. Solo lee.
+- `migration-tl-resolver`: aplica tus decisiones y cambios sobre los artefactos.
+- `migration-indexer`: paso 1, índices y convenciones.
+- `migration-analyst`: paso 2, mapa de capacidades.
+- `migration-tl-adrs`: paso 3, ADRs.
+- `migration-tl-specs`: paso 4, specs por capacidad.
+- `migration-tl-tasks`: paso 5, tareas de implementación.
+- `migration-qa`: paso 6, planes de prueba.
+- `migration-pm`: paso 7, backlog.
+
+Después abre una sesión nueva de Claude Code en esa carpeta, porque los subagentes se cargan al iniciar.
 
 ## 2. Preparar la carpeta
 
@@ -34,6 +52,8 @@ Conviene versionar `mi-proyecto/` con git y hacer commit antes de cada paso. Par
 En cada paso: ejecuta el agente, revisa, aplica cambios con el resolver y pregunta al orquestador qué sigue.
 
 ### Paso 1: indexar
+
+**Qué es:** genera un mapa del código para que los demás agentes no tengan que recorrer los repositorios completos. Por cada repo escribe un `index.md` con cada archivo de código real y dos líneas que dicen qué contiene y para qué sirve, descartando lo que no aporta (lockfiles, compilados, imágenes, cachés). También escribe un `index.md` general que apunta a los de cada repo, el bloque de convenciones del flujo en `CLAUDE.md` y la carpeta `migration/` con el README y las plantillas de los artefactos.
 
 ```
 Usa el subagente migration-indexer
@@ -61,6 +81,8 @@ El indexador nunca indexa `migration/`: no es código del proyecto sino el resul
 
 ### Paso 2: capacidades
 
+**Qué es:** identifica qué puede hacer el sistema de principio a fin, por ejemplo autenticarse, listar productos o gestionar el carrito, aunque cada capacidad cruce varios repos. El resultado es `migration/specs/_capacidades.md`, una tabla con cada capacidad, los repos que toca y los archivos que la implementan. Esa lista define cuántos specs habrá después.
+
 ```
 Usa el subagente migration-analyst
 ```
@@ -74,6 +96,8 @@ Usa el subagente migration-tl-resolver: excluye la capacidad pagos
 La exclusión es permanente: el analista la omite en cada corrida. Para agrupar o dividir, repite el analista indicándolo en el prompt.
 
 ### Paso 3: ADRs
+
+**Qué es:** escribe los ADR (Architecture Decision Records, registros de decisiones de arquitectura) en `migration/adr/`. Son documentos cortos que dejan por escrito una decisión de diseño, su contexto, la evidencia en el código y sus consecuencias. Hay dos tipos: los **observados**, decisiones que el código actual ya tomó (cómo autentica, cómo maneja errores, dónde guarda datos), y los **propuestos**, decisiones que la migración obliga a tomar y que el código no responde (qué framework usar en el destino, cómo construir, cómo probar). Necesita el lenguaje destino.
 
 ```
 Usa el subagente migration-tl-adrs con destino Kotlin
@@ -98,6 +122,8 @@ El resolver escribe la decisión con la tecnología nombrada, borra la recomenda
 
 ### Paso 4: specs
 
+**Qué es:** escribe una especificación por capacidad en `migration/specs/<capacidad>.md`. Describe el comportamiento del sistema sin código del lenguaje origen: flujos, contratos de API en notación neutral, modelos de datos, reglas de negocio numeradas (`RN-n`), casos borde y errores (`CB-n`), y preguntas abiertas para lo que no se pudo determinar con certeza a partir del código. Es la pieza con la que otro equipo reimplementa la capacidad en cualquier lenguaje.
+
 ```
 Usa el subagente migration-tl-specs
 ```
@@ -112,6 +138,8 @@ Usa el subagente migration-tl-resolver: marca revisado el spec catalogo-producto
 
 ### Paso 5: tareas
 
+**Qué es:** convierte los specs y las decisiones de los ADRs en tareas de implementación para el lenguaje destino, una por archivo en `migration/tasks/`. Primero las fundacionales (estructura del proyecto, build, integración continua) y luego las de cada capacidad. Cada tarea indica de qué otras depende, su tamaño, criterios de aceptación que citan las reglas del spec y, si queda algo sin decidir, qué la bloquea.
+
 ```
 Usa el subagente migration-tl-tasks con destino Kotlin
 ```
@@ -123,6 +151,8 @@ Usa el subagente migration-tl-resolver: la tarea T-016 también depende de T-004
 ```
 
 ### Paso 6: planes de prueba
+
+**Qué es:** escribe un plan de pruebas por capacidad en `migration/test-plans/`, con casos en formato Dado/Cuando/Entonces que cubren el camino feliz, los casos borde, los errores y los contratos de API. Cada caso dice qué regla o caso borde cubre y qué tareas lo implementan. Lo que el spec no define queda como caso pendiente, y las ambigüedades que encuentra quedan como hallazgos `H-n`. `_cobertura.md` resume qué quedó sin cubrir. Estos planes sirven luego para validar la implementación en el destino.
 
 Antes de correr QA conviene tener los specs validados y las preguntas importantes respondidas: QA convierte el spec en casos afirmados con seguridad, y lo no respondido queda como caso pendiente.
 
@@ -139,6 +169,8 @@ Usa el subagente migration-tl-resolver: resuelve el hallazgo H-1 del plan carrit
 Luego repite QA para esa capacidad (`Usa el subagente migration-qa, solo la capacidad carrito`). Si falta un caso cuyo comportamiento no está en el spec, el resolver te pedirá añadirlo primero al spec.
 
 ### Paso 7: backlog
+
+**Qué es:** ordena las tareas para que el equipo pueda empezar a implementar. Comprueba que las dependencias no tengan ciclos ni referencias rotas, prioriza con un criterio fijo y agrupa las tareas en hitos, de modo que cada hito termine con al menos una capacidad completa. Escribe `migration/backlog.md` con los hitos, los bloqueos y los riesgos, y rellena `fase` y `prioridad` en cada tarea.
 
 ```
 Usa el subagente migration-pm
