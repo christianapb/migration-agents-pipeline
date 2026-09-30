@@ -32,7 +32,7 @@ Orden de pasos y qué los evidencia:
    - Preguntas abiertas sin línea `Respuesta` debajo, por spec (cuántas y cuáles bloquean tareas según `bloqueada_por`).
    - Hallazgos `H-n` sin `(resuelto: ...)`, por plan.
    - Capacidades en `excluir:` que aún tienen spec, plan o tareas.
-3. **Desactualizado.** Glob devuelve los archivos ordenados por fecha de modificación: usa ese orden para comparar dos archivos (por ejemplo, un Glob cuyo patrón abarque el spec y su plan). Si el orden no es concluyente, compara las fechas `Generado:` o `fecha:` del contenido. Casos:
+3. **Desactualizado.** Glob devuelve los archivos ordenados por fecha de modificación, del más antiguo al más reciente: el que aparece después es el más nuevo. Usa ese orden para comparar dos archivos (por ejemplo, un Glob cuyo patrón abarque el spec y su plan). Si el orden no es concluyente, compara las fechas `Generado:` o `fecha:` del contenido. Ten en cuenta que marcar un artefacto `revisado` también lo hace más nuevo: si un spec solo cambió de `estado` no puedes saberlo con certeza, así que cuando el spec más nuevo que su plan o sus tareas esté `revisado`, escríbelo como "posiblemente desactualizado (puede ser solo un cambio de estado)" y no lo antepongas al siguiente paso del orden. Casos:
    - Un plan más antiguo que su spec.
    - Tareas de un spec más antiguas que el spec, o más antiguas que un ADR que pasó a `revisado`.
    - `backlog.md` más antiguo que alguna tarea.
@@ -41,12 +41,12 @@ Orden de pasos y qué los evidencia:
 4. **Siguiente paso**, uno solo, con esta prioridad:
    1. Si falta un paso anterior al actual, ese paso.
    2. Si hay ADRs propuestos y el siguiente agente es migration-tl-tasks, decidirlos con migration-tl-resolver.
-   3. Si hay algo desactualizado, repetir el agente que lo regenera, con alcance si aplica.
+   3. Si hay algo desactualizado (no "posiblemente"), repetir el agente que lo regenera, con alcance si aplica.
    4. Si hay pendientes de revisión del último paso, revisarlos (y el prompt del resolver para aplicar decisiones).
    5. Si no, el siguiente agente del orden.
    Si hay otro camino igualmente válido, menciónalo en una línea.
 
-El prompt que entregas es exacto y copiable, empieza por `Usa el subagente migration-...` e incluye destino y alcance cuando hagan falta. Si el paso es decidir, pon los ids reales y un marcador `<tu decisión>`, por ejemplo: `Usa el subagente migration-tl-resolver: en el ADR 0011 elijo <tu decisión>; en el ADR 0012 elijo <tu decisión>`.
+El prompt que entregas es exacto y copiable, empieza por `Usa el subagente migration-...` e incluye destino y alcance cuando hagan falta. Para construirlo usa exclusivamente las frases de prompt del bloque de `CLAUDE.md` (`con destino <lenguaje>`, `solo la capacidad <slug>`, `aunque haya ADRs propuestos`, `acepta la recomendación`, `sin marcar revisado`); no inventes otras formulaciones ni añadas destino a agentes que no lo necesitan (migration-analyst, migration-tl-specs, migration-qa, migration-pm). Si hay que decidir ADRs, ofrece además la variante `acepta la recomendación`. Si el paso es decidir, pon los ids reales y un marcador `<tu decisión>`, por ejemplo: `Usa el subagente migration-tl-resolver: en el ADR 0011 elijo <tu decisión>; en el ADR 0012 elijo <tu decisión>`.
 
 ## 3. Salida
 

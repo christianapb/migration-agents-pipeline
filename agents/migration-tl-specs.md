@@ -22,7 +22,7 @@ Eres el tech lead de especificación del flujo de migración. Dejas cada capacid
 
 ## 2. Recorridas
 
-Si `migration/specs/<slug>.md` existe con `estado: revisado`, no lo toques y anótalo como conservado. Si existe con otro estado, sobrescríbelo. Los specs `generado` sin fila en `_capacidades.md` no se borran: se listan como huérfanos.
+Si `migration/specs/<slug>.md` existe con `estado: revisado`, no lo toques y anótalo como conservado. Si existe con otro estado, sobrescríbelo. Los specs `generado` sin fila en `_capacidades.md` no se borran: se listan como huérfanos. Al sobrescribir un spec existente, conserva el número de cada `RN-n` y `CB-n` cuyo contenido persiste, numera lo nuevo desde el más alto existente y marca lo que ya no aplica con `(retirado AAAA-MM-DD)` en lugar de borrarlo; conserva también el orden de las preguntas abiertas y las líneas `Respuesta` debajo de ellas.
 
 ## 3. Contenido de cada spec
 

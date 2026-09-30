@@ -23,7 +23,10 @@ fi
 # Caso 4: decidir un ADR propuesto aceptando la recomendación
 P="$(grep -l '^estado: propuesto' "$M"/adr/*.md | head -n1 | xargs basename | cut -c1-4)"
 [ -n "$P" ] || { echo "FAIL: no hay ADR propuesto"; exit 1; }
+rev_before="$(grep -l '^estado: revisado' "$M"/tasks/*.md 2>/dev/null | sort)"
 R "En el ADR $P acepta la recomendación." >/dev/null
+rev_after="$(grep -l '^estado: revisado' "$M"/tasks/*.md 2>/dev/null | sort)"
+[ "$rev_before" = "$rev_after" ] || fail "caso 4: la limpieza de bloqueada_por cambió el estado de tareas"
 f="$(adrfile "$P")"
 grep -q '^estado: revisado' "$f" || fail "caso 4: ADR $P no quedó revisado"
 grep -q 'Recomendación:' "$f" && fail "caso 4: ADR $P conserva la recomendación"
@@ -45,6 +48,8 @@ grep -qF -- "$q1" "$M/specs/$S.md" || fail "caso 5: se borró la pregunta abiert
 ids_after="$(grep -oE '^(- )?(RN|CB)-[0-9]+:' "$M/specs/$S.md" | sort)"
 [ -z "$(comm -23 <(printf '%s\n' "$ids_before") <(printf '%s\n' "$ids_after"))" ] || fail "caso 5: se perdieron o renumeraron RN/CB"
 grep -l "PA:$S:1\b" "$M"/tasks/*.md >/dev/null 2>&1 && fail "caso 5: alguna tarea sigue bloqueada por PA:$S:1"
+grep -qE '^[[:space:]]*- Respuesta \(' "$M/specs/$S.md" || fail "caso 5: no añadió la línea Respuesta"
+grep -q '^estado: revisado' "$M/specs/$S.md" || fail "caso 5: el spec no quedó revisado"
 
 # Caso 6: se niega a editar un derivado
 g="$(md5sum < "$W/index.md")"

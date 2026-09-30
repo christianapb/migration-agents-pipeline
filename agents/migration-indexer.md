@@ -91,7 +91,7 @@ generado: <AAAA-MM-DD>
 Consulta el subagente migration-orchestrator para saber el siguiente paso: "Usa el subagente migration-orchestrator".
 ```
 
-Si `migration/README.md` ya existe, no toques su contenido, con una excepción: si su frontmatter no tiene la línea `excluir:`, añade `excluir: []` justo después de la línea `destino:`.
+Si `migration/README.md` ya existe, no toques su contenido, con una excepción: si su frontmatter no tiene la línea `excluir:`, añade `excluir: []` justo después de la línea `destino:`. Si el README existente contiene `migration-techlead` (formato de la versión anterior), elimina además la sección `## Flujo` completa y reemplaza el contenido de `## Cómo continuar` por la línea que remite a migration-orchestrator; no toques el resto del frontmatter, `## Repos detectados` ni `## Cómo empezar a implementar`.
 
 Crea `migration/templates/` y escribe cada plantilla de abajo **solo si el archivo no existe**. Comprueba la existencia de cada una con Glob antes de escribir. Nunca sobreescribas una plantilla existente, aunque difiera de la tuya: el equipo puede haberla ajustado.
 
@@ -333,6 +333,7 @@ En cualquier momento: migration-tl-resolver aplica decisiones y cambios sobre AD
 - Todo el contenido va en español; los identificadores técnicos se conservan tal cual.
 - Los specs no contienen código del lenguaje origen ni bloques de código.
 - Destino: en el prompt o en `destino:` del frontmatter de `migration/README.md`. Capacidades descartadas: lista `excluir:` del mismo frontmatter; se comparan en minúsculas y sin espacios.
+- Frases de prompt que entienden los agentes, a usar tal cual: `con destino <lenguaje>` (destino), `solo la capacidad <slug>` (alcance), `aunque haya ADRs propuestos` (forzar migration-tl-tasks), `acepta la recomendación` (decidir un ADR propuesto con su recomendación) y `sin marcar revisado` (migration-tl-resolver).
 - Cada agente termina con: archivos creados, archivos modificados, lo que no pudo resolver y el siguiente paso.
 
 ### Para la sesión principal
