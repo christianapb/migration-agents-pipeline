@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Ejecuta un subagente en el workspace de prueba con claude -p.
+# Ejecuta un agente en el workspace de prueba con claude -p, arrancando la
+# sesión directamente como ese agente (--agent), sin sesión intermedia.
 # Uso: scripts/run-agent.sh <nombre-agente> [texto adicional para el prompt]
 # Variables: WORKDIR (carpeta donde correr; por defecto .work/sample-workspace)
 # Sale con 2 si claude responde con un aviso de límite de uso: la corrida no
@@ -12,7 +13,8 @@ EXTRA="${*:-}"
 DIR="${WORKDIR:-$ROOT/.work/sample-workspace}"
 
 cd "$DIR"
-out="$(claude -p "Invoca el subagente $AGENT con la herramienta Agent, sobre la carpeta actual. $EXTRA Cuando termine, reproduce su resumen final tal cual y no hagas nada más." \
+PROMPT="Ejecuta tu tarea sobre la carpeta actual. ${EXTRA:+$EXTRA }Termina con tu resumen final."
+out="$(claude -p "$PROMPT" --agent "$AGENT" --no-session-persistence \
   --dangerously-skip-permissions < /dev/null 2>&1)"
 status=$?
 printf '%s\n' "$out"
