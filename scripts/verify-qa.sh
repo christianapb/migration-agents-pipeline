@@ -43,6 +43,11 @@ for s in "${specs[@]}"; do
     [ "$pend" -ge 1 ] || fail "$slug: el spec tiene $qa preguntas abiertas pero el plan no tiene casos pendientes"
     pending_total=$((pending_total+pend))
   fi
+  hall="$(awk '/^## Hallazgos para el tech lead/{f=1;next} /^## /{f=0} f' "$p" | grep -v '^[[:space:]]*$' || true)"
+  if [ -n "$hall" ] && ! printf '%s\n' "$hall" | grep -qx 'Ninguno\.\?'; then
+    bad="$(printf '%s\n' "$hall" | grep '^- ' | grep -Ev '^- \*\*H-[0-9]+\*\*:' || true)"
+    [ -z "$bad" ] || fail "$slug: hallazgos sin numerar H-n"
+  fi
   grep -q '```' "$p" && fail "$slug: contiene bloques de código"
 done
 [ "$pending_total" -ge 1 ] || fail "ningún plan tiene casos pendientes; la ambigüedad del fixture debería producir al menos uno"

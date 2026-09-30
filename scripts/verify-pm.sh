@@ -11,8 +11,8 @@ fail() { echo "FAIL: $*"; fails=$((fails+1)); }
 grep -q '^### Hito 0' "$M/backlog.md" 2>/dev/null || fail "backlog sin Hito 0"
 grep -q '^## Bloqueos' "$M/backlog.md" 2>/dev/null || fail "backlog sin sección Bloqueos"
 grep -q '^## Riesgos' "$M/backlog.md" 2>/dev/null || fail "backlog sin sección Riesgos"
-grep -q 'migration-pm' "$M/README.md" 2>/dev/null || fail "README no menciona migration-pm"
 grep -q 'Cómo empezar a implementar' "$M/README.md" 2>/dev/null || fail "README sin 'Cómo empezar a implementar'"
+grep -q '^## Flujo' "$M/README.md" 2>/dev/null && fail "README conserva la lista de pasos de v1"
 
 # fase y prioridad rellenados; fase(dep) <= fase(tarea); hito 0 solo fundacionales
 declare -A fase spec

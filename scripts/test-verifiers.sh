@@ -119,10 +119,17 @@ EOF
   cat > "$W/migration/adr/0001-uno.md" <<'EOF'
 ---
 id: 0001
+titulo: Uno
 estado: observado
 implicacion_migracion: conservar
 ---
 # ADR 0001: uno
+## Contexto
+x
+## Decisión
+x
+## Consecuencias
+x
 ## Evidencia
 bff/a.ts
 ## Implicación para la migración
@@ -131,10 +138,18 @@ EOF
   cat > "$W/migration/adr/0002-dos.md" <<'EOF'
 ---
 id: 0002
+titulo: Dos
 estado: propuesto
 implicacion_migracion:
 ---
 # ADR 0002: dos
+## Contexto
+x
+## Decisión
+x
+**Recomendación:** opción 1.
+## Consecuencias
+x
 ## Evidencia
 bff/a.ts
 ## Implicación para la migración
@@ -186,7 +201,7 @@ EOF
 # 1. Los verificadores funcionan con espacios en la ruta del workspace
 WS="$TMP/con espacio/ws"
 make_ws "$WS"
-for v in techlead qa pm; do
+for v in analyst tl-adrs tl-specs tl-tasks qa pm; do
   if ! WORKDIR="$WS" bash "$ROOT/scripts/verify-$v.sh" >/dev/null 2>&1; then
     fail "verify-$v.sh falla con espacios en la ruta"
   fi
