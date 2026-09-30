@@ -44,22 +44,35 @@ Viven en el bloque de `CLAUDE.md` que escribe el indexador: estados (`generado`,
 
 Requisitos: bash 4 o superior con utilidades GNU (Git Bash en Windows) y `claude` en el PATH para las corridas con agentes.
 
+Tres niveles:
+
 ```bash
-bash scripts/test-check-agent.sh     # validador de agentes
-bash scripts/test-install.sh         # instalador
-bash scripts/test-fixture.sh         # fixture
-bash scripts/test-verifiers.sh       # verificadores sobre workspaces sintéticos
-bash scripts/run-all.sh              # cadena completa con una ronda del resolver
-bash scripts/test-indexer-claude.sh  # bloque de CLAUDE.md
-bash scripts/test-analyst.sh         # exclusión y bloque ausente
-bash scripts/test-tl-specs.sh        # alcance sobre capacidad excluida
-bash scripts/test-tl-tasks.sh        # parada ante ADRs propuestos
-bash scripts/test-resolver.sh        # operaciones del resolver
-bash scripts/test-orchestrator.sh    # diagnóstico en varios estados
-bash scripts/verify-idempotency.sh   # un spec revisado sobrevive a una recorrida
+bash scripts/test-fast.sh                          # sin agentes, en paralelo; en cada cambio
+bash scripts/test-agents.sh migration-tl-specs     # solo las pruebas que tocan ese agente
+bash scripts/test-agents.sh                        # todas las pruebas con agentes, en paralelo
+bash scripts/test-all.sh                           # las dos anteriores
+bash scripts/run-all.sh                            # cadena completa con una ronda del resolver; antes de una PR
 ```
 
-Los scripts de agentes usan `.work/sample-workspace/` (o `WORKDIR`) y `claude -p` con permisos desactivados: solo sobre ese workspace descartable. `run-agent.sh` sale con 2 si Claude responde con un aviso de límite de uso.
+Cómo se acelera:
+
+- `run-agent.sh` arranca la sesión directamente como el agente (`claude -p --agent <nombre>`), sin una sesión intermedia que delegue. Mismo modelo y esfuerzo que en uso real.
+- `snapshot.sh` guarda el workspace tras cada etapa de la cadena (`fixture`, `indexer`, `analyst`, `tl-adrs`, `tl-specs`, `tl-tasks`, `qa`, `pm`) con una huella del fixture y de los prompts. Las pruebas restauran la etapa que necesitan. Si cambias un prompt, solo se rehacen esa etapa y las posteriores; cambiar el resolver o el orquestador no rehace nada.
+- `test-agents.sh` corre las pruebas en paralelo (`JOBS=3` por defecto), cada una en su propio workspace bajo `.work/ws/`, con un log por prueba en `.work/logs/`.
+
+Pruebas individuales, todas aceptan `WORKDIR`:
+
+| Script | Qué prueba |
+|---|---|
+| `test-indexer-claude.sh` | bloque de `CLAUDE.md` y actualización de un README de v1 |
+| `test-analyst.sh` | exclusión de capacidades y bloque ausente |
+| `test-tl-specs.sh` | alcance sobre una capacidad excluida |
+| `test-tl-tasks.sh` | parada ante ADRs propuestos y forzado |
+| `test-resolver.sh` | operaciones del resolver |
+| `test-orchestrator.sh` | diagnóstico en varios estados |
+| `verify-idempotency.sh` | un spec revisado sobrevive a una recorrida |
+
+Las corridas de agentes usan `claude -p` con permisos desactivados: solo sobre workspaces descartables de `.work/`. `run-agent.sh` sale con 2 si Claude responde con un aviso de límite de uso. En Windows, lanzar procesos es lento y más dentro de carpetas sincronizadas como OneDrive; `SNAPSHOT_DIR`, `WS_DIR` y `LOG_DIR` permiten mover los workspaces de prueba fuera de ellas.
 
 ## Estructura
 

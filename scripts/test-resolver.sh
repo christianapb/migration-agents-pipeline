@@ -2,7 +2,10 @@
 # Casos 4 a 8 del spec v2 y Review Focus 1 y 2. Prepara su propio workspace.
 set -uo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-W="$ROOT/.work/sample-workspace"
+W="${WORKDIR:-$ROOT/.work/sample-workspace}"
+export WORKDIR="$W"
+SNAP_TMP="$(mktemp -d)"
+trap 'rm -rf "$SNAP_TMP"' EXIT
 M="$W/migration"
 fails=0
 fail() { echo "FAIL: $*"; fails=$((fails+1)); }
@@ -11,13 +14,7 @@ R() { run migration-tl-resolver "$1"; }
 adrfile() { ls "$M"/adr/"$1"-*.md 2>/dev/null | head -n1; }
 
 if [ "${SKIP_SETUP:-0}" != 1 ]; then
-  bash "$ROOT/scripts/fixture-reset.sh" >/dev/null
-  run migration-indexer >/dev/null
-  run migration-analyst >/dev/null
-  run migration-tl-adrs "Ejecútalo con destino Kotlin." >/dev/null
-  run migration-tl-specs >/dev/null
-  run migration-tl-tasks "Ejecútalo con destino Kotlin, aunque haya ADRs propuestos." >/dev/null
-  run migration-qa >/dev/null
+  bash "$ROOT/scripts/snapshot.sh" restore qa "$W" >/dev/null || { echo "FAIL: no se pudo restaurar la etapa qa"; exit 1; }
 fi
 
 # Caso 4: decidir un ADR propuesto aceptando la recomendación

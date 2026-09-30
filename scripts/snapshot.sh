@@ -46,11 +46,19 @@ empty_dir() {
   [ -z "$(ls -A "$d" 2>/dev/null)" ] || die "no se pudo vaciar $d"
 }
 
+# Huella del fixture, calculada una sola vez por invocación (lanzar procesos es
+# caro en Git Bash sobre Windows).
+FIXTURE_KEY=""
+fixture_key() {
+  [ -n "$FIXTURE_KEY" ] || FIXTURE_KEY="$(cd "$ROOT/fixtures/sample-workspace" && find . -type f -print0 | sort -z | xargs -0 sha256sum | sha256sum | cut -d' ' -f1)"
+  echo "$FIXTURE_KEY"
+}
+
 # Huella acumulada hasta la etapa i: fixture + prompts de agentes + textos de prompt.
 key_for() {
   local i="$1" j s
   {
-    (cd "$ROOT/fixtures/sample-workspace" && find . -type f -print0 | sort -z | xargs -0 sha256sum)
+    echo "$FIXTURE_KEY"
     for ((j=1; j<=i; j++)); do
       s="${STAGES[$j]}"
       sha256sum < "$AGENTS/migration-$s.md"
@@ -83,6 +91,7 @@ build() {
   local target="$1" ti i s key prev
   ti="$(stage_index "$target")" || die "etapa desconocida: $target (etapas: ${STAGES[*]})"
   mkdir -p "$SNAPS"
+  FIXTURE_KEY="$(fixture_key)"
   for ((i=0; i<=ti; i++)); do
     s="${STAGES[$i]}"
     key="$(key_for "$i")"

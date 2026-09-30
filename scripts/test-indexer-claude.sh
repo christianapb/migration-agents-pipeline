@@ -2,11 +2,14 @@
 # Caso 1 del spec v2: el bloque se reemplaza y el texto ajeno se conserva.
 set -uo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-W="$ROOT/.work/sample-workspace"
+W="${WORKDIR:-$ROOT/.work/sample-workspace}"
+export WORKDIR="$W"
+SNAP_TMP="$(mktemp -d)"
+trap 'rm -rf "$SNAP_TMP"' EXIT
 fails=0
 fail() { echo "FAIL: $*"; fails=$((fails+1)); }
 
-bash "$ROOT/scripts/fixture-reset.sh" >/dev/null
+bash "$ROOT/scripts/snapshot.sh" restore fixture "$W" >/dev/null || { echo "FAIL: no se pudo restaurar la etapa fixture"; exit 1; }
 printf '# Notas del equipo\n\nTexto previo del equipo.\n\n<!-- migration-flow:begin -->\nCONTENIDO-VIEJO\n<!-- migration-flow:end -->\n\n## Final del equipo\nTexto posterior del equipo.\n' > "$W/CLAUDE.md"
 # README en formato v1: el indexador debe actualizarlo (hallazgo 3 de la revisión)
 mkdir -p "$W/migration"
