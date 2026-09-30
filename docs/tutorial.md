@@ -27,7 +27,7 @@ mi-proyecto/
 └── bff/
 ```
 
-Conviene versionar `mi-proyecto/` con git y hacer commit antes de cada paso.
+Conviene versionar `mi-proyecto/` con git y hacer commit antes de cada paso. Para deshacer, prefiere `git revert` o restaurar archivos concretos: un `git checkout` de toda la carpeta cambia las fechas de modificación y el orquestador puede marcar como desactualizado algo que no lo está.
 
 ## 3. Paso a paso
 
@@ -46,6 +46,18 @@ Usa el subagente migration-tl-resolver: fija el destino en Kotlin
 ```
 
 El bloque de `CLAUDE.md` lo reescribe el indexador en cada corrida; escribe tus notas fuera de las marcas.
+
+**Si vuelves a correr el indexador:**
+
+| Archivo | Qué pasa |
+|---|---|
+| `index.md` de cada repo | Se regenera entero desde el código actual. Pierdes cualquier edición manual. |
+| `index.md` general | Se regenera entero. |
+| `CLAUDE.md` | Solo se reemplaza el bloque entre las marcas; el resto no cambia. |
+| `migration/README.md` | No se toca, salvo añadir `excluir: []` si falta o actualizar un README de la versión anterior. |
+| `migration/templates/*.md` | No se tocan; solo se crean las que falten. |
+
+El indexador nunca indexa `migration/`: no es código del proyecto sino el resultado del proceso, y los demás agentes leen sus artefactos directamente. No hace falta repetirlo después de generar ADRs, specs o tareas. Repítelo solo si cambia el código de algún repo, si añades o quitas un repositorio de la carpeta padre, o si actualizas los agentes a una versión que cambia el bloque de `CLAUDE.md`. Si cambió el código, sigue después la tabla de la sección 4.
 
 ### Paso 2: capacidades
 
@@ -67,7 +79,14 @@ La exclusión es permanente: el analista la omite en cada corrida. Para agrupar 
 Usa el subagente migration-tl-adrs con destino Kotlin
 ```
 
-Los observados documentan lo que el código ya hace; confírmalos o corrígelos. Los propuestos son decisiones que tomas tú. Resuelve los que dependen de otros primero (framework antes que librería JWT):
+**Observados.** Documentan lo que el código ya hace, con una implicación para la migración: conservar, reemplazar o reevaluar. No bloquean nada: puedes generar specs y tareas aunque no los marques `revisado`. Aun así, conviene revisarlos antes de los specs, por dos motivos:
+
+- Si repites `migration-tl-adrs`, los observados que no estén `revisado` se regeneran. Conservan su id, así que las citas desde los specs siguen siendo válidas, pero su texto o su implicación pueden cambiar.
+- Si corriges un observado después de generar specs o tareas, esa corrección no llega sola a ellos. El resolver te lista qué artefactos lo citan, y tú decides qué regenerar (sección 4).
+
+Para confirmar uno sin cambiarlo: `Usa el subagente migration-tl-resolver: marca revisado el ADR 0003`.
+
+**Propuestos.** Son decisiones que tomas tú y bloquean las tareas hasta que las decidas. Resuelve los que dependen de otros primero (framework antes que librería JWT):
 
 ```
 Usa el subagente migration-tl-resolver: en el ADR 0011 elijo Ktor porque el equipo conoce corrutinas
@@ -137,14 +156,60 @@ y repite el PM.
 
 `migration/` es lo que entregas al equipo. Empiezan por el Hito 0, con la sección "Cómo empezar a implementar" de `migration/README.md`.
 
-## 4. Reglas que conviene saber
+## 4. Qué repetir después de un cambio
+
+Los agentes forman una cadena: specs → tareas → planes de prueba → backlog. Cuando cambias algo, hay que regenerar lo que viene **después** en la cadena, en ese orden, y acotado a la capacidad afectada cuando se pueda. Nada se regenera solo.
+
+| Cambiaste | Repite, en este orden |
+|---|---|
+| El código de un repo | `migration-indexer`; `migration-analyst` si pudieron cambiar las capacidades; `migration-tl-specs, solo la capacidad X` para las afectadas; luego `migration-tl-tasks`, `migration-qa` y `migration-pm` para esas capacidades. |
+| Agrupaste o dividiste capacidades | `migration-analyst` con la indicación; `migration-tl-specs` para las capacidades nuevas; `migration-tl-tasks`, `migration-qa`, `migration-pm`. |
+| Excluiste una capacidad | Si el resolver lista tareas con `depende_de` roto o specs que la mencionan, corrígelos con el resolver. Luego `migration-qa` (para que `_cobertura.md` deje de contarla) y `migration-pm` (para que salga del backlog). |
+| Decidiste un ADR propuesto después de generar tareas | `migration-tl-tasks` (para que las notas nombren la tecnología elegida); `migration-qa` si las tareas cambiaron; `migration-pm`. |
+| Corregiste un ADR observado | Si cambia el comportamiento, llévalo al spec con el resolver y sigue la fila siguiente. Si solo cambia cómo se implementa, `migration-tl-tasks` y `migration-pm`. |
+| Un spec: regla, contrato o caso borde | `migration-tl-tasks, solo la capacidad X`; `migration-qa, solo la capacidad X`; `migration-pm`. |
+| Respondiste una pregunta abierta | Si la convertiste en regla o cambia qué se construye, igual que la fila anterior. Si solo confirma el comportamiento actual, `migration-qa, solo la capacidad X` para que el caso pendiente pase a ser un caso normal. |
+| Resolviste un hallazgo `H-n` de QA | Igual que un cambio de spec: `migration-tl-tasks` si cambia qué se construye, luego `migration-qa` y `migration-pm`, todo con `solo la capacidad X`. |
+| Una tarea: dependencias, tamaño, fase o prioridad | `migration-pm`. |
+| Un plan de prueba | Nada; queda `revisado`. |
+| Una plantilla de `migration/templates/` | El agente que genera ese tipo de artefacto, y lo que venga después. |
+
+**Dos casos típicos, paso a paso:**
+
+Generaste tareas forzando ADRs propuestos y luego los decides:
+
+```
+Usa el subagente migration-tl-resolver: en los ADRs 0011, 0012 y 0013 acepta la recomendación
+Usa el subagente migration-tl-tasks con destino Kotlin
+Usa el subagente migration-qa
+Usa el subagente migration-pm
+```
+
+El resolver ya quita esos ADRs de `bloqueada_por`, pero las notas de las tareas se escribieron sin conocer la tecnología: por eso se regeneran. QA solo hace falta si las tareas cambiaron, porque sus casos citan ids de tareas.
+
+QA encontró hallazgos en el plan de carrito:
+
+```
+Usa el subagente migration-tl-resolver: resuelve el hallazgo H-1 del plan carrito: DELETE /cart/items/ sin id responde 404 sin cuerpo
+Usa el subagente migration-tl-tasks con destino Kotlin, solo la capacidad carrito
+Usa el subagente migration-qa, solo la capacidad carrito
+Usa el subagente migration-pm
+```
+
+El segundo paso solo hace falta si la decisión cambia qué se construye, por ejemplo una regla nueva que alguna tarea debe cubrir. Si solo aclara un detalle ya cubierto, pasa directo a QA.
+
+**Lo `revisado` no se regenera.** Si marcaste `revisado` un spec, una tarea o un plan, el agente correspondiente lo conserva tal cual, incluidos los que editó el resolver, porque él marca `revisado` lo que toca. Si quieres que se regenere, cambia a mano su línea `estado: revisado` por `estado: generado` y repite el agente. Es la única edición manual que el flujo espera de ti.
+
+**Si dudas**, pregunta al orquestador: compara fechas y te dice qué quedó desactualizado y con qué prompt regenerarlo.
+
+## 5. Reglas que conviene saber
 
 - `revisado` protege un artefacto: ningún agente generador lo sobrescribe. El resolver marca `revisado` lo que edita.
 - No edites derivados: `index.md`, `_capacidades.md`, `_cobertura.md`, `backlog.md`. El resolver se niega y te dice qué agente los regenera.
 - Los identificadores nunca se renumeran; lo retirado queda marcado como retirado.
-- Si un spec cambia, repite QA y, si cambia lo que se construye, las tareas. El orquestador te avisa de lo desactualizado.
+- Cuando algo cambia, se regenera lo que viene después en la cadena (sección 4). El orquestador te avisa de lo desactualizado.
 
-## 5. Si algo falla
+## 6. Si algo falla
 
 | Síntoma | Causa y solución |
 |---|---|
@@ -154,4 +219,5 @@ y repite el PM.
 | `migration-tl-tasks` se detiene | Hay ADRs propuestos. Decide con el resolver o fuerza con "aunque haya ADRs propuestos". |
 | El resolver no aplicó algo | Revisa la sección "No aplicado" de su resumen: id inexistente u orden ambigua. |
 | El PM reporta un ciclo | Corrige `depende_de` con el resolver y repite el PM. |
+| Una tarea o un spec no cambió al repetir el agente | Está `revisado`. Cambia su estado a `generado` y repite (sección 4). |
 | No sabes qué sigue | `Usa el subagente migration-orchestrator`. |
