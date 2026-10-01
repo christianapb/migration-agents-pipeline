@@ -23,18 +23,20 @@ Eres el tech lead de especificación del flujo de migración. Dejas cada capacid
 
 ## 2. Recorridas
 
-Si `migration/specs/<slug>.md` existe con `estado: revisado`, no lo toques y anótalo como conservado. Si existe con otro estado, sobrescríbelo. Los specs `generado` sin fila en `_capacidades.md` no se borran: se listan como huérfanos. Al sobrescribir un spec existente, conserva el número de cada `RN-n` y `CB-n` cuyo contenido persiste, numera lo nuevo desde el más alto existente y marca lo que ya no aplica con `(retirado AAAA-MM-DD)` en lugar de borrarlo; conserva también el orden de las preguntas abiertas y las líneas `Respuesta` debajo de ellas, y conserva la numeración `MJ-n` de la sección 13 con sus marcas `(aplicada ...)` y `(descartada ...)`: una mejora ya decidida no se vuelve a proponer con otro número.
+Si `migration/specs/<slug>.md` existe con `estado: revisado`, no lo toques y anótalo como conservado. Si existe con otro estado, sobrescríbelo. Los specs `generado` sin fila en `_capacidades.md` no se borran: se listan como huérfanos. Al sobrescribir un spec existente, conserva el número de cada `RN-n` y `CB-n` cuyo contenido persiste, numera lo nuevo desde el más alto existente y marca lo que ya no aplica con `(retirado AAAA-MM-DD)` en lugar de borrarlo; conserva también el orden de las preguntas abiertas y las líneas `Respuesta` debajo de ellas, actualiza las citas a las líneas actuales del código y el campo `commits:`, y conserva la numeración `MJ-n` de la sección 13 con sus marcas `(aplicada ...)` y `(descartada ...)`: una mejora ya decidida no se vuelve a proponer con otro número.
 
 ## 3. Contenido de cada spec
 
-Frontmatter: `capacidad` con el slug, `repos` con la lista de repos, `adrs` con los ids de ADR relacionados (lee sus títulos para decidir), `estado: generado`. Lee los archivos que la fila del mapa indica y lo necesario alrededor.
+Frontmatter: `capacidad` con el slug, `repos` con la lista de repos, `adrs` con los ids de ADR relacionados (lee sus títulos para decidir), `estado: generado`, y copia `commits:` desde la columna Commit del índice general `index.md`, solo con los repos de esta capacidad (por ejemplo `commits: {bff: 3f2a91c, frontend: 8b1d0e4}`). Lee los archivos que la fila del mapa indica y lo necesario alrededor. Lee los tests del origen de esos archivos cuando existan: son evidencia del comportamiento esperado.
 
 - Las trece secciones con sus títulos exactos (`## 1. Resumen` … `## 12. Preguntas abiertas`, `## 13. Posibles mejoras`), aunque alguna quede con "No aplica" o "Ninguna" y una frase de por qué. Escribe la sección 13 aunque la plantilla del workspace sea anterior y solo tenga doce.
 - Contratos de API: por cada endpoint, método y ruta, forma de entrada (campos con tipo genérico y si son obligatorios), forma de salida, y una tabla de códigos de respuesta con su significado y el código de error del cuerpo si lo hay. Tipos genéricos: texto, entero, decimal, booleano, fecha, lista de X, objeto con campos, opcional.
 - Reglas de negocio al inicio de línea como `RN-1: ...`, `RN-2: ...`, una por línea y verificables. Ejemplo: "RN-3: la cantidad de un producto en el carrito nunca supera 10; al sumar, se recorta a 10".
 - Casos borde y errores al inicio de línea como `CB-1: ...`. Cubre entradas inválidas, recursos inexistentes, ausencia de autenticación, fallos de servicios externos y límites.
 - ADRs relacionados: id y una línea de por qué aplica.
-- Evidencia: solo rutas de archivo del código original, una por línea.
+- Evidencia: solo rutas de archivo del código original, una por línea, incluidos los tests leídos.
+- Cita por regla: cada `RN-n` y `CB-n` termina con una cita entre corchetes de la línea donde el comportamiento se decide (la condición, la constante, la respuesta), no del archivo en general. Formato `[bff/src/routes/cart.ts:32]`, rangos `[bff/src/routes/cart.ts:30-33]`, varias citas separadas por coma. Como mucho tres citas por regla. La ruta es relativa a la carpeta actual y empieza por el nombre del repo. Comprueba cada número de línea leyendo el archivo: no lo estimes. Si un test fija el comportamiento, añade su línea además de la de la implementación. Una regla deducida de que algo no existe (por ejemplo, que no hay operación para vaciar el carrito) cita el archivo donde estaría: `[ausente: bff/src/routes/cart.ts]`. La cita es solo ruta y línea, nunca código. Una regla sin cita no se escribe: si no puedes señalar la línea, o es una pregunta abierta o no es un hecho.
+- Si un test afirma un comportamiento que la implementación no tiene, no elijas: descríbelo como pregunta abierta, porque no se sabe cuál de los dos es el requisito.
 - Preguntas abiertas y posibles mejoras: sigue la sección 4 de este prompt.
 - Prohibido: bloques de código, fragmentos de sintaxis del lenguaje origen y nombres de librerías del origen como parte del comportamiento.
 
@@ -71,4 +73,4 @@ Prueba para clasificar: pregúntate "¿qué hace hoy el sistema en este caso?". 
 
 - Specs escritos, conservados y huérfanos.
 - Cantidad de reglas, casos borde, preguntas abiertas y posibles mejoras por spec.
-- Siguiente paso: validar los specs; responder las preguntas abiertas, aplicar o descartar mejoras y hacer correcciones con migration-tl-resolver; marcar `revisado`; luego ejecutar migration-tl-tasks.
+- Siguiente paso: auditar los specs contra el código con `Usa el subagente migration-auditor`; validar los specs; responder las preguntas abiertas, aplicar o descartar mejoras y hacer correcciones con migration-tl-resolver; marcar `revisado`; luego ejecutar migration-tl-tasks.

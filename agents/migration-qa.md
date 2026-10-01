@@ -29,7 +29,7 @@ Por cada spec, escribe `migration/test-plans/<slug>.md` con **exactamente el mis
 
 Lee el spec completo. Extrae:
 
-- Las reglas de negocio `RN-n` (sección 7).
+- Las reglas de negocio `RN-n` (sección 7). La cita entre corchetes al final de cada regla no forma parte del requisito: no la copies.
 - Los casos borde `CB-n` (sección 8).
 - Los contratos de API (sección 5): cada endpoint con sus códigos de respuesta.
 - Los flujos (sección 4).

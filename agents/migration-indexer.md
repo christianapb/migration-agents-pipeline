@@ -134,6 +134,7 @@ capacidad:
 estado: generado
 repos: []
 adrs: []
+commits: {}
 ---
 <!-- estado: generado | revisado. Un spec revisado no se regenera. -->
 # Spec: <nombre de la capacidad>
@@ -157,10 +158,10 @@ adrs: []
 <!-- Entidades y campos con tipos genéricos, relaciones y restricciones. -->
 
 ## 7. Reglas de negocio
-<!-- Numeradas RN-1, RN-2... Una regla por línea, verificable. -->
+<!-- Numeradas RN-1, RN-2... Una regla por línea, verificable, terminada en la cita de la línea de código que la respalda: RN-1: <regla>. [repo/ruta/archivo:línea] -->
 
 ## 8. Casos borde y errores
-<!-- Numerados CB-1, CB-2... Qué pasa ante entradas inválidas, ausencias, límites, fallos externos. -->
+<!-- Numerados CB-1, CB-2... Qué pasa ante entradas inválidas, ausencias, límites, fallos externos. Cada uno termina en su cita: CB-1: <caso>. [repo/ruta/archivo:línea] -->
 
 ## 9. Dependencias externas
 <!-- Servicios, APIs o librerías de terceros de las que depende la capacidad, y para qué. -->
@@ -289,14 +290,14 @@ Escribe `index.md` en la carpeta actual (la carpeta padre). Es derivado: sobresc
 
 Generado: <AAAA-MM-DD> por migration-indexer
 
-| Repo | Stack | Entrada | Índice |
-|---|---|---|---|
-| <repo> | <stack en una línea> | <archivo o comando de arranque> | [<repo>/index.md](<repo>/index.md) |
+| Repo | Stack | Entrada | Commit | Índice |
+|---|---|---|---|---|
+| <repo> | <stack en una línea> | <archivo o comando de arranque> | <commit> | [<repo>/index.md](<repo>/index.md) |
 
 Artefactos de migración: [migration/](migration/README.md)
 ```
 
-Una fila por repositorio detectado, en orden alfabético. Si el índice de un repo quedó incompleto, añade al final de su celda Índice el texto `(incompleto)`.
+Una fila por repositorio detectado, en orden alfabético. La columna Commit es la salida de `git -C "<repo>" rev-parse --short HEAD` si el repositorio tiene `.git`, o el texto `sin-git` si no lo tiene. Si el índice de un repo quedó incompleto, añade al final de su celda Índice el texto `(incompleto)`.
 
 ## 7. Bloque de convenciones en `CLAUDE.md`
 
@@ -326,16 +327,17 @@ Esta carpeta contiene los repositorios de un proyecto que se documenta para reim
 | 6 | migration-qa | `migration/test-plans/*.md` |
 | 7 | migration-pm | `migration/backlog.md` y `fase`/`prioridad` de cada tarea |
 
-En cualquier momento: migration-tl-resolver aplica decisiones y cambios sobre ADRs, specs, tareas, planes y el README de `migration/`; migration-orchestrator diagnostica el estado y da el prompt del siguiente paso. Un humano revisa entre cada paso.
+En cualquier momento: migration-tl-resolver aplica decisiones y cambios sobre ADRs, specs, tareas, planes y el README de `migration/`; migration-orchestrator diagnostica el estado y da el prompt del siguiente paso; migration-auditor contrasta los specs con el código que citan y escribe `migration/specs/_auditoria.md`, y conviene ejecutarlo después de migration-tl-specs y antes de migration-tl-tasks. Un humano revisa entre cada paso.
 
 ### Convenciones
 
 - Repositorios: subcarpetas directas con `.git`, `package.json`, `pom.xml`, `build.gradle`, `build.gradle.kts`, `go.mod`, `pyproject.toml`, `Cargo.toml` o `composer.json`. Se ignoran `migration/`, `.claude/` y carpetas ocultas.
 - Estados en el frontmatter: `generado` (escrito por un agente; se regenera), `revisado` (validado por un humano; ningún agente generador lo sobrescribe), `observado` y `propuesto` (solo ADRs; un ADR `propuesto` bloquea las tareas que dependen de él).
-- Derivados que se regeneran siempre y no se editan: `index.md` de cada repo, `index.md` general, `migration/specs/_capacidades.md`, `migration/test-plans/_cobertura.md`, `migration/backlog.md`.
-- Identificadores: reglas `RN-n:` y casos borde `CB-n:` al inicio de línea en los specs; preguntas abiertas citadas como `PA:<capacidad>:<n>` por su posición; posibles mejoras `MJ-n:` al inicio de línea en la sección 13 de los specs; casos `TC-<capacidad>-<nnn>`; hallazgos de QA `H-n`; tareas `T-NNN`; ADRs `NNNN`. Nunca se renumeran. Lo nuevo toma el siguiente número libre. Lo eliminado se marca con `(retirado AAAA-MM-DD)` en lugar de borrarse.
+- Derivados que se regeneran siempre y no se editan: `index.md` de cada repo, `index.md` general, `migration/specs/_capacidades.md`, `migration/specs/_auditoria.md`, `migration/test-plans/_cobertura.md`, `migration/backlog.md`.
+- Identificadores: reglas `RN-n:` y casos borde `CB-n:` al inicio de línea en los specs; preguntas abiertas citadas como `PA:<capacidad>:<n>` por su posición; posibles mejoras `MJ-n:` al inicio de línea en la sección 13 de los specs; casos `TC-<capacidad>-<nnn>`; hallazgos de QA `H-n`; hallazgos del auditor `AU-n`; tareas `T-NNN`; ADRs `NNNN`. Nunca se renumeran. Lo nuevo toma el siguiente número libre. Lo eliminado se marca con `(retirado AAAA-MM-DD)` en lugar de borrarse.
 - Todo el contenido va en español; los identificadores técnicos se conservan tal cual.
 - Los specs no contienen código del lenguaje origen ni bloques de código.
+- Evidencia por regla: en los specs, cada `RN-n` y `CB-n` termina con una cita entre corchetes de la línea de código que la respalda: `[ruta:línea]` o `[ruta:inicio-fin]`, con la ruta relativa a esta carpeta empezando por el nombre del repo, y varias citas separadas por coma. Una regla deducida de que algo no existe usa `[ausente: ruta]`. Una regla que nace de una decisión del usuario y no del código usa `[decisión: MJ-n]`, `[decisión: PA n]` o `[decisión: ADR NNNN]`. La cita es solo ruta y línea, nunca código, y no forma parte del requisito. El frontmatter de cada spec anota en `commits:` el commit de cada repo sobre el que se escribió, tomado de la columna Commit del índice general. migration-auditor contrasta cada regla con su cita y escribe `migration/specs/_auditoria.md` con hallazgos `AU-n` por capacidad.
 - Política de paridad: `politica: paridad` en el frontmatter de `migration/README.md` es la única política soportada (ausente o vacío equivale a `paridad`). El destino reproduce el comportamiento observado en el origen salvo decisión explícita en contra: una mejora aplicada o un ADR. Por eso, en los specs: lo que el código determina va como hecho (`RN-n`, `CB-n`, contratos, flujos); si el código determina el comportamiento, no es una pregunta abierta; `## 12. Preguntas abiertas` contiene solo lo que no se pudo determinar leyendo el código; y lo que el código determina pero parece mejorable va en `## 13. Posibles mejoras` como `MJ-n`, citando la regla actual. Las mejoras sin aplicar no bloquean tareas, no generan casos de prueba pendientes y no cuentan como pendiente de revisión.
 - Destino: en el prompt o en `destino:` del frontmatter de `migration/README.md`. Capacidades descartadas: lista `excluir:` del mismo frontmatter; se comparan en minúsculas y sin espacios.
 - Frases de prompt que entienden los agentes, a usar tal cual: `con destino <lenguaje>` (destino), `solo la capacidad <slug>` (alcance), `aunque haya ADRs propuestos` (forzar migration-tl-tasks), `acepta la recomendación` (decidir un ADR propuesto con su recomendación), `aplica la mejora MJ-n` y `descarta la mejora MJ-n` (migration-tl-resolver, indicando el spec) y `sin marcar revisado` (migration-tl-resolver).
