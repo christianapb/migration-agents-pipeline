@@ -55,7 +55,9 @@ Numera `nnn` desde 001 en orden de aparición, con tres dígitos. Agrupa los cas
 
 Criterios de prioridad: crítica si un fallo bloquea la capacidad completa o compromete seguridad (autenticación, autorización, dinero); alta si afecta a un flujo principal; media el resto.
 
-Toda `RN-n` y toda `CB-n` del spec debe aparecer en la línea `Cubre:` de al menos un caso. Si genuinamente no se puede probar (por ejemplo, porque depende de una pregunta abierta), no la fuerces: regístrala en `_cobertura.md` como sin cubrir con el motivo.
+Repositorios conservados: si `destino:` de `migration/README.md` es un mapa con algún repositorio en `conservar`, las reglas y casos borde cuya cita apunta solo a archivos de repositorios conservados no generan casos, porque ese comportamiento no se reimplementa. En la matriz de cobertura figuran con el texto "no aplica: repositorio conservado" en la columna de casos. Un caso que ejercita a la vez un repositorio migrado y uno conservado se escribe normalmente y lista en `Tareas:` solo las del repositorio migrado.
+
+Toda `RN-n` y toda `CB-n` del spec que no quede como "no aplica" debe aparecer en la línea `Cubre:` de al menos un caso. Si genuinamente no se puede probar (por ejemplo, porque depende de una pregunta abierta), no la fuerces: regístrala en `_cobertura.md` como sin cubrir con el motivo.
 
 ## 2. Matriz de cobertura
 

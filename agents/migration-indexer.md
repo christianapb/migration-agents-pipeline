@@ -89,7 +89,7 @@ generado: <AAAA-MM-DD>
 - <repo>: <stack en una línea>
 
 ## Cómo continuar
-Consulta el subagente migration-orchestrator para saber el siguiente paso: "Usa el subagente migration-orchestrator".
+Fija el destino de la migración: un valor para todos los repositorios (`destino: Kotlin`) o uno por repositorio, donde `conservar` significa que ese repositorio no se migra (`destino: {bff: Kotlin, frontend: conservar}`). Cada repositorio detectado necesita destino o `conservar`. Pídeselo a migration-tl-resolver, por ejemplo "fija el destino de bff en Kotlin" y "conserva el repositorio frontend". Después consulta el subagente migration-orchestrator para saber el siguiente paso: "Usa el subagente migration-orchestrator".
 ```
 
 Si `migration/README.md` ya existe, no toques su contenido, con una excepción: si su frontmatter no tiene la línea `excluir:`, añade `excluir: []` justo después de la línea `destino:`; y si no tiene la línea `politica:`, añade `politica: paridad` justo después de la línea `excluir:`. Si el README existente contiene `migration-techlead` (formato de la versión anterior), elimina además la sección `## Flujo` completa y reemplaza el contenido de `## Cómo continuar` por la línea que remite a migration-orchestrator; no toques el resto del frontmatter, `## Repos detectados` ni `## Cómo empezar a implementar`.
@@ -102,12 +102,14 @@ Crea `migration/templates/` y escribe cada plantilla de abajo **solo si el archi
 ---
 id: 0000
 titulo:
+repos: []
 estado: observado
 fecha:
 implicacion_migracion:
 ---
 <!-- estado: observado (decisión que el código ya tomó) | propuesto (decisión que la migración obliga a tomar) | revisado (validado por un humano; no se regenera) -->
 <!-- implicacion_migracion: conservar | reemplazar | reevaluar. Solo en observados. -->
+<!-- repos: repositorios a los que afecta la decisión. Un ADR propuesto nunca incluye un repositorio conservado. -->
 # ADR 0000: <título>
 
 ## Contexto
@@ -187,6 +189,7 @@ id: T-000
 titulo:
 spec:
 repo_destino:
+tipo: implementacion
 depende_de: []
 tamaño: M
 adrs: []
@@ -196,6 +199,7 @@ prioridad:
 bloqueada_por: []
 ---
 <!-- spec: nombre de archivo del spec sin extensión; vacío en tareas fundacionales. -->
+<!-- tipo: implementacion (reimplementa en un repositorio que se migra) | adaptacion (cambio forzado por una decisión en un repositorio conservado). -->
 <!-- tamaño: S (menos de medio día), M (uno o dos días), L (más de dos días). -->
 <!-- fase y prioridad: los rellena migration-pm. -->
 <!-- bloqueada_por: ids de ADR propuestos sin revisar o "PA:<spec>:<n>" para preguntas abiertas. -->
@@ -339,8 +343,8 @@ En cualquier momento: migration-tl-resolver aplica decisiones y cambios sobre AD
 - Los specs no contienen código del lenguaje origen ni bloques de código.
 - Evidencia por regla: en los specs, cada `RN-n` y `CB-n` termina con una cita entre corchetes de la línea de código que la respalda: `[ruta:línea]` o `[ruta:inicio-fin]`, con la ruta relativa a esta carpeta empezando por el nombre del repo, y varias citas separadas por coma. Una regla deducida de que algo no existe usa `[ausente: ruta]`. Una regla que nace de una decisión del usuario y no del código usa `[decisión: MJ-n]`, `[decisión: PA n]` o `[decisión: ADR NNNN]`. La cita es solo ruta y línea, nunca código, y no forma parte del requisito. El frontmatter de cada spec anota en `commits:` el commit de cada repo sobre el que se escribió, tomado de la columna Commit del índice general. migration-auditor contrasta cada regla con su cita y escribe `migration/specs/_auditoria.md` con hallazgos `AU-n` por capacidad.
 - Política de paridad: `politica: paridad` en el frontmatter de `migration/README.md` es la única política soportada (ausente o vacío equivale a `paridad`). El destino reproduce el comportamiento observado en el origen salvo decisión explícita en contra: una mejora aplicada o un ADR. Por eso, en los specs: lo que el código determina va como hecho (`RN-n`, `CB-n`, contratos, flujos); si el código determina el comportamiento, no es una pregunta abierta; `## 12. Preguntas abiertas` contiene solo lo que no se pudo determinar leyendo el código; y lo que el código determina pero parece mejorable va en `## 13. Posibles mejoras` como `MJ-n`, citando la regla actual. Las mejoras sin aplicar no bloquean tareas, no generan casos de prueba pendientes y no cuentan como pendiente de revisión.
-- Destino: en el prompt o en `destino:` del frontmatter de `migration/README.md`. Capacidades descartadas: lista `excluir:` del mismo frontmatter; se comparan en minúsculas y sin espacios.
-- Frases de prompt que entienden los agentes, a usar tal cual: `con destino <lenguaje>` (destino), `solo la capacidad <slug>` (alcance), `aunque haya ADRs propuestos` (forzar migration-tl-tasks), `acepta la recomendación` (decidir un ADR propuesto con su recomendación), `aplica la mejora MJ-n` y `descarta la mejora MJ-n` (migration-tl-resolver, indicando el spec) y `sin marcar revisado` (migration-tl-resolver).
+- Destino: campo `destino:` del frontmatter de `migration/README.md`. Es un valor simple, que aplica a todos los repositorios (`destino: Kotlin`), o un mapa en una sola línea con un valor por repositorio (`destino: {bff: Kotlin, frontend: conservar}`). `conservar` es palabra reservada: ese repositorio se queda en su stack actual y no se migra. En un mapa, cada repositorio detectado debe tener entrada y cada clave debe ser un repositorio detectado; si no, el agente que necesita el destino se detiene y lo dice. El README manda: el destino del prompt solo se usa si el README no lo tiene, y si ambos existen y difieren el agente se detiene. Para un repositorio conservado no se proponen ADRs sobre su tecnología ni se generan tareas de implementación ni casos de prueba; sus ADRs observados y los specs sí se escriben, porque su comportamiento es el contrato que el repositorio migrado debe respetar. Una capacidad cuyos repositorios están todos conservados queda fuera de alcance: sigue en el mapa de capacidades pero no recibe spec, tareas ni plan. Capacidades descartadas: lista `excluir:` del mismo frontmatter; se comparan en minúsculas y sin espacios.
+- Frases de prompt que entienden los agentes, a usar tal cual: `con destino <lenguaje>` (destino único) y `con destino <repo>=<lenguaje>, <repo>=conservar` (destino por repositorio), ambas solo cuando el README no tiene destino; `fija el destino en <lenguaje>`, `fija el destino de <repo> en <lenguaje>` y `conserva el repositorio <repo>` (migration-tl-resolver); `solo la capacidad <slug>` (alcance), `aunque haya ADRs propuestos` (forzar migration-tl-tasks), `acepta la recomendación` (decidir un ADR propuesto con su recomendación), `aplica la mejora MJ-n` y `descarta la mejora MJ-n` (migration-tl-resolver, indicando el spec) y `sin marcar revisado` (migration-tl-resolver).
 - Cada agente termina con: archivos creados, archivos modificados, lo que no pudo resolver y el siguiente paso.
 
 ### Para la sesión principal

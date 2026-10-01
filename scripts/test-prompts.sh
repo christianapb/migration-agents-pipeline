@@ -92,5 +92,28 @@ has migration-tl-specs.md 'Comportamientos por defecto'
 has migration-tl-specs.md 'no lo inventes'
 has migration-auditor.md 'comportamiento por defecto del framework'
 
+# Destino por repositorio (docs/specs/2026-10-01-destino-por-repo-design.md)
+for k in 'destino: {bff: Kotlin, frontend: conservar}' 'conservar' 'con destino <repo>=<lenguaje>, <repo>=conservar' 'fija el destino de <repo> en <lenguaje>' 'conserva el repositorio <repo>' 'El README manda' 'fuera de alcance'; do
+  printf '%s' "$block" | grep -qF -- "$k" || fail "bloque de CLAUDE.md sin '$k'"
+done
+has migration-indexer.md 'repos: []'
+has migration-indexer.md 'tipo: implementacion'
+for a in migration-tl-adrs.md migration-tl-tasks.md; do
+  has "$a" 'El mapa de destino no cubre el repositorio'
+  has "$a" 'el README manda'
+done
+has migration-tl-adrs.md 'Ningún ADR propuesto incluye un repositorio conservado en `repos:`'
+has migration-tl-adrs.md 'es una restricción para el repositorio que se migra'
+has migration-tl-specs.md 'fuera de alcance'
+has migration-tl-specs.md '(se conserva)'
+has migration-tl-tasks.md 'tipo: adaptacion'
+has migration-tl-tasks.md 'Ninguna tarea de implementación tiene `repo_destino` en un repositorio conservado'
+has migration-qa.md 'no aplica: repositorio conservado'
+has migration-pm.md 'repositorios conservados'
+has migration-tl-resolver.md '**Fijar el destino de un repositorio**'
+has migration-tl-resolver.md '**Conservar un repositorio**'
+has migration-orchestrator.md 'el mapa no cubre algún repositorio detectado'
+has migration-orchestrator.md 'No añadas destino al prompt cuando el README ya lo tiene'
+
 [ "$fails" -eq 0 ] && { echo "OK: prompts"; exit 0; }
 exit 1
