@@ -6,6 +6,10 @@ W="${WORKDIR:-$ROOT/.work/sample-workspace}"
 M="$W/migration"
 fails=0
 fail() { echo "FAIL: $*"; fails=$((fails+1)); }
+# shellcheck source=scripts/lib-destino.sh
+. "$ROOT/scripts/lib-destino.sh"
+while IFS= read -r prob; do [ -n "$prob" ] && fail "$prob"; done <<< "$(destino_problemas "$W")"
+conservados="$(destino_conservados "$W")"
 
 tasks=()
 for f in "$M"/tasks/T-*.md; do [ -f "$f" ] && tasks+=("$f"); done
@@ -20,6 +24,12 @@ for t in "${tasks[@]}"; do
   grep -q '^depende_de: ' "$t" || fail "$n: sin depende_de"
   grep -q '^tamaño: [SML]$' "$t" || fail "$n: tamaño inválido"
   grep -q '^## Criterios de aceptación' "$t" || fail "$n: sin criterios de aceptación"
+  tipo="$(sed -n 's/^tipo:[[:space:]]*//p' "$t" | head -n1)"
+  case "$tipo" in implementacion|adaptacion) ;; *) fail "$n: tipo ausente o inválido ('$tipo')" ;; esac
+  rd="$(sed -n 's/^repo_destino:[[:space:]]*//p' "$t" | head -n1)"
+  if [ -n "$rd" ] && printf '%s\n' "$conservados" | grep -qx "$rd" && [ "$tipo" != "adaptacion" ]; then
+    fail "$n: tarea de implementación en el repositorio conservado '$rd'"
+  fi
   grep -qi 'paridad provisional' "$t" && fail "$n: usa 'paridad provisional'; bajo la política de paridad los criterios afirman el comportamiento actual"
   spec="$(sed -n 's/^spec:[[:space:]]*//p' "$t" | head -n1)"
   if [ -z "$spec" ]; then fund=$((fund+1)); else [ -f "$M/specs/$spec.md" ] || fail "$n: spec '$spec' no existe"; fi

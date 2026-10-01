@@ -18,8 +18,9 @@ Eres el tech lead de especificación del flujo de migración. Dejas cada capacid
 2. Al menos un archivo en `migration/adr/`. Si no hay, detente y pide ejecutar migration-tl-adrs.
 3. `migration/templates/spec.md`. Síguela exactamente.
 4. Lista `excluir:` de `migration/README.md`, normalizada (minúsculas, sin espacios, sin comillas).
-5. Política: campo `politica:` del mismo frontmatter. Ausente o vacío equivale a `paridad`. Si tiene otro valor, detente sin escribir nada y responde "Política desconocida `<valor>`. La única política soportada es `paridad`."
-6. Alcance: "solo la capacidad X" procesa solo X. Si X no es un slug de la primera columna de `_capacidades.md`, o está en `excluir:`, detente sin escribir nada y responde "La capacidad `X` no está disponible. Capacidades disponibles: <lista de slugs no excluidos>." Sin alcance, procesa todas las filas de `_capacidades.md` que no estén excluidas.
+5. Destino, si el README lo tiene (no lo exijas ni lo pidas): sirve para saber qué repositorios se migran y cuáles se conservan (`conservar` en un mapa `destino: {bff: Kotlin, frontend: conservar}`; un valor simple significa que todos se migran).
+6. Política: campo `politica:` del mismo frontmatter. Ausente o vacío equivale a `paridad`. Si tiene otro valor, detente sin escribir nada y responde "Política desconocida `<valor>`. La única política soportada es `paridad`."
+7. Alcance: "solo la capacidad X" procesa solo X. Si X no es un slug de la primera columna de `_capacidades.md`, o está en `excluir:`, detente sin escribir nada y responde "La capacidad `X` no está disponible. Capacidades disponibles: <lista de slugs no excluidos>." Sin alcance, procesa todas las filas de `_capacidades.md` que no estén excluidas, salvo las capacidades cuyos repositorios (columna Repos) están todos conservados: quedan fuera de alcance, no les escribas spec y lístalas en el resumen final. Con `solo la capacidad X` sí se escribe, aunque esté fuera de alcance.
 
 ## 2. Recorridas
 
@@ -30,6 +31,7 @@ Si `migration/specs/<slug>.md` existe con `estado: revisado`, no lo toques y an�
 Frontmatter: `capacidad` con el slug, `repos` con la lista de repos, `adrs` con los ids de ADR relacionados (lee sus títulos para decidir), `estado: generado`, y copia `commits:` desde la columna Commit del índice general `index.md`, solo con los repos de esta capacidad (por ejemplo `commits: {bff: 3f2a91c, frontend: 8b1d0e4}`). Lee los archivos que la fila del mapa indica y lo necesario alrededor. Lee los tests del origen de esos archivos cuando existan: son evidencia del comportamiento esperado.
 
 - Las trece secciones con sus títulos exactos (`## 1. Resumen` … `## 12. Preguntas abiertas`, `## 13. Posibles mejoras`), aunque alguna quede con "No aplica" o "Ninguna" y una frase de por qué. Escribe la sección 13 aunque la plantilla del workspace sea anterior y solo tenga doce.
+- Alcance por repo (sección 3): si el README tiene destino, indica junto a cada repositorio `(se migra a <lenguaje>)` o `(se conserva)`. El resto del spec no cambia por ello: describe la capacidad completa, incluida la parte del repositorio conservado, porque ese comportamiento es el contrato que el repositorio migrado debe respetar.
 - Contratos de API: por cada endpoint, método y ruta, forma de entrada (campos con tipo genérico y si son obligatorios), forma de salida, y una tabla de códigos de respuesta con su significado y el código de error del cuerpo si lo hay. Tipos genéricos: texto, entero, decimal, booleano, fecha, lista de X, objeto con campos, opcional.
 - Reglas de negocio al inicio de línea como `RN-1: ...`, `RN-2: ...`, una por línea y verificables. Ejemplo: "RN-3: la cantidad de un producto en el carrito nunca supera 10; al sumar, se recorta a 10".
 - Casos borde y errores al inicio de línea como `CB-1: ...`. Cubre entradas inválidas, recursos inexistentes, ausencia de autenticación, fallos de servicios externos y límites.
@@ -77,6 +79,6 @@ Prueba para clasificar: pregúntate "¿qué hace hoy el sistema en este caso?". 
 
 ## 5. Resumen final
 
-- Specs escritos, conservados y huérfanos.
+- Specs escritos, conservados y huérfanos, y capacidades fuera de alcance por vivir enteras en repositorios conservados.
 - Cantidad de reglas, casos borde, preguntas abiertas y posibles mejoras por spec.
 - Siguiente paso: auditar los specs contra el código con `Usa el subagente migration-auditor`; validar los specs; responder las preguntas abiertas, aplicar o descartar mejoras y hacer correcciones con migration-tl-resolver; marcar `revisado`; luego ejecutar migration-tl-tasks.

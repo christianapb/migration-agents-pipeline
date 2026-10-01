@@ -113,5 +113,22 @@ grep -qE "^excluir:.*\b$X\b" "$M/README.md" || fail "caso 8: '$X' no está en ex
 grep -l "^spec: $X$" "$M"/tasks/*.md >/dev/null 2>&1 && fail "caso 8: quedan tareas de $X"
 grep -qE "^\| $X \|" "$M/specs/_capacidades.md" && fail "caso 8: $X sigue en el mapa"
 
+# Caso 12: destino por repositorio
+. "$ROOT/scripts/lib-destino.sh"
+R "Fija el destino de bff en Kotlin." >/dev/null
+[ "$(destino_de "$W" bff)" = "Kotlin" ] || fail "caso 12: bff no quedó con destino Kotlin ($(destino_raw "$W"))"
+destino_es_mapa "$W" || fail "caso 12: destino no quedó como mapa en una línea"
+R "Conserva el repositorio frontend." >/dev/null
+[ "$(destino_de "$W" frontend)" = "conservar" ] || fail "caso 12: frontend no quedó como conservar ($(destino_raw "$W"))"
+[ "$(destino_de "$W" bff)" = "Kotlin" ] || fail "caso 12: al conservar el frontend se perdió el destino de bff"
+[ "$(grep -c '^destino:' "$M/README.md")" -eq 1 ] || fail "caso 12: más de una línea destino en el README"
+[ -z "$(destino_problemas "$W")" ] || fail "caso 12: el mapa resultante no es válido: $(destino_problemas "$W")"
+
+# Caso 13: repositorio inexistente
+antes="$(destino_raw "$W")"
+out="$(R "Fija el destino de pagos en Go.")"
+[ "$(destino_raw "$W")" = "$antes" ] || fail "caso 13: aceptó un repositorio que no existe"
+printf '%s' "$out" | grep -q 'pagos' || fail "caso 13: no reportó el repositorio inexistente"
+
 [ "$fails" -eq 0 ] && { echo "OK: resolver"; exit 0; }
 exit 1

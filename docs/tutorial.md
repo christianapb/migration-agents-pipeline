@@ -69,6 +69,34 @@ Crea un `index.md` por repo, un `index.md` general en la carpeta padre, el bloqu
 Usa el subagente migration-tl-resolver: fija el destino en Kotlin
 ```
 
+Eso migra todos los repositorios a Kotlin. Lo habitual es otra cosa: migrar el backend y dejar el frontend como está, o llevar cada repositorio a un lenguaje distinto. Para eso el destino se fija por repositorio, y `conservar` significa que ese repositorio no se migra:
+
+```
+Usa el subagente migration-tl-resolver: fija el destino de bff en Kotlin
+Usa el subagente migration-tl-resolver: conserva el repositorio frontend
+```
+
+El resultado queda en la cabecera de `migration/README.md`, en una sola línea:
+
+```
+destino: Kotlin                                  # un valor: todos los repositorios
+destino: {bff: Kotlin, frontend: conservar}      # un valor por repositorio
+```
+
+Con un mapa, cada repositorio detectado necesita su entrada: si falta uno, los agentes que usan el destino se detienen y te dicen cuál. Una vez fijado, no hace falta repetir el destino en los prompts; el README manda.
+
+Qué cambia para un repositorio conservado:
+
+| Paso | Efecto |
+|---|---|
+| ADRs | Los observados se escriben igual. No se propone framework, build ni tests para él. Lo que ese repositorio consume (contratos de API, formato de errores, sesión) queda marcado como restricción para el repositorio que sí se migra. |
+| Specs | No cambian: describen la capacidad completa, porque el comportamiento del repositorio conservado es el contrato que el migrado debe respetar. La sección de alcance indica qué se migra y qué se conserva. |
+| Tareas | Ninguna de implementación en ese repositorio. Solo una tarea de adaptación (`tipo: adaptacion`) si una decisión tuya obliga a cambiarle algo. |
+| Planes de prueba | Sin casos para las reglas que viven solo en él; figuran como "no aplica: repositorio conservado". |
+| Backlog | Los repositorios conservados constan en los riesgos. |
+
+Una capacidad cuyos repositorios están todos conservados queda fuera de alcance: sigue en el mapa de capacidades, pero no recibe spec, tareas ni plan. Si la quieres documentada, pídela con `solo la capacidad X`.
+
 El bloque de `CLAUDE.md` lo reescribe el indexador en cada corrida; escribe tus notas fuera de las marcas.
 
 El `index.md` general anota además el commit de cada repo en el momento de indexar (`sin-git` si el repo no usa git). Los specs copian ese commit, y así se puede saber más adelante si el código cambió desde que se escribieron y sus citas pueden haberse desplazado. Por eso conviene tener los cambios de los repos commiteados antes de indexar.
@@ -77,7 +105,7 @@ El `index.md` general anota además el commit de cada repo en el momento de inde
 
 | Campo | Para qué sirve | Quién lo cambia |
 |---|---|---|
-| `destino:` | Lenguaje al que se migra. | Tú, con el resolver. |
+| `destino:` | Lenguaje al que se migra: un valor para todos los repositorios o un mapa por repositorio, con `conservar` para los que no se migran. | Tú, con el resolver. |
 | `excluir:` | Capacidades descartadas; el analista las omite siempre. | Tú, con el resolver. |
 | `politica:` | Siempre `paridad`: el destino reproduce el comportamiento del origen. Es el único valor que existe; los agentes se detienen si encuentran otro. | Nadie; lo escribe el indexador. |
 
@@ -114,7 +142,7 @@ La exclusión es permanente: el analista la omite en cada corrida. Para agrupar 
 **Qué es:** escribe los ADR (Architecture Decision Records, registros de decisiones de arquitectura) en `migration/adr/`. Son documentos cortos que dejan por escrito una decisión de diseño, su contexto, la evidencia en el código y sus consecuencias. Hay dos tipos: los **observados**, decisiones que el código actual ya tomó (cómo autentica, cómo maneja errores, dónde guarda datos), y los **propuestos**, decisiones que la migración obliga a tomar y que el código no responde (qué framework usar en el destino, cómo construir, cómo probar). Necesita el lenguaje destino.
 
 ```
-Usa el subagente migration-tl-adrs con destino Kotlin
+Usa el subagente migration-tl-adrs
 ```
 
 **Observados.** Documentan lo que el código ya hace, con una implicación para la migración: conservar, reemplazar o reevaluar. No bloquean nada: puedes generar specs y tareas aunque no los marques `revisado`. Aun así, conviene revisarlos antes de los specs, por dos motivos:
@@ -288,7 +316,7 @@ Qué hacer:
 **Qué es:** convierte los specs y las decisiones de los ADRs en tareas de implementación para el lenguaje destino, una por archivo en `migration/tasks/`. Primero las fundacionales (estructura del proyecto, build, integración continua) y luego las de cada capacidad. Cada tarea indica de qué otras depende, su tamaño, criterios de aceptación que citan las reglas del spec y, si queda algo sin decidir, qué la bloquea.
 
 ```
-Usa el subagente migration-tl-tasks con destino Kotlin
+Usa el subagente migration-tl-tasks
 ```
 
 Si quedan ADRs propuestos, se detiene y te da el prompt para decidirlos. Así las tareas se generan una sola vez, con el framework nombrado. Los criterios de aceptación afirman el comportamiento actual que describen las reglas, sin condicionales. Las mejoras sin aplicar no aparecen en las tareas, y solo una pregunta abierta real cuya respuesta cambie qué se construye puede bloquear una tarea. Conviene llegar aquí con los specs auditados: una regla equivocada se convierte en un criterio de aceptación equivocado. Corrige con el resolver:
@@ -348,6 +376,7 @@ Los agentes forman una cadena: specs → tareas → planes de prueba → backlog
 | Decidiste un ADR propuesto después de generar tareas | `migration-tl-tasks` (para que las notas nombren la tecnología elegida); `migration-qa` si las tareas cambiaron; `migration-pm`. |
 | Corregiste un ADR observado | Si cambia el comportamiento, llévalo al spec con el resolver y sigue la fila siguiente. Si solo cambia cómo se implementa, `migration-tl-tasks` y `migration-pm`. |
 | Un spec: regla, contrato o caso borde | `migration-tl-tasks, solo la capacidad X`; `migration-qa, solo la capacidad X`; `migration-pm`. |
+| El destino de un repositorio, o pasaste uno a `conservar` | `migration-tl-adrs` (retira o añade las decisiones de ese repositorio); `migration-tl-tasks`; `migration-qa`; `migration-pm`. El resolver te lista los ADRs y tareas afectados y no borra nada. Los specs solo cambian en la nota de alcance. |
 | Aplicaste una mejora `MJ-n` | Igual que un cambio de spec: `migration-tl-tasks`, `migration-qa` y `migration-pm`, con `solo la capacidad X`. Descartarla no requiere repetir nada. |
 | Reclasificaste una pregunta como mejora | `migration-qa, solo la capacidad X` para que desaparezca el caso pendiente. Si esa pregunta bloqueaba tareas, el resolver ya quitó el bloqueo; `migration-pm` para actualizar el backlog. |
 | Actualizaste los agentes a la versión con citas y auditor en un proyecto ya empezado | `migration-indexer` (añade el commit de cada repo y el bloque nuevo); `migration-tl-specs` para que los specs `generado` reciban citas y `commits:`; `migration-auditor`. Los specs `revisado` no se regeneran: el auditor los revisa igual y reporta cada regla sin cita con la línea que encontró, para que la añadas con el resolver. |
@@ -364,7 +393,7 @@ Generaste tareas forzando ADRs propuestos y luego los decides:
 
 ```
 Usa el subagente migration-tl-resolver: en los ADRs 0011, 0012 y 0013 acepta la recomendación
-Usa el subagente migration-tl-tasks con destino Kotlin
+Usa el subagente migration-tl-tasks
 Usa el subagente migration-qa
 Usa el subagente migration-pm
 ```
@@ -375,7 +404,7 @@ QA encontró hallazgos en el plan de carrito:
 
 ```
 Usa el subagente migration-tl-resolver: resuelve el hallazgo H-1 del plan carrito: DELETE /cart/items/ sin id responde 404 sin cuerpo
-Usa el subagente migration-tl-tasks con destino Kotlin, solo la capacidad carrito
+Usa el subagente migration-tl-tasks, solo la capacidad carrito
 Usa el subagente migration-qa, solo la capacidad carrito
 Usa el subagente migration-pm
 ```
@@ -401,7 +430,9 @@ El segundo paso solo hace falta si la decisión cambia qué se construye, por ej
 |---|---|
 | No encontré repositorios | Abre Claude Code en la carpeta padre. |
 | Falta el bloque de convenciones en `CLAUDE.md` | Corre `migration-indexer`. |
-| No sé a qué lenguaje se migra | Fija el destino con el resolver o indícalo en el prompt. |
+| No sé a qué lenguaje se migra | Fija el destino con el resolver. |
+| El mapa de destino no cubre el repositorio X | Falta la entrada de ese repositorio: `fija el destino de X en <lenguaje>` o `conserva el repositorio X`. |
+| El agente se detiene porque el destino del prompt y el del README difieren | El README manda. Quita el destino del prompt o corrige el README con el resolver. |
 | Pediste al resolver que marcara resuelto un hallazgo `AU-n` y se negó | El informe de auditoría es un derivado. Corrige el spec y repite `migration-auditor, solo la capacidad X`: el hallazgo desaparece solo. |
 | El auditor marca reglas como "sin cita" | El spec es anterior a las citas o está `revisado`. Si está `generado`, repite `migration-tl-specs`; si está `revisado`, añade las citas con el resolver usando la línea que da cada hallazgo. |
 | El auditor marca muchas reglas como sin respaldo o no localizables a la vez | El código cambió desde que se escribió el spec y las líneas se desplazaron. Mira si avisa de que los commits no coinciden; repite `migration-indexer` y `migration-tl-specs` para esa capacidad. |

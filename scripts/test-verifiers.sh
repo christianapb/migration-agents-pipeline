@@ -11,8 +11,9 @@ fail() { echo "FAIL: $*"; fails=$((fails+1)); }
 # --- Workspace sintético mínimo que pasa verify-techlead, verify-qa y verify-pm
 make_ws() {
   local W="$1"
-  mkdir -p "$W/migration/specs" "$W/migration/adr" "$W/migration/tasks" "$W/migration/test-plans" "$W/bff"
+  mkdir -p "$W/migration/specs" "$W/migration/adr" "$W/migration/tasks" "$W/migration/test-plans" "$W/bff" "$W/frontend"
   printf 'linea 1\nlinea 2\nlinea 3\nlinea 4\nlinea 5\n' > "$W/bff/a.ts"
+  printf 'pantalla\n' > "$W/frontend/p.tsx"
   cat > "$W/migration/README.md" <<'EOF'
 ---
 destino: Kotlin
@@ -126,6 +127,7 @@ EOF
 ---
 id: 0001
 titulo: Uno
+repos: [bff, frontend]
 estado: observado
 implicacion_migracion: conservar
 ---
@@ -145,6 +147,7 @@ EOF
 ---
 id: 0002
 titulo: Dos
+repos: [bff]
 estado: propuesto
 implicacion_migracion:
 ---
@@ -165,6 +168,8 @@ EOF
 ---
 id: T-001
 spec:
+repo_destino: bff
+tipo: implementacion
 depende_de: []
 tamaño: S
 estado: generado
@@ -180,6 +185,8 @@ EOF
 ---
 id: T-002
 spec: alfa
+repo_destino: bff
+tipo: implementacion
 depende_de: [T-001]
 tamaño: M
 estado: generado
@@ -372,6 +379,35 @@ WORKDIR="$W9" bash "$ROOT/scripts/verify-tl-specs.sh" >/dev/null 2>&1 || fail "v
 # Un spec sin endpoints no está obligado
 W9="$TMP/d5"; make_ws "$W9"
 WORKDIR="$W9" bash "$ROOT/scripts/verify-tl-specs.sh" >/dev/null 2>&1 || fail "verify-tl-specs exige comportamientos por defecto a un spec sin endpoints"
+
+# 10. Destino por repositorio
+RD="migration/README.md"
+mapa() { sed -i "s/^destino:.*/destino: $2/" "$1/$RD"; }
+ok_ws() { # <verificador> <workspace> <mensaje>
+  WORKDIR="$2" bash "$ROOT/scripts/verify-$1.sh" >/dev/null 2>&1 || fail "$3"
+}
+T2="migration/tasks/T-002-alfa.md"; A2="migration/adr/0002-dos.md"
+W10="$TMP/r1"; make_ws "$W10"; mapa "$W10" "{bff: Kotlin, frontend: conservar}"
+ok_ws tl-adrs "$W10" "verify-tl-adrs rechaza un mapa de destino completo"
+ok_ws tl-tasks "$W10" "verify-tl-tasks rechaza un mapa de destino completo"
+W10="$TMP/r2"; make_ws "$W10"; mapa "$W10" "{bff: Kotlin}"
+expect_fail tl-adrs "$W10" "verify-tl-adrs acepta un mapa al que le falta un repositorio"
+expect_fail tl-tasks "$W10" "verify-tl-tasks acepta un mapa al que le falta un repositorio"
+W10="$TMP/r3"; make_ws "$W10"; mapa "$W10" "{bff: Kotlin, frontend: conservar, pagos: Kotlin}"
+expect_fail tl-adrs "$W10" "verify-tl-adrs acepta un mapa con una clave que no es un repositorio"
+W10="$TMP/r4"; make_ws "$W10"; mapa "$W10" "{bff: Kotlin, frontend: conservar}"; sed -i 's/^repos: \[bff\]/repos: [frontend]/' "$W10/$A2"
+expect_fail tl-adrs "$W10" "verify-tl-adrs acepta un ADR propuesto sobre un repositorio conservado"
+W10="$TMP/r5"; make_ws "$W10"; sed -i '/^repos:/d' "$W10/$A2"
+expect_fail tl-adrs "$W10" "verify-tl-adrs acepta un ADR sin repos"
+W10="$TMP/r6"; make_ws "$W10"; mapa "$W10" "{bff: Kotlin, frontend: conservar}"; sed -i 's/^repo_destino: bff/repo_destino: frontend/' "$W10/$T2"
+expect_fail tl-tasks "$W10" "verify-tl-tasks acepta una tarea de implementación en un repositorio conservado"
+sed -i 's/^tipo: implementacion/tipo: adaptacion/' "$W10/$T2"
+ok_ws tl-tasks "$W10" "verify-tl-tasks rechaza una tarea de adaptación en un repositorio conservado"
+W10="$TMP/r7"; make_ws "$W10"; sed -i '/^tipo:/d' "$W10/$T2"
+expect_fail tl-tasks "$W10" "verify-tl-tasks acepta una tarea sin tipo"
+# Con valor simple, una tarea en frontend es válida: todos los repositorios se migran
+W10="$TMP/r8"; make_ws "$W10"; sed -i 's/^repo_destino: bff/repo_destino: frontend/' "$W10/$T2"
+ok_ws tl-tasks "$W10" "verify-tl-tasks rechaza una tarea en frontend con destino único"
 
 [ "$fails" -eq 0 ] && { echo "OK: verificadores"; exit 0; }
 exit 1

@@ -61,7 +61,11 @@ Eres el agente que aplica las decisiones y correcciones del usuario sobre los ar
 
 **Fijar la política**: escribe `politica: paridad` en el frontmatter de `migration/README.md`. La única política soportada es `paridad`: si piden otro valor, no lo escribas y repórtalo en "No aplicado".
 
-**Fijar destino**: escribe `destino: <lenguaje>` en el frontmatter de `migration/README.md`.
+**Fijar destino** ("fija el destino en Kotlin"): escribe el valor simple `destino: <lenguaje>` en el frontmatter de `migration/README.md`. Aplica a todos los repositorios. Si había un mapa, lo reemplaza: dilo en el resumen.
+
+**Fijar el destino de un repositorio** ("fija el destino de bff en Kotlin"): comprueba en el índice general `index.md` que el repositorio existe; si no, no apliques la orden y repórtala. Escribe o actualiza su entrada en el mapa, siempre en una sola línea: `destino: {bff: Kotlin, frontend: conservar}`. Si `destino:` era un valor simple, conviértelo en mapa dando ese valor a los demás repositorios detectados. Si estaba vacío, escribe el mapa solo con esa entrada y avisa de qué repositorios quedan sin destino.
+
+**Conservar un repositorio** ("conserva el repositorio frontend"): igual que la anterior, con el valor `conservar`. No borres ADRs, specs ni tareas: lista los ADRs propuestos cuyo `repos:` incluye ese repositorio y las tareas con ese `repo_destino`, y recomienda repetir migration-tl-adrs, migration-tl-tasks, migration-qa y migration-pm.
 
 **Marcar revisado**: cambia `estado:` a `revisado` en los artefactos nombrados.
 

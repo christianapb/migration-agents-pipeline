@@ -48,5 +48,11 @@ printf '%s' "$out" | awk '/^## Desactualizado/{f=1;next} /^## /{f=0} f' | grep -
 grep -rqE '^(- )?MJ-[0-9]+:' "$M"/specs/[!_]*.md || fail "paridad: el workspace no tiene mejoras MJ-n para probar al orquestador"
 printf '%s' "$out" | awk '/^## Pendiente de revisión/{f=1;next} /^## /{f=0} f' | grep -q 'MJ-[0-9]' && fail "paridad: el orquestador lista mejoras MJ-n como pendientes de revisión"
 
+# Estado 4: con el destino ya en el README, los prompts no lo repiten
+sed -i 's/^destino:.*/destino: {bff: Kotlin, frontend: conservar}/' "$M/README.md"
+orq "destino en el README"
+printf '%s' "$next" | grep -q 'con destino' && fail "destino en el README: el prompt recomendado repite 'con destino'"
+printf '%s' "$out" | awk '/^## Pendiente de revisión/{f=1;next} /^## /{f=0} f' | grep -qi 'destino.*vac' && fail "destino en el README: sigue listando el destino como pendiente"
+
 [ "$fails" -eq 0 ] && { echo "OK: orchestrator"; exit 0; }
 exit 1
