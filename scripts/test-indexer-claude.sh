@@ -27,6 +27,7 @@ RM="$W/migration/README.md"
 grep -q '^## Flujo' "$RM" && fail "README v1: conserva ## Flujo"
 grep -q 'migration-techlead' "$RM" && fail "README v1: sigue mencionando migration-techlead"
 grep -q '^excluir:' "$RM" || fail "README v1: no añadió excluir"
+grep -q '^politica: paridad$' "$RM" || fail "README v1: no añadió politica: paridad"
 grep -q '^destino: Kotlin$' "$RM" || fail "README v1: perdió destino"
 grep -qF -- '- bff: viejo' "$RM" || fail "README v1: tocó Repos detectados"
 

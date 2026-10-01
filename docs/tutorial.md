@@ -122,7 +122,7 @@ El resolver escribe la decisión con la tecnología nombrada, borra la recomenda
 
 ### Paso 4: specs
 
-**Qué es:** escribe una especificación por capacidad en `migration/specs/<capacidad>.md`. Describe el comportamiento del sistema sin código del lenguaje origen: flujos, contratos de API en notación neutral, modelos de datos, reglas de negocio numeradas (`RN-n`), casos borde y errores (`CB-n`), y preguntas abiertas para lo que no se pudo determinar con certeza a partir del código. Es la pieza con la que otro equipo reimplementa la capacidad en cualquier lenguaje.
+**Qué es:** escribe una especificación por capacidad en `migration/specs/<capacidad>.md`. Describe el comportamiento del sistema sin código del lenguaje origen: flujos, contratos de API en notación neutral, modelos de datos, reglas de negocio numeradas (`RN-n`), casos borde y errores (`CB-n`), preguntas abiertas para lo que no se pudo determinar leyendo el código, y posibles mejoras (`MJ-n`) para lo que el código sí determina pero parece mejorable. Es la pieza con la que otro equipo reimplementa la capacidad en cualquier lenguaje.
 
 ```
 Usa el subagente migration-tl-specs
@@ -135,6 +135,21 @@ Usa el subagente migration-tl-resolver: en el spec carrito, respuesta a la pregu
 Usa el subagente migration-tl-resolver: en el spec autenticacion, el token expira a los 30 minutos
 Usa el subagente migration-tl-resolver: marca revisado el spec catalogo-productos
 ```
+
+**Política de paridad.** El flujo asume que el destino reproduce el comportamiento observado en el origen, salvo que decidas lo contrario. Es el campo `politica: paridad` de `migration/README.md` y es la única política que existe. Por eso cada spec separa dos cosas que no deben confundirse:
+
+- **Preguntas abiertas (sección 12):** solo lo que no se pudo saber leyendo el código, como qué responde un servicio externo cuyo código no está en los repos. Suelen ser pocas, a veces ninguna. Las que cambian qué se construye bloquean tareas y generan casos de prueba pendientes.
+- **Posibles mejoras (sección 13):** comportamiento que el código sí determina pero parece mejorable o sospechoso, como "quitar una línea que no existe responde 204; ¿debería ser 404?". Cada `MJ-n` cita la regla que describe el comportamiento actual. No bloquean tareas, no generan casos pendientes y el orquestador no las cuenta como pendientes: si no haces nada, el destino se construye igual que el origen.
+
+No tienes que revisar las mejoras para avanzar. Cuando quieras adoptar o cerrar alguna:
+
+```
+Usa el subagente migration-tl-resolver: aplica la mejora MJ-2 del spec carrito
+Usa el subagente migration-tl-resolver: descarta la mejora MJ-3 del spec carrito
+Usa el subagente migration-tl-resolver: la pregunta 2 del spec carrito es una mejora
+```
+
+Aplicar una mejora añade la regla nueva, marca la anterior como retirada y la mejora como aplicada. Descartarla solo la marca. La tercera orden sirve para specs ya `revisado` cuyas preguntas en realidad eran mejoras.
 
 ### Paso 5: tareas
 
@@ -200,6 +215,7 @@ Los agentes forman una cadena: specs → tareas → planes de prueba → backlog
 | Decidiste un ADR propuesto después de generar tareas | `migration-tl-tasks` (para que las notas nombren la tecnología elegida); `migration-qa` si las tareas cambiaron; `migration-pm`. |
 | Corregiste un ADR observado | Si cambia el comportamiento, llévalo al spec con el resolver y sigue la fila siguiente. Si solo cambia cómo se implementa, `migration-tl-tasks` y `migration-pm`. |
 | Un spec: regla, contrato o caso borde | `migration-tl-tasks, solo la capacidad X`; `migration-qa, solo la capacidad X`; `migration-pm`. |
+| Aplicaste una mejora `MJ-n` | Igual que un cambio de spec: `migration-tl-tasks`, `migration-qa` y `migration-pm`, con `solo la capacidad X`. Descartarla no requiere repetir nada. |
 | Respondiste una pregunta abierta | Si la convertiste en regla o cambia qué se construye, igual que la fila anterior. Si solo confirma el comportamiento actual, `migration-qa, solo la capacidad X` para que el caso pendiente pase a ser un caso normal. |
 | Resolviste un hallazgo `H-n` de QA | Igual que un cambio de spec: `migration-tl-tasks` si cambia qué se construye, luego `migration-qa` y `migration-pm`, todo con `solo la capacidad X`. |
 | Una tarea: dependencias, tamaño, fase o prioridad | `migration-pm`. |
@@ -239,6 +255,7 @@ El segundo paso solo hace falta si la decisión cambia qué se construye, por ej
 - `revisado` protege un artefacto: ningún agente generador lo sobrescribe. El resolver marca `revisado` lo que edita.
 - No edites derivados: `index.md`, `_capacidades.md`, `_cobertura.md`, `backlog.md`. El resolver se niega y te dice qué agente los regenera.
 - Los identificadores nunca se renumeran; lo retirado queda marcado como retirado.
+- Política de paridad: el destino reproduce el comportamiento del origen. Las mejoras `MJ-n` son opcionales y no bloquean nada; las preguntas abiertas son solo para lo que el código no permite determinar.
 - Cuando algo cambia, se regenera lo que viene después en la cadena (sección 4). El orquestador te avisa de lo desactualizado.
 
 ## 6. Si algo falla

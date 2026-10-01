@@ -45,6 +45,8 @@ S="$(ls "$M"/specs | grep -v '^_' | head -n1 | sed 's/\.md$//')"
 sleep 2; touch "$M/specs/$S.md"
 orq "plan desactualizado"
 printf '%s' "$out" | awk '/^## Desactualizado/{f=1;next} /^## /{f=0} f' | grep -q "$S" || fail "plan desactualizado: no marca $S"
+grep -rqE '^(- )?MJ-[0-9]+:' "$M"/specs/[!_]*.md || fail "paridad: el workspace no tiene mejoras MJ-n para probar al orquestador"
+printf '%s' "$out" | awk '/^## Pendiente de revisión/{f=1;next} /^## /{f=0} f' | grep -q 'MJ-[0-9]' && fail "paridad: el orquestador lista mejoras MJ-n como pendientes de revisión"
 
 [ "$fails" -eq 0 ] && { echo "OK: orchestrator"; exit 0; }
 exit 1

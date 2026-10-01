@@ -38,7 +38,9 @@ Revisa entre cada paso. Las tareas se generan una sola vez, después de decidir 
 
 ## Convenciones
 
-Viven en el bloque de `CLAUDE.md` que escribe el indexador: estados (`generado`, `revisado`, `observado`, `propuesto`), derivados que no se editan, identificadores que nunca se renumeran (`RN-n`, `CB-n`, `PA:<capacidad>:<n>`, `TC-…`, `H-n`, `T-NNN`, `NNNN`), destino y `excluir:` en `migration/README.md`.
+Viven en el bloque de `CLAUDE.md` que escribe el indexador: estados (`generado`, `revisado`, `observado`, `propuesto`), derivados que no se editan, identificadores que nunca se renumeran (`RN-n`, `CB-n`, `PA:<capacidad>:<n>`, `MJ-n`, `TC-…`, `H-n`, `T-NNN`, `NNNN`), destino, `excluir:` y `politica:` en `migration/README.md`.
+
+**Política de paridad.** `politica: paridad` es la única política: el destino reproduce el comportamiento observado salvo decisión explícita. En cada spec, `## 12. Preguntas abiertas` contiene solo lo que el código no permite determinar, y `## 13. Posibles mejoras` lista como `MJ-n` lo que el código determina pero parece mejorable. Las mejoras no bloquean tareas ni generan casos pendientes; se aplican o descartan con `migration-tl-resolver`. Diseño: [`docs/specs/2026-10-01-politica-paridad-design.md`](docs/specs/2026-10-01-politica-paridad-design.md).
 
 ## Pruebas
 
