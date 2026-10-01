@@ -35,10 +35,12 @@ EOF
 | gamma | Tres | bff | bff/c.ts |
 EOF
   for c in alfa beta gamma; do
+    local tareas="[]"; [ "$c" = alfa ] && tareas="[T-002]"
     cat > "$W/migration/specs/$c.md" <<EOF
 ---
 capacidad: $c
 estado: generado
+rev: 1
 commits: {bff: abc1234}
 ---
 # Spec: $c
@@ -74,6 +76,8 @@ EOF
 ---
 capacidad: $c
 spec: $c
+spec_rev: 1
+tareas: $tareas
 estado: generado
 ---
 # Plan de pruebas: $c
@@ -127,6 +131,7 @@ EOF
 ---
 id: 0001
 titulo: Uno
+rev: 1
 repos: [bff, frontend]
 estado: observado
 implicacion_migracion: conservar
@@ -147,6 +152,7 @@ EOF
 ---
 id: 0002
 titulo: Dos
+rev: 1
 repos: [bff]
 estado: propuesto
 implicacion_migracion:
@@ -167,7 +173,11 @@ EOF
   cat > "$W/migration/tasks/T-001-base.md" <<'EOF'
 ---
 id: T-001
+rev: 1
 spec:
+spec_rev:
+adrs: []
+adrs_rev: {}
 repo_destino: bff
 tipo: implementacion
 depende_de: []
@@ -184,7 +194,11 @@ EOF
   cat > "$W/migration/tasks/T-002-alfa.md" <<'EOF'
 ---
 id: T-002
+rev: 1
 spec: alfa
+spec_rev: 1
+adrs: [0002]
+adrs_rev: {0002: 1}
 repo_destino: bff
 tipo: implementacion
 depende_de: [T-001]
@@ -201,9 +215,9 @@ EOF
   cat > "$W/migration/backlog.md" <<'EOF'
 # Backlog
 ### Hito 0: fundaciones
-| 1 | T-001 |
+| 1 | T-001 | 1 |
 ### Hito 1: alfa
-| 2 | T-002 |
+| 2 | T-002 | 1 |
 ## Bloqueos
 | T-002 | 0002 | aceptar |
 ## Riesgos
@@ -214,7 +228,7 @@ EOF
     printf '| Capacidad | Reglas | Respaldadas | Sin respaldo | Contradichas | No localizables | Decisiones | Omitidos |\n|---|---|---|---|---|---|---|---|\n'
     printf '| alfa | 3 | 2 | 0 | 1 | 0 | 0 | 0 |\n| beta | 3 | 3 | 0 | 0 | 0 | 0 | 0 |\n| gamma | 3 | 3 | 0 | 0 | 0 | 0 | 0 |\n'
     for c in alfa beta gamma; do
-      printf '\n## %s\n\nAuditada: 2026-10-01.\n\n| Regla | Veredicto | Cita | Nota |\n|---|---|---|---|\n' "$c"
+      printf '\n## %s\n\nAuditada: 2026-10-01. Spec rev: 1.\n\n| Regla | Veredicto | Cita | Nota |\n|---|---|---|---|\n' "$c"
       if [ "$c" = alfa ]; then
         printf '| RN-1 | respaldada | bff/a.ts:1 | |\n| RN-10 | contradicha | bff/a.ts:2-3 | El código dice otra cosa. |\n| CB-1 | respaldada | ausente: bff/a.ts | |\n'
         printf '\n### Hallazgos\n\n- **AU-1** (contradicha, RN-10): el código dice otra cosa.\n  Corrección: `Usa el subagente migration-tl-resolver: en el spec alfa, RN-10: corrige el valor`\n'
@@ -408,6 +422,42 @@ expect_fail tl-tasks "$W10" "verify-tl-tasks acepta una tarea sin tipo"
 # Con valor simple, una tarea en frontend es válida: todos los repositorios se migran
 W10="$TMP/r8"; make_ws "$W10"; sed -i 's/^repo_destino: bff/repo_destino: frontend/' "$W10/$T2"
 ok_ws tl-tasks "$W10" "verify-tl-tasks rechaza una tarea en frontend con destino único"
+
+# 11. Versiones de artefactos
+PLN="migration/test-plans/alfa.md"; A1="migration/adr/0001-uno.md"; BL="migration/backlog.md"
+W11="$TMP/v1"; make_ws "$W11"; sed -i 's/^rev: 1$/rev: uno/' "$W11/$SP"
+expect_fail tl-specs "$W11" "verify-tl-specs acepta un rev no numérico"
+W11="$TMP/v2"; make_ws "$W11"; sed -i '/^rev:/d' "$W11/$SP"
+expect_fail tl-specs "$W11" "verify-tl-specs acepta un spec sin rev"
+W11="$TMP/v3"; make_ws "$W11"; sed -i 's/^rev: 1$/rev: 1.5/' "$W11/$A1"
+expect_fail tl-adrs "$W11" "verify-tl-adrs acepta un rev no entero"
+W11="$TMP/v4"; make_ws "$W11"; sed -i 's/^spec_rev: 1$/spec_rev: 2/' "$W11/$T2"
+expect_fail tl-tasks "$W11" "verify-tl-tasks acepta un spec_rev mayor que el rev del spec"
+W11="$TMP/v5"; make_ws "$W11"; sed -i 's/^adrs_rev: {0002: 1}/adrs_rev: {}/' "$W11/$T2"
+expect_fail tl-tasks "$W11" "verify-tl-tasks acepta un ADR citado sin entrada en adrs_rev"
+W11="$TMP/v6"; make_ws "$W11"; sed -i 's/^adrs_rev: {0002: 1}/adrs_rev: {0002: 5}/' "$W11/$T2"
+expect_fail tl-tasks "$W11" "verify-tl-tasks acepta una entrada de adrs_rev mayor que el rev del ADR"
+W11="$TMP/v7"; make_ws "$W11"; sed -i '/^rev:/d' "$W11/$T2"
+expect_fail tl-tasks "$W11" "verify-tl-tasks acepta una tarea sin rev"
+W11="$TMP/v8"; make_ws "$W11"; sed -i 's/^spec_rev: 1$/spec_rev:/' "$W11/$T2"
+expect_fail tl-tasks "$W11" "verify-tl-tasks acepta una tarea de capacidad sin spec_rev"
+W11="$TMP/v9"; make_ws "$W11"; sed -i 's/^spec_rev: 1$/spec_rev: 2/' "$W11/$PLN"
+expect_fail qa "$W11" "verify-qa acepta un spec_rev mayor que el rev del spec"
+W11="$TMP/v10"; make_ws "$W11"; sed -i 's/^tareas: \[T-002\]/tareas: [T-099]/' "$W11/$PLN"
+expect_fail qa "$W11" "verify-qa acepta en tareas un id que no existe"
+W11="$TMP/v11"; make_ws "$W11"; sed -i '/^spec_rev:/d' "$W11/$PLN"
+expect_fail qa "$W11" "verify-qa acepta un plan sin spec_rev"
+W11="$TMP/v12"; make_ws "$W11"; sed -i 's/^| 2 | T-002 | 1 |/| 2 | T-002 | 2 |/' "$W11/$BL"
+expect_fail pm "$W11" "verify-pm acepta un Rev del backlog distinto del rev de la tarea"
+W11="$TMP/v13"; make_ws "$W11"; sed -i 's/^| 2 | T-002 | 1 |/| 2 | T-002 |/' "$W11/$BL"
+expect_fail pm "$W11" "verify-pm acepta una fila del backlog sin Rev"
+W11="$TMP/v14"; make_ws "$W11"; sed -i 's/ Spec rev: 1\././' "$W11/$AUD"
+expect_fail auditor "$W11" "verify-auditor acepta una sección sin Spec rev"
+W11="$TMP/v15"; make_ws "$W11"; sed -i 's/Spec rev: 1\./Spec rev: 3./' "$W11/$AUD"
+expect_fail auditor "$W11" "verify-auditor acepta un Spec rev mayor que el rev del spec"
+# Un derivado atrasado es válido: está desactualizado, no mal formado
+W11="$TMP/v16"; make_ws "$W11"; sed -i 's/^rev: 1$/rev: 3/' "$W11/$SP"
+for v in tl-specs tl-tasks qa auditor; do ok_ws "$v" "$W11" "verify-$v rechaza un derivado con una versión anterior de su insumo"; done
 
 [ "$fails" -eq 0 ] && { echo "OK: verificadores"; exit 0; }
 exit 1

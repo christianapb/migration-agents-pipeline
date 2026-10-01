@@ -6,6 +6,8 @@ W="${WORKDIR:-$ROOT/.work/sample-workspace}"
 M="$W/migration"
 fails=0
 fail() { echo "FAIL: $*"; fails=$((fails+1)); }
+# shellcheck source=scripts/lib-rev.sh
+. "$ROOT/scripts/lib-rev.sh"
 # shellcheck source=scripts/lib-destino.sh
 . "$ROOT/scripts/lib-destino.sh"
 while IFS= read -r prob; do [ -n "$prob" ] && fail "$prob"; done <<< "$(destino_problemas "$W")"
@@ -25,6 +27,7 @@ for a in "${adrs[@]}"; do
   case "$n" in "$id"-*) ;; *) fail "$n: id '$id' no coincide con el archivo";; esac
   grep -q '^titulo: .\+' "$a" || fail "$n: sin titulo"
   grep -q '^repos: \[' "$a" || fail "$n: sin repos en el frontmatter"
+  es_rev "$(campo "$a" rev)" || fail "$n: rev ausente o no es un entero mayor que 0 ('$(campo "$a" rev)')"
   if grep -q '^estado: propuesto' "$a"; then
     arepos="$(sed -n 's/^repos:[[:space:]]*\[\(.*\)\]/\1/p' "$a" | head -n1 | tr ',' ' ')"
     for r in $arepos; do

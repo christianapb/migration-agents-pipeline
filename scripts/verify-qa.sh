@@ -6,6 +6,8 @@ W="${WORKDIR:-$ROOT/.work/sample-workspace}"
 M="$W/migration"
 fails=0
 fail() { echo "FAIL: $*"; fails=$((fails+1)); }
+# shellcheck source=scripts/lib-rev.sh
+. "$ROOT/scripts/lib-rev.sh"
 
 specs=()
 for f in "$M"/specs/[!_]*.md; do [ -f "$f" ] && specs+=("$f"); done
@@ -18,6 +20,18 @@ for s in "${specs[@]}"; do
   [ -f "$p" ] || { fail "falta test-plans/$slug.md"; continue; }
   grep -q "^spec: $slug" "$p" || fail "$slug: frontmatter spec no apunta al spec"
   grep -q '^estado: ' "$p" || fail "$slug: sin estado"
+  # Versión del spec y tareas de las que se generó el plan
+  prev="$(campo "$p" spec_rev)"
+  if ! es_rev "$prev"; then
+    fail "$slug: spec_rev ausente o no numérico ('$prev')"
+  else
+    actual="$(rev_de "$s")"
+    [ -z "$actual" ] || [ "$prev" -le "$actual" ] || fail "$slug: spec_rev $prev es mayor que el rev $actual del spec"
+  fi
+  grep -q '^tareas: \[' "$p" || fail "$slug: sin tareas en el frontmatter"
+  for tid in $(lista "$(campo "$p" tareas)"); do
+    ls "$M"/tasks/"$tid"-*.md >/dev/null 2>&1 || fail "$slug: tareas nombra $tid, que no existe"
+  done
   for sec in "## Alcance y supuestos" "## Matriz de cobertura" "## Casos: camino feliz" "## Casos: errores" "## Casos pendientes de definición" "## Hallazgos para el tech lead"; do
     grep -q "^$sec" "$p" || fail "$slug: falta sección '$sec'"
   done

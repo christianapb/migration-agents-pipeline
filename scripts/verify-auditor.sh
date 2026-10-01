@@ -11,6 +11,8 @@ M="$W/migration"
 A="$M/specs/_auditoria.md"
 fails=0
 fail() { echo "FAIL: $*"; fails=$((fails+1)); }
+# shellcheck source=scripts/lib-rev.sh
+. "$ROOT/scripts/lib-rev.sh"
 
 [ -f "$A" ] || { echo "FAIL: _auditoria.md no existe"; exit 1; }
 grep -q '^# Auditoría de specs' "$A" || fail "sin título '# Auditoría de specs'"
@@ -28,6 +30,13 @@ for c in $caps; do
   [ -f "$s" ] || { fail "$c: no existe el spec"; continue; }
   sec="$(awk -v h="## $c" '$0==h {f=1; next} /^## /{f=0} f' "$A")"
   [ -n "$sec" ] || { fail "$c: sin sección '## $c' en la auditoría"; continue; }
+  arev="$(printf '%s\n' "$sec" | sed -nE 's/^Auditada:.*Spec rev:[[:space:]]*([0-9]+).*/\1/p' | head -n1)"
+  if [ -z "$arev" ]; then
+    fail "$c: la línea Auditada no registra 'Spec rev: <n>'"
+  else
+    actual="$(rev_de "$s")"
+    [ -z "$actual" ] || [ "$arev" -le "$actual" ] || fail "$c: la auditoría registra Spec rev $arev y el spec tiene rev $actual"
+  fi
   rows="$(printf '%s\n' "$sec" | grep -E '^\| (RN|CB)-[0-9]+ \|' || true)"
 
   # Cada regla no retirada del spec tiene una fila con veredicto válido
