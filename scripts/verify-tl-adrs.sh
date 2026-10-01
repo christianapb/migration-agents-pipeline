@@ -6,6 +6,10 @@ W="${WORKDIR:-$ROOT/.work/sample-workspace}"
 M="$W/migration"
 fails=0
 fail() { echo "FAIL: $*"; fails=$((fails+1)); }
+# shellcheck source=scripts/lib-destino.sh
+. "$ROOT/scripts/lib-destino.sh"
+while IFS= read -r prob; do [ -n "$prob" ] && fail "$prob"; done <<< "$(destino_problemas "$W")"
+conservados="$(destino_conservados "$W")"
 
 adrs=()
 for f in "$M"/adr/*.md; do [ -f "$f" ] && adrs+=("$f"); done
@@ -20,6 +24,13 @@ for a in "${adrs[@]}"; do
   id="$(sed -n 's/^id:[[:space:]]*//p' "$a" | head -n1)"
   case "$n" in "$id"-*) ;; *) fail "$n: id '$id' no coincide con el archivo";; esac
   grep -q '^titulo: .\+' "$a" || fail "$n: sin titulo"
+  grep -q '^repos: \[' "$a" || fail "$n: sin repos en el frontmatter"
+  if grep -q '^estado: propuesto' "$a"; then
+    arepos="$(sed -n 's/^repos:[[:space:]]*\[\(.*\)\]/\1/p' "$a" | head -n1 | tr ',' ' ')"
+    for r in $arepos; do
+      printf '%s\n' "$conservados" | grep -qx "$r" && fail "$n: ADR propuesto sobre el repositorio conservado '$r'"
+    done
+  fi
   for s in '## Contexto' '## Decisión' '## Evidencia' '## Consecuencias' '## Implicación para la migración'; do
     grep -q "^$s" "$a" || fail "$n: falta '$s'"
   done

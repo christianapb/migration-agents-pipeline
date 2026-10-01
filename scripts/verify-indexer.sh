@@ -62,7 +62,7 @@ if [ -f "$C" ]; then
   for a in migration-indexer migration-analyst migration-tl-adrs migration-tl-specs migration-tl-tasks migration-qa migration-pm migration-tl-resolver migration-orchestrator; do
     printf '%s' "$block" | grep -q "$a" || fail "bloque de CLAUDE.md no menciona $a"
   done
-  for k in 'revisado' 'excluir:' 'RN-n' 'MJ-n' 'politica:' 'aplica la mejora MJ-n' 'AU-n' '_auditoria.md' 'migration-auditor' '[ausente: ' 'Usa el subagente migration-orchestrator' 'Usa el subagente migration-tl-resolver'; do
+  for k in 'revisado' 'excluir:' 'RN-n' 'MJ-n' 'politica:' 'aplica la mejora MJ-n' 'AU-n' '_auditoria.md' 'migration-auditor' '[ausente: ' 'conservar' 'con destino <repo>=<lenguaje>' 'Usa el subagente migration-orchestrator' 'Usa el subagente migration-tl-resolver'; do
     printf '%s' "$block" | grep -qF "$k" || fail "bloque de CLAUDE.md sin '$k'"
   done
 else
@@ -76,6 +76,8 @@ grep -q '^## 13\. Posibles mejoras' "$W/migration/templates/spec.md" || fail "sp
 grep -q '^commits:' "$W/migration/templates/spec.md" || fail "spec.md sin commits en el frontmatter"
 grep -q '^bloqueada_por:' "$W/migration/templates/task.md" || fail "task.md sin bloqueada_por"
 grep -q '^implicacion_migracion:' "$W/migration/templates/adr.md" || fail "adr.md sin implicacion_migracion"
+grep -q '^repos:' "$W/migration/templates/adr.md" || fail "adr.md sin repos en el frontmatter"
+grep -q '^tipo: implementacion' "$W/migration/templates/task.md" || fail "task.md sin tipo en el frontmatter"
 
 [ "$fails" -eq 0 ] && { echo "OK: indexer"; exit 0; }
 exit 1
