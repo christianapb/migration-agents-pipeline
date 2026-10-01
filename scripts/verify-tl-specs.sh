@@ -65,6 +65,22 @@ for s in "${specs[@]}"; do
     done <<< "$(printf '%s' "$cita" | tr ',' '\n')"
   done <<< "$(grep -E '^(- )?(RN|CB)-[0-9]+:' "$s" | grep -v '(retirado')"
 
+  # Comportamientos por defecto: obligatorios si el spec expone endpoints HTTP.
+  # Cada uno es una CB-n que empieza por la frase fija, o una pregunta abierta
+  # que empieza igual si no se pudo determinar.
+  contratos="$(section "$s" 5)"
+  if printf '%s' "$contratos" | grep -Eq '\b(GET|POST|PUT|PATCH|DELETE)\b'; then
+    frases=("Ruta no definida" "Método no permitido")
+    if printf '%s' "$contratos" | grep -Eq '\b(POST|PUT|PATCH)\b'; then
+      frases+=("Cuerpo ausente" "Cuerpo mal formado")
+    fi
+    for frase in "${frases[@]}"; do
+      grep -E '^(- )?CB-[0-9]+:' "$s" | grep -v '(retirado' | grep -Eq "^(- )?CB-[0-9]+: $frase:" \
+        || section "$s" 12 | grep -Eq "^- $frase:" \
+        || fail "$n: falta el comportamiento por defecto '$frase:' (como CB-n o como pregunta abierta)"
+    done
+  fi
+
   # Preguntas abiertas: solo incógnitas reales, pocas y sin fórmulas de mejora
   preguntas="$(section "$s" 12 | grep '^- ' | grep -v '(retirado' || true)"
   np="$(printf '%s\n' "$preguntas" | grep -c . || true)"

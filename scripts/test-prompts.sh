@@ -84,5 +84,13 @@ has migration-orchestrator.md 'Usa el subagente migration-auditor'
 has migration-tl-tasks.md 'La cita entre corchetes al final de cada regla no forma parte del requisito'
 has migration-qa.md 'La cita entre corchetes al final de cada regla no forma parte del requisito'
 
+# Comportamientos por defecto
+for k in 'Ruta no definida:' 'Método no permitido:' 'Cuerpo ausente:' 'Cuerpo mal formado:'; do
+  has migration-tl-specs.md "$k"
+done
+has migration-tl-specs.md 'Comportamientos por defecto'
+has migration-tl-specs.md 'no lo inventes'
+has migration-auditor.md 'comportamiento por defecto del framework'
+
 [ "$fails" -eq 0 ] && { echo "OK: prompts"; exit 0; }
 exit 1

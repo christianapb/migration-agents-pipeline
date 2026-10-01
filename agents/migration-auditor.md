@@ -38,6 +38,8 @@ De cada spec, toma las líneas que empiezan por `RN-n:` o `CB-n:` (con o sin gui
    - **sin respaldo**: la cita existe pero ese código no muestra el comportamiento afirmado, ni lo contradice. Antes de darla por sin respaldo, busca con Grep en los archivos de la sección 11: si el respaldo está en otra línea, el veredicto es respaldada y añades un hallazgo "cita imprecisa" con la línea correcta. Si no aparece en ningún archivo, es sin respaldo.
    - Para `[ausente: ...]`: respaldada si la búsqueda no encuentra el comportamiento; contradicha si lo encuentra, citando dónde.
 
+Las reglas que empiezan por `Ruta no definida:`, `Método no permitido:`, `Cuerpo ausente:` o `Cuerpo mal formado:` describen un comportamiento por defecto del framework: el proyecto no escribe ese código y la cita apunta a donde se monta el router o se registra el intérprete o el manejador de errores. Para ellas comprueba dos cosas: que la línea citada hace ese montaje o registro, y que ningún archivo de la sección 11 define un manejador que cambie el resultado (una ruta comodín, un manejador de rutas no encontradas, un intérprete distinto). Si ambas se cumplen, el veredicto es respaldada, con la nota "por defecto del framework; no verificable solo con el código del repositorio". Si el proyecto sí define un manejador que hace otra cosa, es contradicha. No las marques sin respaldo solo porque el resultado no esté escrito en una línea del proyecto.
+
 No cambies un veredicto para ser amable. Una regla plausible que el código no muestra es sin respaldo, por razonable que suene.
 
 ## 3. Segunda pasada, acotada: lo que ninguna regla recoge
