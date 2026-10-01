@@ -12,6 +12,8 @@ fail() { echo "FAIL: $*"; fails=$((fails+1)); }
 run() { bash "$ROOT/scripts/run-agent.sh" "$@"; rc=$?; [ $rc -eq 2 ] && { echo "ERROR: límite de uso, repetir"; exit 2; }; return $rc; }
 R() { run migration-tl-resolver "$1"; }
 adrfile() { ls "$M"/adr/"$1"-*.md 2>/dev/null | head -n1; }
+. "$ROOT/scripts/lib-rev.sh"
+revs_tareas() { grep -H '^rev:' "$M"/tasks/*.md 2>/dev/null | sort; }
 
 if [ "${SKIP_SETUP:-0}" != 1 ]; then
   bash "$ROOT/scripts/snapshot.sh" restore qa "$W" >/dev/null || { echo "FAIL: no se pudo restaurar la etapa qa"; exit 1; }
@@ -21,7 +23,10 @@ fi
 P="$(grep -l '^estado: propuesto' "$M"/adr/*.md | head -n1 | xargs basename | cut -c1-4)"
 [ -n "$P" ] || { echo "FAIL: no hay ADR propuesto"; exit 1; }
 rev_before="$(grep -l '^estado: revisado' "$M"/tasks/*.md 2>/dev/null | sort)"
+v_adr="$(rev_de "$(adrfile "$P")")"; v_tareas="$(revs_tareas)"
 R "En el ADR $P acepta la recomendación." >/dev/null
+[ "$(rev_de "$(adrfile "$P")")" = "$((v_adr+1))" ] || fail "caso 4: decidir el ADR $P no subió su rev en 1 ($v_adr → $(campo "$(adrfile "$P")" rev))"
+[ "$(revs_tareas)" = "$v_tareas" ] || fail "caso 4: la limpieza de bloqueada_por cambió el rev de alguna tarea"
 rev_after="$(grep -l '^estado: revisado' "$M"/tasks/*.md 2>/dev/null | sort)"
 [ "$rev_before" = "$rev_after" ] || fail "caso 4: la limpieza de bloqueada_por cambió el estado de tareas"
 f="$(adrfile "$P")"
@@ -46,6 +51,7 @@ if [ -z "$S" ]; then
 fi
 q1="$(sec12 "$M/specs/$S.md" | grep '^- ' | head -n1)"
 ids_before="$(grep -oE '^(- )?(RN|CB)-[0-9]+:' "$M/specs/$S.md" | sort)"
+v_spec="$(rev_de "$M/specs/$S.md")"
 R "En el spec $S, respuesta a la pregunta abierta 1: se conserva el comportamiento actual." >/dev/null
 grep -qF -- "$q1" "$M/specs/$S.md" || fail "caso 5: se borró la pregunta abierta 1"
 ids_after="$(grep -oE '^(- )?(RN|CB)-[0-9]+:' "$M/specs/$S.md" | sort)"
@@ -53,6 +59,7 @@ ids_after="$(grep -oE '^(- )?(RN|CB)-[0-9]+:' "$M/specs/$S.md" | sort)"
 grep -l "^bloqueada_por:.*PA:$S:1\b" "$M"/tasks/*.md >/dev/null 2>&1 && fail "caso 5: alguna tarea sigue bloqueada por PA:$S:1"
 grep -qE '^[[:space:]]*- Respuesta \(' "$M/specs/$S.md" || fail "caso 5: no añadió la línea Respuesta"
 grep -q '^estado: revisado' "$M/specs/$S.md" || fail "caso 5: el spec no quedó revisado"
+[ "$(rev_de "$M/specs/$S.md")" = "$((v_spec+1))" ] || fail "caso 5: editar el contenido del spec no subió su rev en 1 ($v_spec → $(campo "$M/specs/$S.md" rev))"
 
 # Caso 9: aplicar una mejora
 sec13() { awk '/^## 13\. /{f=1;next} /^## /{f=0} f' "$1"; }
@@ -99,7 +106,9 @@ printf '%s' "$out" | grep -qi 'spec' || fail "caso 7: no propuso añadirlo prime
 
 # Review Focus 1: varias órdenes, una con id inexistente
 S2="$(ls "$M"/specs | grep -v '^_' | grep -v "^$S.md$" | head -n1 | sed 's/\.md$//')"
+v_s2="$(campo "$M/specs/$S2.md" rev)"
 out="$(R "En el ADR 9999 elijo Ktor. Marca revisado el spec $S2.")"
+[ "$(campo "$M/specs/$S2.md" rev)" = "$v_s2" ] || fail "RF1: marcar revisado cambió el rev del spec $S2 ($v_s2 → $(campo "$M/specs/$S2.md" rev))"
 grep -q '^estado: revisado' "$M/specs/$S2.md" || fail "RF1: no aplicó la orden válida"
 printf '%s' "$out" | grep -q '9999' || fail "RF1: no reportó el id inexistente"
 
@@ -129,6 +138,26 @@ antes="$(destino_raw "$W")"
 out="$(R "Fija el destino de pagos en Go.")"
 [ "$(destino_raw "$W")" = "$antes" ] || fail "caso 13: aceptó un repositorio que no existe"
 printf '%s' "$out" | grep -q 'pagos' || fail "caso 13: no reportó el repositorio inexistente"
+
+# Caso 14: registra las versiones en un proyecto que no las tenía
+TS="$(grep -l "^spec: $S$" "$M"/tasks/T-*.md | head -n1)"
+if [ -z "$TS" ]; then
+  fail "caso 14: no hay tareas del spec $S para probar"
+else
+  sed -i '/^rev:/d' "$M/specs/$S.md"
+  sed -i '/^spec_rev:/d; /^adrs_rev:/d' "$TS"
+  sed -i '/^spec_rev:/d' "$M/test-plans/$S.md"
+  adrs_antes="$(grep -H '^rev:' "$M"/adr/*.md | sort)"
+  v_ts="$(campo "$TS" rev)"
+  R "Registra las versiones." >/dev/null
+  [ "$(campo "$M/specs/$S.md" rev)" = "1" ] || fail "caso 14: el spec sin versión no quedó con rev 1 ('$(campo "$M/specs/$S.md" rev)')"
+  [ "$(campo "$TS" spec_rev)" = "1" ] || fail "caso 14: la tarea no anotó el spec_rev actual ('$(campo "$TS" spec_rev)')"
+  grep -q '^adrs_rev: {' "$TS" || fail "caso 14: la tarea no recuperó adrs_rev"
+  [ "$(campo "$M/test-plans/$S.md" spec_rev)" = "1" ] || fail "caso 14: el plan no anotó el spec_rev actual"
+  [ "$(campo "$TS" rev)" = "$v_ts" ] || fail "caso 14: registrar versiones cambió el rev de la tarea"
+  [ "$(grep -H '^rev:' "$M"/adr/*.md | sort)" = "$adrs_antes" ] || fail "caso 14: registrar versiones cambió el rev de algún ADR"
+  bash "$ROOT/scripts/verify-tl-tasks.sh" >/dev/null || fail "caso 14: las tareas no pasan el verificador tras registrar versiones"
+fi
 
 [ "$fails" -eq 0 ] && { echo "OK: resolver"; exit 0; }
 exit 1

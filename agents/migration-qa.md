@@ -25,7 +25,7 @@ Antes de escribir `migration/test-plans/<slug>.md`, comprueba si existe con `est
 
 ## 1. Un plan por spec
 
-Por cada spec, escribe `migration/test-plans/<slug>.md` con **exactamente el mismo nombre de archivo** que el spec. Frontmatter: `capacidad: <slug>`, `spec: <slug>`, `estado: generado`.
+Por cada spec, escribe `migration/test-plans/<slug>.md` con **exactamente el mismo nombre de archivo** que el spec. Frontmatter: `capacidad: <slug>`, `spec: <slug>`, `spec_rev`, `tareas`, `estado: generado`. `spec_rev` es el `rev` que tiene el spec en este momento, leído de su frontmatter (vacío si el spec no tiene `rev`; no supongas un valor). `tareas` es la lista, en una sola línea, de los ids de todas las tareas cuyo `spec` es este slug, por ejemplo `tareas: [T-011, T-012]`, o `tareas: []` si no hay ninguna. Escribe ambos campos aunque la plantilla no los traiga. Los planes no llevan `rev` propio.
 
 Lee el spec completo. Extrae:
 

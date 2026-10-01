@@ -49,7 +49,7 @@ mi-proyecto/
 └── bff/
 ```
 
-Conviene versionar `mi-proyecto/` con git y hacer commit antes de cada paso. Para deshacer, prefiere `git revert` o restaurar archivos concretos: un `git checkout` de toda la carpeta cambia las fechas de modificación y el orquestador puede marcar como desactualizado algo que no lo está.
+Conviene versionar `mi-proyecto/` con git y hacer commit antes de cada paso. Puedes deshacer con `git checkout`, clonar la carpeta en otra máquina o tenerla en una carpeta sincronizada: el orquestador no mira cuándo se modificó cada archivo, sino los números de versión escritos dentro de ellos, y da el mismo diagnóstico en cualquier copia.
 
 ## 3. Paso a paso
 
@@ -413,7 +413,22 @@ El segundo paso solo hace falta si la decisión cambia qué se construye, por ej
 
 **Lo `revisado` no se regenera.** Si marcaste `revisado` un spec, una tarea o un plan, el agente correspondiente lo conserva tal cual, incluidos los que editó el resolver, porque él marca `revisado` lo que toca. Si quieres que se regenere, cambia a mano su línea `estado: revisado` por `estado: generado` y repite el agente. Es la única edición manual que el flujo espera de ti.
 
-**Si dudas**, pregunta al orquestador: compara fechas y te dice qué quedó desactualizado y con qué prompt regenerarlo.
+**Si dudas**, pregunta al orquestador: compara versiones y te dice qué quedó desactualizado y con qué prompt regenerarlo.
+
+**Cómo sabe el orquestador qué está desactualizado.** Cada spec, ADR y tarea lleva `rev: <número>` en su cabecera. El número sube cuando cambia el contenido (lo regenera un agente o lo edita el resolver) y no cuando solo cambia el estado. Cada artefacto derivado anota de qué versión salió:
+
+| Artefacto | Anota | Queda desactualizado si |
+|---|---|---|
+| Tarea | `spec_rev: 2` y `adrs_rev: {0003: 1, 0011: 2}` | el spec o alguno de esos ADRs tiene ahora un `rev` mayor |
+| Plan de pruebas | `spec_rev: 2` y `tareas: [T-011, T-012]` | el spec tiene un `rev` mayor, o las tareas de ese spec ya no son esas |
+| Sección de auditoría | `Spec rev: 2.` en su línea `Auditada:` | el spec tiene un `rev` mayor |
+| Backlog | columna `Rev` junto a cada tarea | alguna tarea tiene otro `rev`, falta o sobra alguna, o lista un bloqueo que la tarea ya no tiene |
+
+Marcar `revisado` no desactualiza nada. Decidir un ADR sí cambia su contenido: sube su `rev` y las tareas que lo citan quedan pendientes de regenerar.
+
+Si un derivado está `revisado`, su agente no lo sobrescribe. Corrígelo con el resolver y, cuando esté al día, decláralo: `Usa el subagente migration-tl-resolver: registra las versiones de la tarea T-012`.
+
+El orquestador también informa de la completitud por capacidad: en la línea `Faltan:` dice a qué capacidades les falta spec, tareas o plan, aunque hayas corrido un paso con `solo la capacidad X`.
 
 ## 5. Reglas que conviene saber
 
@@ -422,7 +437,8 @@ El segundo paso solo hace falta si la decisión cambia qué se construye, por ej
 - Cada regla de un spec cita la línea de código que la respalda. El auditor comprueba esas citas y nunca modifica un spec: informa, y tú corriges con el resolver. Un hallazgo corregido desaparece al repetir la auditoría.
 - Los identificadores nunca se renumeran; lo retirado queda marcado como retirado.
 - Política de paridad: el destino reproduce el comportamiento del origen. Las mejoras `MJ-n` son opcionales y no bloquean nada; las preguntas abiertas son solo para lo que el código no permite determinar.
-- Cuando algo cambia, se regenera lo que viene después en la cadena (sección 4). El orquestador te avisa de lo desactualizado.
+- Cuando algo cambia, se regenera lo que viene después en la cadena (sección 4). El orquestador te avisa de lo desactualizado comparando el `rev` de cada artefacto con la versión que anotan sus derivados; las fechas de los archivos no cuentan.
+- Si editas a mano el contenido de un spec, un ADR o una tarea, sube su `rev` en 1. Si lo editas con el resolver, lo sube él.
 
 ## 6. Si algo falla
 
@@ -437,6 +453,7 @@ El segundo paso solo hace falta si la decisión cambia qué se construye, por ej
 | El auditor marca reglas como "sin cita" | El spec es anterior a las citas o está `revisado`. Si está `generado`, repite `migration-tl-specs`; si está `revisado`, añade las citas con el resolver usando la línea que da cada hallazgo. |
 | El auditor marca muchas reglas como sin respaldo o no localizables a la vez | El código cambió desde que se escribió el spec y las líneas se desplazaron. Mira si avisa de que los commits no coinciden; repite `migration-indexer` y `migration-tl-specs` para esa capacidad. |
 | El auditor marca una regla como contradicha y crees que el spec está bien | Abre la línea citada: el veredicto dice qué leyó. Si el auditor se equivoca, deja la regla como está; el informe no cambia nada por sí solo. |
+| El orquestador dice "no se puede determinar, no tiene versión registrada" | El proyecto se generó antes de que existieran las versiones. Si sabes que nada cambió desde entonces: `Usa el subagente migration-tl-resolver: registra las versiones`, que pone `rev: 1` y anota en cada tarea y plan la versión actual de sus insumos; luego repite `migration-auditor` y `migration-pm`, que regeneran sus derivados. Si no lo sabes, regenera con el agente de cada paso. |
 | Política desconocida | `politica:` en `migration/README.md` tiene un valor distinto de `paridad`. Corrígelo: `Usa el subagente migration-tl-resolver: fija la política en paridad`. |
 | Un spec tiene muchas preguntas del tipo "¿se mantiene X o debería ser Y?" | Se generó antes de la política de paridad o quedó `revisado`. Si está `generado`, repite `migration-tl-specs`; si está `revisado`, reclasifica cada pregunta con el resolver. |
 | Aplicaste una mejora y las tareas siguen igual | Aplicar solo cambia el spec. Repite `migration-tl-tasks` y `migration-qa` con `solo la capacidad X`. |

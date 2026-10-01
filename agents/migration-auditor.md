@@ -67,7 +67,7 @@ Generado: <AAAA-MM-DD> por migration-auditor.
 
 ## carrito
 
-Auditada: <AAAA-MM-DD>. Commits del spec: bff 3f2a91c, frontend 8b1d0e4 (coinciden con el índice).
+Auditada: <AAAA-MM-DD>. Spec rev: <n>. Commits del spec: bff 3f2a91c, frontend 8b1d0e4 (coinciden con el índice).
 
 | Regla | Veredicto | Cita | Nota |
 |---|---|---|---|
@@ -85,6 +85,7 @@ Auditada: <AAAA-MM-DD>. Commits del spec: bff 3f2a91c, frontend 8b1d0e4 (coincid
 Reglas del formato:
 
 - El título de cada sección es exactamente `## <slug>`.
+- La línea `Auditada:` de cada sección registra `Spec rev: <n>.`, con el `rev` que tiene el spec en el momento de auditarlo, leído de su frontmatter. Si el spec no tiene `rev`, escribe `Spec rev: sin versión.`; no supongas un valor.
 - Una fila por cada regla auditada, también las respaldadas, con el identificador exacto en la primera columna.
 - La columna Veredicto contiene exactamente uno de: `respaldada`, `sin respaldo`, `contradicha`, `cita no localizable`, `decisión`.
 - En la fila del resumen, "Reglas" es el número de filas de la tabla de esa capacidad y las demás columnas son los recuentos por veredicto; "Omitidos" es el número de hallazgos de tipo omitido.

@@ -23,8 +23,8 @@ has migration-tl-resolver.md 'salvo las tareas tocadas solo por la limpieza de `
 has migration-indexer.md 'Si el README existente contiene `migration-techlead`'
 
 # Hallazgo 4: dirección del orden de Glob y cambios de solo estado
-has migration-orchestrator.md 'del más antiguo al más reciente'
-has migration-orchestrator.md 'si un spec solo cambió de `estado`'
+has migration-orchestrator.md 'Lo decides solo comparando valores escritos en los archivos'
+has migration-orchestrator.md 'Un artefacto que solo cambió de `estado` conserva su `rev`'
 
 # Hallazgo 6: tl-specs conserva la numeración al sobrescribir
 has migration-tl-specs.md 'conserva el número de cada `RN-n` y `CB-n` cuyo contenido persiste'
@@ -79,7 +79,7 @@ has migration-tl-resolver.md 'añade su cita'
 has migration-tl-resolver.md '`_auditoria.md`'
 has migration-tl-resolver.md 'No marques hallazgos `AU-n` como resueltos'
 has migration-orchestrator.md 'Hallazgos `AU-n`'
-has migration-orchestrator.md 'auditoría más antigua que su spec'
+has migration-orchestrator.md 'es menor que el `rev` del spec'
 has migration-orchestrator.md 'Usa el subagente migration-auditor'
 has migration-tl-tasks.md 'La cita entre corchetes al final de cada regla no forma parte del requisito'
 has migration-qa.md 'La cita entre corchetes al final de cada regla no forma parte del requisito'
@@ -114,6 +114,31 @@ has migration-tl-resolver.md '**Fijar el destino de un repositorio**'
 has migration-tl-resolver.md '**Conservar un repositorio**'
 has migration-orchestrator.md 'el mapa no cubre algún repositorio detectado'
 has migration-orchestrator.md 'No añadas destino al prompt cuando el README ya lo tiene'
+
+# Versiones de artefactos (docs/specs/2026-10-01-versiones-de-artefactos-design.md)
+for k in 'rev: <entero>' 'spec_rev: <n>' 'adrs_rev: {0003: 1, 0011: 2}' 'tareas: [T-011, T-012]' 'Spec rev: <n>.' 'columna `Rev`' 'registra las versiones' 'nunca se supone un valor' 'las fechas de modificación de los archivos no significan nada'; do
+  printf '%s' "$block" | grep -qF -- "$k" || fail "bloque de CLAUDE.md sin '$k'"
+done
+for a in migration-tl-adrs.md migration-tl-specs.md migration-tl-tasks.md; do
+  has "$a" 'aunque la plantilla no lo traiga'
+  has "$a" 'súbelo en 1'
+done
+has migration-tl-tasks.md 'adrs_rev: {0003: 1, 0011: 2}'
+has migration-tl-tasks.md 'spec_rev'
+has migration-qa.md 'spec_rev'
+has migration-qa.md 'tareas: [T-011, T-012]'
+has migration-auditor.md 'Spec rev: <n>.'
+has migration-pm.md 'columna `Rev`'
+has migration-pm.md 'no cambia `rev`'
+has migration-tl-resolver.md '**Registrar versiones**'
+has migration-tl-resolver.md 'Sube `rev` en 1'
+has migration-tl-resolver.md 'No subas `rev`'
+has migration-orchestrator.md 'no se puede determinar, no tiene versión registrada'
+has migration-orchestrator.md 'Faltan:'
+has migration-orchestrator.md 'registra las versiones'
+for k in 'fecha de modificación' 'Glob devuelve' 'más antiguo' 'más nuevo' 'posiblemente'; do
+  grep -qF -- "$k" "$ROOT/agents/migration-orchestrator.md" && fail "migration-orchestrator.md todavía contiene '$k'"
+done
 
 [ "$fails" -eq 0 ] && { echo "OK: prompts"; exit 0; }
 exit 1
