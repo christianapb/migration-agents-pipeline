@@ -6,7 +6,7 @@ Genera, a partir del código de un proyecto, la documentación para reimplementa
 
 Tres agentes te acompañan en todo momento:
 
-- **`migration-orchestrator`** te dice en qué paso estás, qué falta revisar y te da el prompt exacto del siguiente paso. Consúltalo siempre que dudes. Las mejoras sin decidir no las cuenta como pendientes: solo las menciona.
+- **`migration-orchestrator`** te dice en qué paso estás, qué falta revisar y te da el prompt exacto del siguiente paso. Consúltalo siempre que dudes. Las mejoras sin decidir no las cuenta como pendientes: solo las menciona. Después de generar los specs te recomienda auditarlos, y lista como pendientes los hallazgos del auditor que sigan sin corregir.
 - **`migration-tl-resolver`** aplica tus decisiones y cambios. Describe el cambio en lenguaje natural en vez de editar archivos a mano.
 - **`migration-auditor`** comprueba que lo que dicen los specs es lo que hace el código, regla por regla, y te lista las discrepancias. No modifica nada.
 
@@ -71,6 +71,8 @@ Usa el subagente migration-tl-resolver: fija el destino en Kotlin
 
 El bloque de `CLAUDE.md` lo reescribe el indexador en cada corrida; escribe tus notas fuera de las marcas.
 
+El `index.md` general anota además el commit de cada repo en el momento de indexar (`sin-git` si el repo no usa git). Los specs copian ese commit, y así se puede saber más adelante si el código cambió desde que se escribieron y sus citas pueden haberse desplazado. Por eso conviene tener los cambios de los repos commiteados antes de indexar.
+
 `migration/README.md` guarda en su cabecera la configuración del proceso:
 
 | Campo | Para qué sirve | Quién lo cambia |
@@ -84,7 +86,7 @@ El bloque de `CLAUDE.md` lo reescribe el indexador en cada corrida; escribe tus 
 | Archivo | Qué pasa |
 |---|---|
 | `index.md` de cada repo | Se regenera entero desde el código actual. Pierdes cualquier edición manual. |
-| `index.md` general | Se regenera entero. |
+| `index.md` general | Se regenera entero, incluida la columna con el commit actual de cada repo. |
 | `CLAUDE.md` | Solo se reemplaza el bloque entre las marcas; el resto no cambia. |
 | `migration/README.md` | No se toca, salvo añadir `excluir: []` y `politica: paridad` si faltan, o actualizar un README de la versión anterior. |
 | `migration/templates/*.md` | No se tocan; solo se crean las que falten. |
@@ -198,6 +200,19 @@ RN-22: quitar una línea que no existe responde 404. [decisión: MJ-1]
 
 `[ruta:línea]` señala dónde se decide el comportamiento. `[ausente: ruta]` marca una regla deducida de que algo no existe. `[decisión: ...]` marca una regla que viene de una decisión tuya y no del código. El spec anota además en `commits:` el commit de cada repo sobre el que se escribió: si el código cambia, las líneas pueden desplazarse y conviene regenerar. Los tests del proyecto origen también cuentan como evidencia y pueden aparecer citados.
 
+Cómo aprovechar las citas:
+
+- **Al revisar**, abre la línea citada de las reglas que te sorprendan o que más pesen en el negocio. No hace falta comprobarlas todas a mano: para eso está el auditor, en el apartado siguiente.
+- **Al pedir un cambio**, puedes dar tú la cita y el resolver la escribe. Si no la das, la busca él. Si la regla nueva es una decisión tuya y no algo que haga el código, queda marcada como `[decisión: ...]`:
+
+```
+Usa el subagente migration-tl-resolver: en el spec carrito añade un caso borde: quitar una línea responde 204 [bff/src/routes/cart.ts:40]
+Usa el subagente migration-tl-resolver: en el spec carrito, RN-6: el tope es 10, no 20
+```
+
+- **Si un test del origen contradice a la implementación**, el spec no elige: lo deja como pregunta abierta, porque no se sabe cuál de los dos es el requisito. Respóndela tú.
+- **Las citas no llegan a las tareas ni a los casos de prueba.** Son una ayuda para revisar el spec, no parte del requisito.
+
 Tres cosas a tener en cuenta al revisar:
 
 - **Las mejoras son sugerencias del agente, no una lista de tareas.** Algunas señalan algo sospechoso del origen y otras son ideas de producto, como añadir una función que hoy no existe. Aplica solo las que quieras de verdad en el destino; ignorar el resto no tiene ningún efecto.
@@ -225,6 +240,32 @@ Escribe `migration/specs/_auditoria.md` con una tabla por capacidad y un veredic
 
 Debajo lista los hallazgos, numerados `AU-n`, cada uno con el prompt para corregirlo. También anota como "omitido" el comportamiento que ve en el código y que ninguna regla recoge.
 
+Así se ve un fragmento del informe:
+
+```
+## carrito
+
+Auditada: 2026-10-01. Commits del spec: bff 65ca5ae, frontend d578ded (coinciden con el índice).
+
+| Regla | Veredicto | Cita | Nota |
+|---|---|---|---|
+| RN-5 | respaldada | bff/src/routes/cart.ts:13 | |
+| RN-6 | contradicha | bff/src/routes/cart.ts:32 | El código recorta a 10; la regla dice 20. |
+
+### Hallazgos
+
+- **AU-1** (contradicha, RN-6): el tope en el código es 10 y la regla dice 20.
+  Corrección: `Usa el subagente migration-tl-resolver: en el spec carrito, RN-6: el tope es 10, no 20`
+```
+
+Cuándo correrlo:
+
+- **Justo después de generar los specs y antes de revisarlos tú.** Te ahorra comprobar a mano las reglas respaldadas y te deja concentrarte en los hallazgos y en lo que el auditor no puede juzgar: si el spec está completo y si refleja lo que el negocio necesita.
+- **Después de corregir un spec**, con alcance sobre esa capacidad, para confirmar que el hallazgo desapareció.
+- **Cuando cambie el código de un repo**, después de repetir el indexador y los specs.
+
+Audita también los specs `revisado`, porque no los modifica. Si al principio de una sección avisa de que los commits del spec no coinciden con el índice, el código cambió desde que se escribió el spec: muchos hallazgos serán líneas desplazadas, y lo que corresponde es regenerar el spec, no corregir regla por regla.
+
 Qué hacer:
 - Revisa solo los hallazgos; las reglas respaldadas no requieren nada.
 - En una contradicción decides tú: o el spec está mal y se corrige, o el comportamiento del código es justo lo que quieres cambiar y entonces es una mejora.
@@ -239,7 +280,7 @@ Qué hacer:
 Usa el subagente migration-tl-tasks con destino Kotlin
 ```
 
-Si quedan ADRs propuestos, se detiene y te da el prompt para decidirlos. Así las tareas se generan una sola vez, con el framework nombrado. Los criterios de aceptación afirman el comportamiento actual que describen las reglas, sin condicionales. Las mejoras sin aplicar no aparecen en las tareas, y solo una pregunta abierta real cuya respuesta cambie qué se construye puede bloquear una tarea. Corrige con el resolver:
+Si quedan ADRs propuestos, se detiene y te da el prompt para decidirlos. Así las tareas se generan una sola vez, con el framework nombrado. Los criterios de aceptación afirman el comportamiento actual que describen las reglas, sin condicionales. Las mejoras sin aplicar no aparecen en las tareas, y solo una pregunta abierta real cuya respuesta cambie qué se construye puede bloquear una tarea. Conviene llegar aquí con los specs auditados: una regla equivocada se convierte en un criterio de aceptación equivocado. Corrige con el resolver:
 
 ```
 Usa el subagente migration-tl-resolver: la tarea T-016 también depende de T-004 y es tamaño L
@@ -298,6 +339,7 @@ Los agentes forman una cadena: specs → tareas → planes de prueba → backlog
 | Un spec: regla, contrato o caso borde | `migration-tl-tasks, solo la capacidad X`; `migration-qa, solo la capacidad X`; `migration-pm`. |
 | Aplicaste una mejora `MJ-n` | Igual que un cambio de spec: `migration-tl-tasks`, `migration-qa` y `migration-pm`, con `solo la capacidad X`. Descartarla no requiere repetir nada. |
 | Reclasificaste una pregunta como mejora | `migration-qa, solo la capacidad X` para que desaparezca el caso pendiente. Si esa pregunta bloqueaba tareas, el resolver ya quitó el bloqueo; `migration-pm` para actualizar el backlog. |
+| Actualizaste los agentes a la versión con citas y auditor en un proyecto ya empezado | `migration-indexer` (añade el commit de cada repo y el bloque nuevo); `migration-tl-specs` para que los specs `generado` reciban citas y `commits:`; `migration-auditor`. Los specs `revisado` no se regeneran: el auditor los revisa igual y reporta cada regla sin cita con la línea que encontró, para que la añadas con el resolver. |
 | Actualizaste los agentes a la versión con política de paridad en un proyecto ya empezado | `migration-indexer` (añade `politica: paridad` y el bloque nuevo); `migration-tl-specs` para reclasificar los specs `generado`; luego `migration-tl-tasks`, `migration-qa` y `migration-pm`. Los specs `revisado` no se regeneran: reclasifica sus preguntas con el resolver. |
 | Respondiste una pregunta abierta | Si la convertiste en regla o cambia qué se construye, igual que la fila anterior. Si solo confirma el comportamiento actual, `migration-qa, solo la capacidad X` para que el caso pendiente pase a ser un caso normal. |
 | Resolviste un hallazgo `H-n` de QA | Igual que un cambio de spec: `migration-tl-tasks` si cambia qué se construye, luego `migration-qa` y `migration-pm`, todo con `solo la capacidad X`. |
@@ -336,7 +378,8 @@ El segundo paso solo hace falta si la decisión cambia qué se construye, por ej
 ## 5. Reglas que conviene saber
 
 - `revisado` protege un artefacto: ningún agente generador lo sobrescribe. El resolver marca `revisado` lo que edita.
-- No edites derivados: `index.md`, `_capacidades.md`, `_cobertura.md`, `backlog.md`. El resolver se niega y te dice qué agente los regenera.
+- No edites derivados: `index.md`, `_capacidades.md`, `_auditoria.md`, `_cobertura.md`, `backlog.md`. El resolver se niega y te dice qué agente los regenera.
+- Cada regla de un spec cita la línea de código que la respalda. El auditor comprueba esas citas y nunca modifica un spec: informa, y tú corriges con el resolver. Un hallazgo corregido desaparece al repetir la auditoría.
 - Los identificadores nunca se renumeran; lo retirado queda marcado como retirado.
 - Política de paridad: el destino reproduce el comportamiento del origen. Las mejoras `MJ-n` son opcionales y no bloquean nada; las preguntas abiertas son solo para lo que el código no permite determinar.
 - Cuando algo cambia, se regenera lo que viene después en la cadena (sección 4). El orquestador te avisa de lo desactualizado.
@@ -348,6 +391,8 @@ El segundo paso solo hace falta si la decisión cambia qué se construye, por ej
 | No encontré repositorios | Abre Claude Code en la carpeta padre. |
 | Falta el bloque de convenciones en `CLAUDE.md` | Corre `migration-indexer`. |
 | No sé a qué lenguaje se migra | Fija el destino con el resolver o indícalo en el prompt. |
+| Pediste al resolver que marcara resuelto un hallazgo `AU-n` y se negó | El informe de auditoría es un derivado. Corrige el spec y repite `migration-auditor, solo la capacidad X`: el hallazgo desaparece solo. |
+| El auditor marca reglas como "sin cita" | El spec es anterior a las citas o está `revisado`. Si está `generado`, repite `migration-tl-specs`; si está `revisado`, añade las citas con el resolver usando la línea que da cada hallazgo. |
 | El auditor marca muchas reglas como sin respaldo o no localizables a la vez | El código cambió desde que se escribió el spec y las líneas se desplazaron. Mira si avisa de que los commits no coinciden; repite `migration-indexer` y `migration-tl-specs` para esa capacidad. |
 | El auditor marca una regla como contradicha y crees que el spec está bien | Abre la línea citada: el veredicto dice qué leyó. Si el auditor se equivoca, deja la regla como está; el informe no cambia nada por sí solo. |
 | Política desconocida | `politica:` en `migration/README.md` tiene un valor distinto de `paridad`. Corrígelo: `Usa el subagente migration-tl-resolver: fija la política en paridad`. |
