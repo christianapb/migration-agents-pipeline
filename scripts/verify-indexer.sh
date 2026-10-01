@@ -48,6 +48,7 @@ if [ -f "$G" ]; then
     grep -q "($r/index.md)" "$G" || fail "índice general sin enlace a $r/index.md"
   done
   grep -q '(migration/README.md)' "$G" || fail "índice general sin enlace a migration/README.md"
+  grep -Eq '^\|.*Commit' "$G" || fail "índice general sin columna Commit"
 else
   fail "index.md general no existe"
 fi
@@ -61,7 +62,7 @@ if [ -f "$C" ]; then
   for a in migration-indexer migration-analyst migration-tl-adrs migration-tl-specs migration-tl-tasks migration-qa migration-pm migration-tl-resolver migration-orchestrator; do
     printf '%s' "$block" | grep -q "$a" || fail "bloque de CLAUDE.md no menciona $a"
   done
-  for k in 'revisado' 'excluir:' 'RN-n' 'MJ-n' 'politica:' 'aplica la mejora MJ-n' 'Usa el subagente migration-orchestrator' 'Usa el subagente migration-tl-resolver'; do
+  for k in 'revisado' 'excluir:' 'RN-n' 'MJ-n' 'politica:' 'aplica la mejora MJ-n' 'AU-n' '_auditoria.md' 'migration-auditor' '[ausente: ' 'Usa el subagente migration-orchestrator' 'Usa el subagente migration-tl-resolver'; do
     printf '%s' "$block" | grep -qF "$k" || fail "bloque de CLAUDE.md sin '$k'"
   done
 else
@@ -72,6 +73,7 @@ for t in adr spec task test-plan backlog; do
 done
 grep -q '^## 12\. Preguntas abiertas' "$W/migration/templates/spec.md" || fail "spec.md sin sección 12"
 grep -q '^## 13\. Posibles mejoras' "$W/migration/templates/spec.md" || fail "spec.md sin sección 13"
+grep -q '^commits:' "$W/migration/templates/spec.md" || fail "spec.md sin commits en el frontmatter"
 grep -q '^bloqueada_por:' "$W/migration/templates/task.md" || fail "task.md sin bloqueada_por"
 grep -q '^implicacion_migracion:' "$W/migration/templates/adr.md" || fail "adr.md sin implicacion_migracion"
 
