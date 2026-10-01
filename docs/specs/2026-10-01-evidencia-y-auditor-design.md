@@ -50,7 +50,7 @@ RN-22: quitar una línea que no existe responde 404. [decisión: MJ-1]
 - Sigue prohibido incluir código: la cita es solo ruta y línea.
 - Se cita la línea donde el comportamiento se decide (la condición, la constante, la respuesta), no el archivo en general. Como mucho tres citas por regla.
 - Si un test del origen fija el comportamiento, se añade su línea además de la de la implementación.
-- `[ausente: <ruta>]` cita el archivo donde estaría el comportamiento si existiera.
+- `[ausente: <ruta>]` cita el archivo donde estaría el comportamiento si existiera. Puede combinarse con citas de línea en los mismos corchetes, separadas por coma, cuando la ausencia se apoya en un punto concreto del código.
 - `[decisión: ...]` lo escribe el resolver al aplicar una mejora, convertir una respuesta en regla o reflejar un ADR.
 - Las `MJ-n` no llevan cita: ya citan la regla que describe el comportamiento actual.
 - La sección 11 se mantiene como lista de archivos leídos.

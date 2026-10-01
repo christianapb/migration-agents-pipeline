@@ -43,14 +43,18 @@ for s in "${specs[@]}"; do
     [ -n "$cita" ] || { fail "$n: $rid sin cita entre corchetes al final de la línea"; continue; }
     case "$cita" in
       "decisión: "*) continue ;;
-      "ausente: "*)
-        ruta="${cita#ausente: }"
-        [ -f "$W/$ruta" ] || fail "$n: $rid cita como ausente un archivo que no existe: $ruta"
-        continue ;;
     esac
+    # Una cita puede combinar partes separadas por coma; cada una es
+    # "ausente: ruta" o "ruta:línea[-fin]".
     while IFS= read -r c; do
       c="$(printf '%s' "$c" | sed -E 's/^[[:space:]]+//; s/[[:space:]]+$//')"
       [ -n "$c" ] || continue
+      case "$c" in
+        "ausente: "*)
+          ruta="${c#ausente: }"
+          [ -f "$W/$ruta" ] || fail "$n: $rid cita como ausente un archivo que no existe: $ruta"
+          continue ;;
+      esac
       if ! printf '%s' "$c" | grep -Eq '^[^:[:space:]]+:[0-9]+(-[0-9]+)?$'; then
         fail "$n: $rid tiene una cita con formato inválido: '$c'"; continue
       fi

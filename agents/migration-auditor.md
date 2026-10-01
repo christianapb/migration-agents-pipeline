@@ -25,7 +25,7 @@ Trabajas del código hacia la regla, no al revés. Si lees primero la afirmació
 De cada spec, toma las líneas que empiezan por `RN-n:` o `CB-n:` (con o sin guion delante) y que no llevan la marca `(retirado ...)`. Para cada una, en este orden:
 
 1. Mira solo el identificador y la cita entre corchetes del final de la línea. No leas todavía lo que la regla afirma.
-2. Según la cita:
+2. Según la cita. Una cita puede combinar varias partes separadas por coma, por ejemplo `[ausente: bff/src/routes/cart.ts, bff/src/routes/cart.ts:40]`: trata cada parte según su forma y da un único veredicto a la regla.
    - `[decisión: ...]`: la regla nace de una decisión del usuario, no del código. Veredicto **decisión**. Pasa a la siguiente.
    - `[ruta:línea]` o `[ruta:inicio-fin]`, una o varias: abre cada archivo con Read alrededor de esas líneas, con el contexto necesario para entender la función o la rama completa. Si el archivo no existe o la línea está fuera del archivo, veredicto **cita no localizable**.
    - `[ausente: ruta]`: la regla afirma que algo no existe. Abre ese archivo y busca con Grep en él y en los archivos de la sección 11 del spec.
