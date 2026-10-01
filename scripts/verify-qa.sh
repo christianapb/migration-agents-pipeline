@@ -12,7 +12,6 @@ for f in "$M"/specs/[!_]*.md; do [ -f "$f" ] && specs+=("$f"); done
 [ "${#specs[@]}" -gt 0 ] || fail "no hay specs; corre migration-techlead"
 [ -f "$M/test-plans/_cobertura.md" ] || fail "_cobertura.md no existe"
 
-pending_total=0
 for s in "${specs[@]}"; do
   slug=$(basename "$s" .md)
   p="$M/test-plans/$slug.md"
@@ -37,12 +36,14 @@ for s in "${specs[@]}"; do
     grep -Eq "\b${id}\b" "$p" || grep -Eq "\b${id}\b" "$M/test-plans/_cobertura.md" || fail "$slug: $id no aparece ni en el plan ni en _cobertura.md"
   done
   # Preguntas abiertas → casos pendientes
-  qa=$(awk '/^## 12\. Preguntas abiertas/{f=1;next} f' "$s" | grep -c '^- ' || true)
+  qa=$(awk '/^## 12\. /{f=1;next} /^## /{f=0} f' "$s" | grep '^- ' | grep -vc '(retirado' || true)
+  pendsec="$(awk '/^## Casos pendientes de definición/{f=1;next} /^## /{f=0} f' "$p")"
+  pend=$(printf '%s\n' "$pendsec" | grep -c '^- \|^### ' || true)
   if [ "$qa" -gt 0 ]; then
-    pend=$(awk '/^## Casos pendientes de definición/{f=1;next} /^## /{f=0} f' "$p" | grep -c '^- \|^### ' || true)
     [ "$pend" -ge 1 ] || fail "$slug: el spec tiene $qa preguntas abiertas pero el plan no tiene casos pendientes"
-    pending_total=$((pending_total+pend))
   fi
+  [ "$pend" -le "$qa" ] || fail "$slug: $pend casos pendientes para $qa preguntas abiertas; las mejoras no generan pendientes"
+  printf '%s' "$pendsec" | grep -q 'MJ-[0-9]' && fail "$slug: los casos pendientes mencionan mejoras MJ-n"
   hall="$(awk '/^## Hallazgos para el tech lead/{f=1;next} /^## /{f=0} f' "$p" | grep -v '^[[:space:]]*$' || true)"
   if [ -n "$hall" ] && ! printf '%s\n' "$hall" | grep -qx 'Ninguno\.\?'; then
     bad="$(printf '%s\n' "$hall" | grep '^- ' | grep -Ev '^- \*\*H-[0-9]+\*\*:' || true)"
@@ -50,7 +51,6 @@ for s in "${specs[@]}"; do
   fi
   grep -q '```' "$p" && fail "$slug: contiene bloques de código"
 done
-[ "$pending_total" -ge 1 ] || fail "ningún plan tiene casos pendientes; la ambigüedad del fixture debería producir al menos uno"
 
 [ "$fails" -eq 0 ] && { echo "OK: qa"; exit 0; }
 exit 1

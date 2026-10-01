@@ -36,6 +36,7 @@ done
 [ -f "$W/migration/README.md" ] || fail "migration/README.md no existe"
 grep -q '^destino:' "$W/migration/README.md" || fail "README sin campo destino"
 grep -q '^excluir:' "$W/migration/README.md" || fail "README sin campo excluir"
+grep -q '^politica: paridad$' "$W/migration/README.md" || fail "README sin 'politica: paridad'"
 grep -q 'migration-orchestrator' "$W/migration/README.md" || fail "README no remite a migration-orchestrator"
 grep -q '^## Flujo' "$W/migration/README.md" && fail "README conserva la lista de pasos de v1"
 
@@ -60,7 +61,7 @@ if [ -f "$C" ]; then
   for a in migration-indexer migration-analyst migration-tl-adrs migration-tl-specs migration-tl-tasks migration-qa migration-pm migration-tl-resolver migration-orchestrator; do
     printf '%s' "$block" | grep -q "$a" || fail "bloque de CLAUDE.md no menciona $a"
   done
-  for k in 'revisado' 'excluir:' 'RN-n' 'Usa el subagente migration-orchestrator' 'Usa el subagente migration-tl-resolver'; do
+  for k in 'revisado' 'excluir:' 'RN-n' 'MJ-n' 'politica:' 'aplica la mejora MJ-n' 'Usa el subagente migration-orchestrator' 'Usa el subagente migration-tl-resolver'; do
     printf '%s' "$block" | grep -qF "$k" || fail "bloque de CLAUDE.md sin '$k'"
   done
 else
@@ -70,6 +71,7 @@ for t in adr spec task test-plan backlog; do
   [ -f "$W/migration/templates/$t.md" ] || fail "falta plantilla $t.md"
 done
 grep -q '^## 12\. Preguntas abiertas' "$W/migration/templates/spec.md" || fail "spec.md sin sección 12"
+grep -q '^## 13\. Posibles mejoras' "$W/migration/templates/spec.md" || fail "spec.md sin sección 13"
 grep -q '^bloqueada_por:' "$W/migration/templates/task.md" || fail "task.md sin bloqueada_por"
 grep -q '^implicacion_migracion:' "$W/migration/templates/adr.md" || fail "adr.md sin implicacion_migracion"
 
