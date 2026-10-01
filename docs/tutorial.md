@@ -2,9 +2,11 @@
 
 Genera, a partir del código de un proyecto, la documentación para reimplementarlo en otro lenguaje. Los agentes no migran código.
 
+**Principio de paridad.** Todo el flujo asume que el destino debe comportarse igual que el origen, incluso donde el origen parece mejorable. Los agentes describen lo que el sistema hace hoy y no te preguntan si conviene cambiarlo: lo que podría mejorarse queda anotado aparte, como sugerencia opcional, y solo cambia algo si tú lo decides. Así lo que tienes que revisar son hechos y unas pocas incógnitas reales, no decenas de preguntas de diseño.
+
 Dos agentes te acompañan en todo momento:
 
-- **`migration-orchestrator`** te dice en qué paso estás, qué falta revisar y te da el prompt exacto del siguiente paso. Consúltalo siempre que dudes.
+- **`migration-orchestrator`** te dice en qué paso estás, qué falta revisar y te da el prompt exacto del siguiente paso. Consúltalo siempre que dudes. Las mejoras sin decidir no las cuenta como pendientes: solo las menciona.
 - **`migration-tl-resolver`** aplica tus decisiones y cambios. Describe el cambio en lenguaje natural en vez de editar archivos a mano.
 
 ## 1. Instalación
@@ -67,6 +69,14 @@ Usa el subagente migration-tl-resolver: fija el destino en Kotlin
 
 El bloque de `CLAUDE.md` lo reescribe el indexador en cada corrida; escribe tus notas fuera de las marcas.
 
+`migration/README.md` guarda en su cabecera la configuración del proceso:
+
+| Campo | Para qué sirve | Quién lo cambia |
+|---|---|---|
+| `destino:` | Lenguaje al que se migra. | Tú, con el resolver. |
+| `excluir:` | Capacidades descartadas; el analista las omite siempre. | Tú, con el resolver. |
+| `politica:` | Siempre `paridad`: el destino reproduce el comportamiento del origen. Es el único valor que existe; los agentes se detienen si encuentran otro. | Nadie; lo escribe el indexador. |
+
 **Si vuelves a correr el indexador:**
 
 | Archivo | Qué pasa |
@@ -74,7 +84,7 @@ El bloque de `CLAUDE.md` lo reescribe el indexador en cada corrida; escribe tus 
 | `index.md` de cada repo | Se regenera entero desde el código actual. Pierdes cualquier edición manual. |
 | `index.md` general | Se regenera entero. |
 | `CLAUDE.md` | Solo se reemplaza el bloque entre las marcas; el resto no cambia. |
-| `migration/README.md` | No se toca, salvo añadir `excluir: []` si falta o actualizar un README de la versión anterior. |
+| `migration/README.md` | No se toca, salvo añadir `excluir: []` y `politica: paridad` si faltan, o actualizar un README de la versión anterior. |
 | `migration/templates/*.md` | No se tocan; solo se crean las que falten. |
 
 El indexador nunca indexa `migration/`: no es código del proyecto sino el resultado del proceso, y los demás agentes leen sus artefactos directamente. No hace falta repetirlo después de generar ADRs, specs o tareas. Repítelo solo si cambia el código de algún repo, si añades o quitas un repositorio de la carpeta padre, o si actualizas los agentes a una versión que cambia el bloque de `CLAUDE.md`. Si cambió el código, sigue después la tabla de la sección 4.
@@ -120,6 +130,8 @@ Usa el subagente migration-tl-resolver: en el ADR 0009 la implicación es reempl
 
 El resolver escribe la decisión con la tecnología nombrada, borra la recomendación, conserva las alternativas, marca `revisado` y desbloquea tareas si ya existen.
 
+Lo que decide un ADR propuesto no se vuelve a preguntar en los specs. Si hay un ADR sobre la persistencia del carrito, el spec de carrito no pregunta si el carrito debe sobrevivir a un reinicio ni lo lista como mejora: cita el ADR.
+
 ### Paso 4: specs
 
 **Qué es:** escribe una especificación por capacidad en `migration/specs/<capacidad>.md`. Describe el comportamiento del sistema sin código del lenguaje origen: flujos, contratos de API en notación neutral, modelos de datos, reglas de negocio numeradas (`RN-n`), casos borde y errores (`CB-n`), preguntas abiertas para lo que no se pudo determinar leyendo el código, y posibles mejoras (`MJ-n`) para lo que el código sí determina pero parece mejorable. Es la pieza con la que otro equipo reimplementa la capacidad en cualquier lenguaje.
@@ -128,7 +140,7 @@ El resolver escribe la decisión con la tecnología nombrada, borra la recomenda
 Usa el subagente migration-tl-specs
 ```
 
-Es la revisión más importante: un error aquí llega a tareas y pruebas como requisito. Valida contra lo que sabes del sistema y responde las preguntas abiertas que cambian el comportamiento:
+Es la revisión más importante: un error aquí llega a tareas y pruebas como requisito. Revisa primero los hechos (flujos, contratos, `RN-n`, `CB-n`): bajo paridad son lo que se va a construir, también los que describen un comportamiento raro del origen. Después responde las preguntas abiertas, que deberían ser pocas:
 
 ```
 Usa el subagente migration-tl-resolver: en el spec carrito, respuesta a la pregunta 1: el carrito debe persistir; conviértelo en regla
@@ -151,6 +163,35 @@ Usa el subagente migration-tl-resolver: la pregunta 2 del spec carrito es una me
 
 Aplicar una mejora añade la regla nueva, marca la anterior como retirada y la mejora como aplicada. Descartarla solo la marca. La tercera orden sirve para specs ya `revisado` cuyas preguntas en realidad eran mejoras.
 
+Cómo se ve en el spec:
+
+```
+## 8. Casos borde y errores
+CB-7: quitar una línea que no existe responde 204 y no cambia el carrito.
+
+## 12. Preguntas abiertas
+Ninguna. Todo el comportamiento de esta capacidad está determinado por el código.
+
+## 13. Posibles mejoras
+MJ-1: responder 404 al quitar una línea que no existe. Comportamiento actual: CB-7.
+MJ-2: informar al cliente cuando el tope de 10 recorta la cantidad. Comportamiento actual: RN-6. (descartada 2026-10-01)
+```
+
+Para saber dónde debería estar algo, pregúntate qué hace hoy el sistema en ese caso:
+
+| Situación | Dónde va |
+|---|---|
+| El código lo determina, sea o no deseable | Hecho: `RN-n`, `CB-n`, contrato o flujo. |
+| El código lo determina y parece mejorable o sospechoso | Hecho, y además una `MJ-n` que lo cita. |
+| No se puede saber leyendo el código: depende de un sistema externo, de una rama no rastreada o de un valor de origen incierto | Pregunta abierta. |
+| Lo decide un ADR propuesto | Ni pregunta ni mejora: el spec cita el ADR. |
+
+Tres cosas a tener en cuenta al revisar:
+
+- **Las mejoras son sugerencias del agente, no una lista de tareas.** Algunas señalan algo sospechoso del origen y otras son ideas de producto, como añadir una función que hoy no existe. Aplica solo las que quieras de verdad en el destino; ignorar el resto no tiene ningún efecto.
+- **Aplicar una mejora cambia el alcance.** El destino dejará de ser equivalente al origen en ese punto, y habrá que regenerar tareas y pruebas de esa capacidad (sección 4).
+- **Si una pregunta abierta es en realidad una mejora**, o al revés, corrígelo con el resolver. Una pregunta abierta bloquea tareas y deja casos de prueba pendientes; una mejora no.
+
 ### Paso 5: tareas
 
 **Qué es:** convierte los specs y las decisiones de los ADRs en tareas de implementación para el lenguaje destino, una por archivo en `migration/tasks/`. Primero las fundacionales (estructura del proyecto, build, integración continua) y luego las de cada capacidad. Cada tarea indica de qué otras depende, su tamaño, criterios de aceptación que citan las reglas del spec y, si queda algo sin decidir, qué la bloquea.
@@ -159,7 +200,7 @@ Aplicar una mejora añade la regla nueva, marca la anterior como retirada y la m
 Usa el subagente migration-tl-tasks con destino Kotlin
 ```
 
-Si quedan ADRs propuestos, se detiene y te da el prompt para decidirlos. Así las tareas se generan una sola vez, con el framework nombrado. Corrige con el resolver:
+Si quedan ADRs propuestos, se detiene y te da el prompt para decidirlos. Así las tareas se generan una sola vez, con el framework nombrado. Los criterios de aceptación afirman el comportamiento actual que describen las reglas, sin condicionales. Las mejoras sin aplicar no aparecen en las tareas, y solo una pregunta abierta real cuya respuesta cambie qué se construye puede bloquear una tarea. Corrige con el resolver:
 
 ```
 Usa el subagente migration-tl-resolver: la tarea T-016 también depende de T-004 y es tamaño L
@@ -169,7 +210,7 @@ Usa el subagente migration-tl-resolver: la tarea T-016 también depende de T-004
 
 **Qué es:** escribe un plan de pruebas por capacidad en `migration/test-plans/`, con casos en formato Dado/Cuando/Entonces que cubren el camino feliz, los casos borde, los errores y los contratos de API. Cada caso dice qué regla o caso borde cubre y qué tareas lo implementan. Lo que el spec no define queda como caso pendiente, y las ambigüedades que encuentra quedan como hallazgos `H-n`. `_cobertura.md` resume qué quedó sin cubrir. Estos planes sirven luego para validar la implementación en el destino.
 
-Antes de correr QA conviene tener los specs validados y las preguntas importantes respondidas: QA convierte el spec en casos afirmados con seguridad, y lo no respondido queda como caso pendiente.
+Antes de correr QA conviene tener los specs validados y las preguntas abiertas respondidas: QA convierte el spec en casos afirmados con seguridad, y cada pregunta abierta sin responder queda como caso pendiente. Los casos prueban el comportamiento actual, incluido el que una mejora propone cambiar: las mejoras sin aplicar no generan casos ni pendientes.
 
 ```
 Usa el subagente migration-qa
@@ -191,7 +232,7 @@ Luego repite QA para esa capacidad (`Usa el subagente migration-qa, solo la capa
 Usa el subagente migration-pm
 ```
 
-Escribe hitos, bloqueos y riesgos. Si hay un ciclo o una dependencia rota, no escribe nada y te dice qué corregir (con el resolver). Para cambiar el orden:
+Escribe hitos, bloqueos y riesgos. En los riesgos verás una línea con cuántas mejoras quedan sin decidir por capacidad: es informativa, el backlog se planifica asumiendo paridad. Si hay un ciclo o una dependencia rota, no escribe nada y te dice qué corregir (con el resolver). Para cambiar el orden:
 
 ```
 Usa el subagente migration-tl-resolver: adelanta T-013 al hito 1 con prioridad 3
@@ -216,6 +257,8 @@ Los agentes forman una cadena: specs → tareas → planes de prueba → backlog
 | Corregiste un ADR observado | Si cambia el comportamiento, llévalo al spec con el resolver y sigue la fila siguiente. Si solo cambia cómo se implementa, `migration-tl-tasks` y `migration-pm`. |
 | Un spec: regla, contrato o caso borde | `migration-tl-tasks, solo la capacidad X`; `migration-qa, solo la capacidad X`; `migration-pm`. |
 | Aplicaste una mejora `MJ-n` | Igual que un cambio de spec: `migration-tl-tasks`, `migration-qa` y `migration-pm`, con `solo la capacidad X`. Descartarla no requiere repetir nada. |
+| Reclasificaste una pregunta como mejora | `migration-qa, solo la capacidad X` para que desaparezca el caso pendiente. Si esa pregunta bloqueaba tareas, el resolver ya quitó el bloqueo; `migration-pm` para actualizar el backlog. |
+| Actualizaste los agentes a la versión con política de paridad en un proyecto ya empezado | `migration-indexer` (añade `politica: paridad` y el bloque nuevo); `migration-tl-specs` para reclasificar los specs `generado`; luego `migration-tl-tasks`, `migration-qa` y `migration-pm`. Los specs `revisado` no se regeneran: reclasifica sus preguntas con el resolver. |
 | Respondiste una pregunta abierta | Si la convertiste en regla o cambia qué se construye, igual que la fila anterior. Si solo confirma el comportamiento actual, `migration-qa, solo la capacidad X` para que el caso pendiente pase a ser un caso normal. |
 | Resolviste un hallazgo `H-n` de QA | Igual que un cambio de spec: `migration-tl-tasks` si cambia qué se construye, luego `migration-qa` y `migration-pm`, todo con `solo la capacidad X`. |
 | Una tarea: dependencias, tamaño, fase o prioridad | `migration-pm`. |
@@ -265,6 +308,9 @@ El segundo paso solo hace falta si la decisión cambia qué se construye, por ej
 | No encontré repositorios | Abre Claude Code en la carpeta padre. |
 | Falta el bloque de convenciones en `CLAUDE.md` | Corre `migration-indexer`. |
 | No sé a qué lenguaje se migra | Fija el destino con el resolver o indícalo en el prompt. |
+| Política desconocida | `politica:` en `migration/README.md` tiene un valor distinto de `paridad`. Corrígelo: `Usa el subagente migration-tl-resolver: fija la política en paridad`. |
+| Un spec tiene muchas preguntas del tipo "¿se mantiene X o debería ser Y?" | Se generó antes de la política de paridad o quedó `revisado`. Si está `generado`, repite `migration-tl-specs`; si está `revisado`, reclasifica cada pregunta con el resolver. |
+| Aplicaste una mejora y las tareas siguen igual | Aplicar solo cambia el spec. Repite `migration-tl-tasks` y `migration-qa` con `solo la capacidad X`. |
 | `migration-tl-tasks` se detiene | Hay ADRs propuestos. Decide con el resolver o fuerza con "aunque haya ADRs propuestos". |
 | El resolver no aplicó algo | Revisa la sección "No aplicado" de su resumen: id inexistente u orden ambigua. |
 | El PM reporta un ciclo | Corrige `depende_de` con el resolver y repite el PM. |
