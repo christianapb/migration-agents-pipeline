@@ -35,6 +35,11 @@ if [ -n "$falsas" ]; then
 fi
 echo "--- resumen de la auditoría sin alterar"
 awk '/^## Resumen/{f=1;next} /^## /{f=0} f' "$A" | grep '^|'
+negativas="$(grep -E '^\| (RN|CB)-[0-9]+ \| (sin respaldo|cita no localizable) \|' "$A" 2>/dev/null || true)"
+if [ -n "$negativas" ]; then
+  fail "reglas sin respaldo o no localizables sobre specs sin alterar (investigar antes de tocar nada):"
+  printf '%s\n' "$negativas" | sed 's/^/        /'
+fi
 cp "$A" "$A.sin-alterar"
 
 # --- 2. Plantar tres errores en el spec de carrito

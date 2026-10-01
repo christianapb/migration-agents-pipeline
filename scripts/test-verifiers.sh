@@ -351,5 +351,27 @@ expect_fail auditor "$W8" "verify-auditor acepta que falte la sección de una ca
 W8="$TMP/a7"; make_ws "$W8"; rm "$W8/$AUD"
 expect_fail auditor "$W8" "verify-auditor acepta que no exista _auditoria.md"
 
+# 9. Comportamientos por defecto: un spec con endpoints debe cubrir los cuatro
+con_endpoint() { sed -i 's/^## 5\. Contratos de API$/&\nPOST \/alfa: crea un alfa./' "$1/$SP"; }
+por_defecto() { # <workspace> <frases separadas por |>
+  local IFS='|' f
+  for f in $2; do
+    sed -i "s/^## 9\. Dependencias externas\$/CB-9$RANDOM: $f: se responde 404. [bff\/a.ts:2]\n&/" "$1/$SP"
+  done
+}
+W9="$TMP/d1"; make_ws "$W9"; con_endpoint "$W9"
+expect_fail tl-specs "$W9" "verify-tl-specs acepta un spec con endpoints sin comportamientos por defecto"
+W9="$TMP/d2"; make_ws "$W9"; con_endpoint "$W9"; por_defecto "$W9" "Ruta no definida|Método no permitido|Cuerpo ausente"
+expect_fail tl-specs "$W9" "verify-tl-specs acepta que falte uno de los cuatro comportamientos por defecto"
+W9="$TMP/d3"; make_ws "$W9"; con_endpoint "$W9"; por_defecto "$W9" "Ruta no definida|Método no permitido|Cuerpo ausente|Cuerpo mal formado"
+WORKDIR="$W9" bash "$ROOT/scripts/verify-tl-specs.sh" >/dev/null 2>&1 || fail "verify-tl-specs rechaza un spec con los cuatro comportamientos por defecto"
+# Uno de los cuatro puede quedar como pregunta abierta si no se puede determinar
+W9="$TMP/d4"; make_ws "$W9"; con_endpoint "$W9"; por_defecto "$W9" "Ruta no definida|Método no permitido|Cuerpo ausente"
+sed -i 's/^- ¿Qué responde el servicio de identidad.*/&\n- Cuerpo mal formado: ¿qué responde el servicio cuando el cuerpo no es JSON válido?/' "$W9/$SP"
+WORKDIR="$W9" bash "$ROOT/scripts/verify-tl-specs.sh" >/dev/null 2>&1 || fail "verify-tl-specs rechaza un comportamiento por defecto planteado como pregunta abierta"
+# Un spec sin endpoints no está obligado
+W9="$TMP/d5"; make_ws "$W9"
+WORKDIR="$W9" bash "$ROOT/scripts/verify-tl-specs.sh" >/dev/null 2>&1 || fail "verify-tl-specs exige comportamientos por defecto a un spec sin endpoints"
+
 [ "$fails" -eq 0 ] && { echo "OK: verificadores"; exit 0; }
 exit 1

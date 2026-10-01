@@ -200,6 +200,17 @@ RN-22: quitar una línea que no existe responde 404. [decisión: MJ-1]
 
 `[ruta:línea]` señala dónde se decide el comportamiento. `[ausente: ruta]` marca una regla deducida de que algo no existe. `[decisión: ...]` marca una regla que viene de una decisión tuya y no del código. El spec anota además en `commits:` el commit de cada repo sobre el que se escribió: si el código cambia, las líneas pueden desplazarse y conviene regenerar. Los tests del proyecto origen también cuentan como evidencia y pueden aparecer citados.
 
+**Comportamientos por defecto.** Hay comportamiento que el proyecto no escribe en ninguna línea porque lo pone el framework: qué responde una ruta que no existe, un método no permitido, un cuerpo vacío o un cuerpo mal formado. El framework del destino tendrá otros valores por defecto, así que cada spec con endpoints los recoge siempre como casos borde que empiezan por una frase fija:
+
+```
+CB-14: Ruta no definida: una ruta inexistente bajo /cart responde 404 por defecto del framework, sin el formato de error del sistema. [bff/src/server.ts:11]
+CB-15: Método no permitido: ...
+CB-16: Cuerpo ausente: ...
+CB-17: Cuerpo mal formado: ...
+```
+
+Si el agente no puede determinar uno con certeza, lo deja como pregunta abierta que empieza por la misma frase. Revísalos con atención: son los que más fácilmente cambian sin que nadie lo decida al migrar.
+
 Cómo aprovechar las citas:
 
 - **Al revisar**, abre la línea citada de las reglas que te sorprendan o que más pesen en el negocio. No hace falta comprobarlas todas a mano: para eso está el auditor, en el apartado siguiente.
