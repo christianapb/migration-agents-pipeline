@@ -33,6 +33,38 @@ for s in "${specs[@]}"; do
   fi
   grep -q '```' "$s" && fail "$n: contiene bloques de código"
 
+  grep -q '^commits: ' "$s" || fail "$n: sin commits en el frontmatter"
+
+  # Evidencia por regla: cada RN-n y CB-n no retirada termina en una cita válida
+  while IFS= read -r regla; do
+    [ -n "$regla" ] || continue
+    rid="$(printf '%s' "$regla" | grep -oE '(RN|CB)-[0-9]+' | head -n1)"
+    cita="$(printf '%s' "$regla" | grep -oE '\[[^][]+\][[:space:]]*$' | sed -E 's/^\[//; s/\][[:space:]]*$//')"
+    [ -n "$cita" ] || { fail "$n: $rid sin cita entre corchetes al final de la línea"; continue; }
+    case "$cita" in
+      "decisión: "*) continue ;;
+    esac
+    # Una cita puede combinar partes separadas por coma; cada una es
+    # "ausente: ruta" o "ruta:línea[-fin]".
+    while IFS= read -r c; do
+      c="$(printf '%s' "$c" | sed -E 's/^[[:space:]]+//; s/[[:space:]]+$//')"
+      [ -n "$c" ] || continue
+      case "$c" in
+        "ausente: "*)
+          ruta="${c#ausente: }"
+          [ -f "$W/$ruta" ] || fail "$n: $rid cita como ausente un archivo que no existe: $ruta"
+          continue ;;
+      esac
+      if ! printf '%s' "$c" | grep -Eq '^[^:[:space:]]+:[0-9]+(-[0-9]+)?$'; then
+        fail "$n: $rid tiene una cita con formato inválido: '$c'"; continue
+      fi
+      ruta="${c%%:*}"; lin="${c##*:}"; fin="${lin##*-}"
+      [ -f "$W/$ruta" ] || { fail "$n: $rid cita un archivo que no existe: $ruta"; continue; }
+      total="$(awk 'END{print NR}' "$W/$ruta")"
+      [ "$fin" -le "$total" ] || fail "$n: $rid cita la línea $fin de $ruta, que tiene $total"
+    done <<< "$(printf '%s' "$cita" | tr ',' '\n')"
+  done <<< "$(grep -E '^(- )?(RN|CB)-[0-9]+:' "$s" | grep -v '(retirado')"
+
   # Preguntas abiertas: solo incógnitas reales, pocas y sin fórmulas de mejora
   preguntas="$(section "$s" 12 | grep '^- ' | grep -v '(retirado' || true)"
   np="$(printf '%s\n' "$preguntas" | grep -c . || true)"

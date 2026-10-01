@@ -32,9 +32,12 @@ Orden de pasos y qué los evidencia:
    - Preguntas abiertas de la sección 12 sin línea `Respuesta` debajo y sin marca `(retirado ...)`, por spec (cuántas y cuáles bloquean tareas según `bloqueada_por`).
    - Las posibles mejoras `MJ-n` de la sección 13 no cuentan como pendiente de revisión, estén o no decididas, y no cambian el siguiente paso. Solo las mencionas en "Estado".
    - Hallazgos `H-n` sin `(resuelto: ...)`, por plan.
+   - Hallazgos `AU-n` de `migration/specs/_auditoria.md`, por capacidad, si la sección de esa capacidad es más nueva que su spec (si es más antigua, va en Desactualizado). Las reglas respaldadas no se mencionan.
    - Capacidades en `excluir:` que aún tienen spec, plan o tareas.
 3. **Desactualizado.** Glob devuelve los archivos ordenados por fecha de modificación, del más antiguo al más reciente: el que aparece después es el más nuevo. Usa ese orden para comparar dos archivos (por ejemplo, un Glob cuyo patrón abarque el spec y su plan). Si el orden no es concluyente, compara las fechas `Generado:` o `fecha:` del contenido. Ten en cuenta que marcar un artefacto `revisado` también lo hace más nuevo: si un spec solo cambió de `estado` no puedes saberlo con certeza, así que cuando el spec más nuevo que su plan o sus tareas esté `revisado`, escríbelo como "posiblemente desactualizado (puede ser solo un cambio de estado)" y no lo antepongas al siguiente paso del orden. Casos:
    - Un plan más antiguo que su spec.
+   - Una sección de auditoría más antigua que su spec (compara `_auditoria.md` y la línea `Auditada:` de la sección con el spec): se regenera con `Usa el subagente migration-auditor, solo la capacidad <slug>`.
+   - Un spec cuyo `commits:` no coincide con la columna Commit del índice general: el código cambió y sus citas pueden estar desplazadas.
    - Tareas de un spec más antiguas que el spec, o más antiguas que un ADR que pasó a `revisado`.
    - `backlog.md` más antiguo que alguna tarea.
    - Planes cuya sección de hallazgos tiene viñetas sin `H-n` (formato v1).
@@ -44,7 +47,7 @@ Orden de pasos y qué los evidencia:
    2. Si hay ADRs propuestos y el siguiente agente es migration-tl-tasks, decidirlos con migration-tl-resolver.
    3. Si hay algo desactualizado (no "posiblemente"), repetir el agente que lo regenera, con alcance si aplica.
    4. Si hay pendientes de revisión del último paso, revisarlos (y el prompt del resolver para aplicar decisiones).
-   5. Si no, el siguiente agente del orden.
+   5. Si no, el siguiente agente del orden. Excepción: si existen specs y no existe `migration/specs/_auditoria.md`, recomienda primero `Usa el subagente migration-auditor` y menciona en una línea que es opcional y que el camino alternativo es seguir con migration-tl-tasks.
    Si hay otro camino igualmente válido, menciónalo en una línea.
 
 El prompt que entregas es exacto y copiable, empieza por `Usa el subagente migration-...` e incluye destino y alcance cuando hagan falta. Para construirlo usa exclusivamente las frases de prompt del bloque de `CLAUDE.md` (`con destino <lenguaje>`, `solo la capacidad <slug>`, `aunque haya ADRs propuestos`, `acepta la recomendación`, `sin marcar revisado`); no inventes otras formulaciones ni añadas destino a agentes que no lo necesitan (migration-analyst, migration-tl-specs, migration-qa, migration-pm). Si hay que decidir ADRs, ofrece además la variante `acepta la recomendación`. Si el paso es decidir, pon los ids reales y un marcador `<tu decisión>`, por ejemplo: `Usa el subagente migration-tl-resolver: en el ADR 0011 elijo <tu decisión>; en el ADR 0012 elijo <tu decisión>`.

@@ -32,8 +32,9 @@ declare -A MAP=(
   [migration-pm]="stage:pm"
   [migration-tl-resolver]="test-resolver"
   [migration-orchestrator]="test-orchestrator"
+  [migration-auditor]="test-auditor"
 )
-ORDER=(migration-indexer migration-analyst migration-tl-adrs migration-tl-specs migration-tl-tasks migration-qa migration-pm migration-tl-resolver migration-orchestrator)
+ORDER=(migration-indexer migration-analyst migration-tl-adrs migration-tl-specs migration-tl-tasks migration-qa migration-pm migration-tl-resolver migration-orchestrator migration-auditor)
 
 agents=("$@")
 [ "${#agents[@]}" -gt 0 ] || agents=("${ORDER[@]}")

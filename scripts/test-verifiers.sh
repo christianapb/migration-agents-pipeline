@@ -11,7 +11,8 @@ fail() { echo "FAIL: $*"; fails=$((fails+1)); }
 # --- Workspace sintético mínimo que pasa verify-techlead, verify-qa y verify-pm
 make_ws() {
   local W="$1"
-  mkdir -p "$W/migration/specs" "$W/migration/adr" "$W/migration/tasks" "$W/migration/test-plans"
+  mkdir -p "$W/migration/specs" "$W/migration/adr" "$W/migration/tasks" "$W/migration/test-plans" "$W/bff"
+  printf 'linea 1\nlinea 2\nlinea 3\nlinea 4\nlinea 5\n' > "$W/bff/a.ts"
   cat > "$W/migration/README.md" <<'EOF'
 ---
 destino: Kotlin
@@ -37,6 +38,7 @@ EOF
 ---
 capacidad: $c
 estado: generado
+commits: {bff: abc1234}
 ---
 # Spec: $c
 ## 1. Resumen
@@ -52,10 +54,10 @@ x
 ## 6. Modelos de datos
 x
 ## 7. Reglas de negocio
-RN-1: regla uno.
-RN-10: regla diez.
+RN-1: regla uno. [bff/a.ts:1]
+RN-10: regla diez. [bff/a.ts:2-3, bff/a.ts:5]
 ## 8. Casos borde y errores
-CB-1: un producto oculto responde 200 sin cuerpo.
+CB-1: un producto oculto responde 200 sin cuerpo. [ausente: bff/a.ts]
 ## 9. Dependencias externas
 x
 ## 10. ADRs relacionados
@@ -200,12 +202,27 @@ EOF
 ## Riesgos
 Ninguno.
 EOF
+  {
+    printf '# Auditoría de specs\n\nGenerado: 2026-10-01 por migration-auditor.\n\n## Resumen\n\n'
+    printf '| Capacidad | Reglas | Respaldadas | Sin respaldo | Contradichas | No localizables | Decisiones | Omitidos |\n|---|---|---|---|---|---|---|---|\n'
+    printf '| alfa | 3 | 2 | 0 | 1 | 0 | 0 | 0 |\n| beta | 3 | 3 | 0 | 0 | 0 | 0 | 0 |\n| gamma | 3 | 3 | 0 | 0 | 0 | 0 | 0 |\n'
+    for c in alfa beta gamma; do
+      printf '\n## %s\n\nAuditada: 2026-10-01.\n\n| Regla | Veredicto | Cita | Nota |\n|---|---|---|---|\n' "$c"
+      if [ "$c" = alfa ]; then
+        printf '| RN-1 | respaldada | bff/a.ts:1 | |\n| RN-10 | contradicha | bff/a.ts:2-3 | El código dice otra cosa. |\n| CB-1 | respaldada | ausente: bff/a.ts | |\n'
+        printf '\n### Hallazgos\n\n- **AU-1** (contradicha, RN-10): el código dice otra cosa.\n  Corrección: `Usa el subagente migration-tl-resolver: en el spec alfa, RN-10: corrige el valor`\n'
+      else
+        printf '| RN-1 | respaldada | bff/a.ts:1 | |\n| RN-10 | respaldada | bff/a.ts:2-3 | |\n| CB-1 | respaldada | ausente: bff/a.ts | |\n'
+        printf '\n### Hallazgos\n\nNinguno.\n'
+      fi
+    done
+  } > "$W/migration/specs/_auditoria.md"
 }
 
 # 1. Los verificadores funcionan con espacios en la ruta del workspace
 WS="$TMP/con espacio/ws"
 make_ws "$WS"
-for v in analyst tl-adrs tl-specs tl-tasks qa pm; do
+for v in analyst tl-adrs tl-specs tl-tasks qa pm auditor; do
   if ! WORKDIR="$WS" bash "$ROOT/scripts/verify-$v.sh" >/dev/null 2>&1; then
     fail "verify-$v.sh falla con espacios en la ruta"
   fi
@@ -296,6 +313,43 @@ for c in alfa beta gamma; do
 done
 WORKDIR="$W6" bash "$ROOT/scripts/verify-qa.sh" >/dev/null 2>&1 || fail "verify-qa rechaza un workspace sin preguntas abiertas"
 WORKDIR="$W6" bash "$ROOT/scripts/verify-tl-specs.sh" >/dev/null 2>&1 || fail "verify-tl-specs rechaza un workspace sin preguntas abiertas"
+
+# 7. Evidencia por regla: lo que verify-tl-specs debe rechazar
+W7="$TMP/e1"; make_ws "$W7"; sed -i 's/^RN-1: regla uno\. \[bff\/a\.ts:1\]/RN-1: regla uno./' "$W7/$SP"
+expect_fail tl-specs "$W7" "verify-tl-specs acepta una regla sin cita"
+W7="$TMP/e2"; make_ws "$W7"; sed -i 's/\[bff\/a\.ts:1\]/[bff\/no-existe.ts:1]/' "$W7/$SP"
+expect_fail tl-specs "$W7" "verify-tl-specs acepta una cita a un archivo inexistente"
+W7="$TMP/e3"; make_ws "$W7"; sed -i 's/\[bff\/a\.ts:1\]/[bff\/a.ts:99]/' "$W7/$SP"
+expect_fail tl-specs "$W7" "verify-tl-specs acepta una línea fuera del archivo"
+W7="$TMP/e4"; make_ws "$W7"; sed -i 's/\[bff\/a\.ts:1\]/[ver bff\/a.ts]/' "$W7/$SP"
+expect_fail tl-specs "$W7" "verify-tl-specs acepta una cita con formato inválido"
+W7="$TMP/e5"; make_ws "$W7"; sed -i '/^commits:/d' "$W7/$SP"
+expect_fail tl-specs "$W7" "verify-tl-specs acepta un spec sin commits"
+W7="$TMP/e6"; make_ws "$W7"; sed -i 's/\[bff\/a\.ts:1\]/[decisión: MJ-1]/' "$W7/$SP"
+WORKDIR="$W7" bash "$ROOT/scripts/verify-tl-specs.sh" >/dev/null 2>&1 || fail "verify-tl-specs rechaza una regla marcada como decisión"
+W7="$TMP/e8"; make_ws "$W7"; sed -i 's/\[ausente: bff\/a\.ts\]/[ausente: bff\/a.ts, bff\/a.ts:4]/' "$W7/$SP"
+WORKDIR="$W7" bash "$ROOT/scripts/verify-tl-specs.sh" >/dev/null 2>&1 || fail "verify-tl-specs rechaza una cita que combina ausente y línea"
+W7="$TMP/e9"; make_ws "$W7"; sed -i 's/\[ausente: bff\/a\.ts\]/[ausente: bff\/a.ts, bff\/a.ts:99]/' "$W7/$SP"
+expect_fail tl-specs "$W7" "verify-tl-specs acepta una línea fuera de rango en una cita combinada"
+W7="$TMP/e7"; make_ws "$W7"; sed -i 's/^RN-1: regla uno\. \[bff\/a\.ts:1\]/RN-1: regla uno. (retirado 2026-10-01)/' "$W7/$SP"
+WORKDIR="$W7" bash "$ROOT/scripts/verify-tl-specs.sh" >/dev/null 2>&1 || fail "verify-tl-specs exige cita a una regla retirada"
+
+# 8. verify-auditor
+AUD="migration/specs/_auditoria.md"
+W8="$TMP/a1"; make_ws "$W8"; sed -i '0,/^| RN-1 | respaldada/{/^| RN-1 | respaldada/d}' "$W8/$AUD"
+expect_fail auditor "$W8" "verify-auditor acepta que falte una regla en la tabla"
+W8="$TMP/a2"; make_ws "$W8"; sed -i '0,/| RN-1 | respaldada/s/| RN-1 | respaldada/| RN-1 | probable/' "$W8/$AUD"
+expect_fail auditor "$W8" "verify-auditor acepta un veredicto desconocido"
+W8="$TMP/a3"; make_ws "$W8"; sed -i '/Corrección: /d' "$W8/$AUD"
+expect_fail auditor "$W8" "verify-auditor acepta un hallazgo sin prompt del resolver"
+W8="$TMP/a4"; make_ws "$W8"; sed -i '/^- \*\*AU-1\*\*/,+1d' "$W8/$AUD"
+expect_fail auditor "$W8" "verify-auditor acepta una regla contradicha sin hallazgo"
+W8="$TMP/a5"; make_ws "$W8"; sed -i 's/^| alfa | 3 | 2 | 0 | 1 |/| alfa | 3 | 3 | 0 | 0 |/' "$W8/$AUD"
+expect_fail auditor "$W8" "verify-auditor acepta un resumen que no cuadra"
+W8="$TMP/a6"; make_ws "$W8"; sed -i '/^## gamma$/,$d' "$W8/$AUD"
+expect_fail auditor "$W8" "verify-auditor acepta que falte la sección de una capacidad"
+W8="$TMP/a7"; make_ws "$W8"; rm "$W8/$AUD"
+expect_fail auditor "$W8" "verify-auditor acepta que no exista _auditoria.md"
 
 [ "$fails" -eq 0 ] && { echo "OK: verificadores"; exit 0; }
 exit 1

@@ -54,5 +54,35 @@ has migration-orchestrator.md 'no cuentan como pendiente de revisión'
 has migration-pm.md 'mejoras sin decidir'
 grep -qF 'paridad provisional' "$A/migration-tl-tasks.md" && fail "migration-tl-tasks.md sigue usando 'paridad provisional'"
 
+# Evidencia por regla y auditor (docs/specs/2026-10-01-evidencia-y-auditor-design.md)
+for k in '[ruta:línea]' '[ausente: ' '[decisión: ' 'AU-n' '_auditoria.md' 'migration-auditor' 'commits:'; do
+  printf '%s' "$block" | grep -qF -- "$k" || fail "bloque de CLAUDE.md sin '$k'"
+done
+has migration-indexer.md '| Repo | Stack | Entrada | Commit | Índice |'
+has migration-indexer.md 'rev-parse --short HEAD'
+has migration-indexer.md 'commits: {}'
+has migration-tl-specs.md 'Una regla sin cita no se escribe'
+has migration-tl-specs.md 'Como mucho tres citas por regla'
+has migration-tl-specs.md 'Lee los tests del origen'
+has migration-tl-specs.md 'actualiza las citas a las líneas actuales'
+has migration-tl-specs.md 'copia `commits:`'
+grep -qF 'No leas estilos, tests ni lockfiles' "$A/migration-analyst.md" && fail "migration-analyst.md sigue indicando no leer tests"
+has migration-analyst.md 'Lee los tests cuando existan'
+has migration-auditor.md 'tools: Read, Glob, Grep, Write'
+has migration-auditor.md 'antes de leer el texto de la regla'
+has migration-auditor.md 'Nunca edites un spec'
+has migration-auditor.md 'cita no localizable'
+has migration-auditor.md 'compara el valor exacto'
+has migration-auditor.md 'conserva las secciones de las demás capacidades'
+has migration-auditor.md 'Usa el subagente migration-tl-resolver'
+has migration-tl-resolver.md 'añade su cita'
+has migration-tl-resolver.md '`_auditoria.md`'
+has migration-tl-resolver.md 'No marques hallazgos `AU-n` como resueltos'
+has migration-orchestrator.md 'Hallazgos `AU-n`'
+has migration-orchestrator.md 'auditoría más antigua que su spec'
+has migration-orchestrator.md 'Usa el subagente migration-auditor'
+has migration-tl-tasks.md 'La cita entre corchetes al final de cada regla no forma parte del requisito'
+has migration-qa.md 'La cita entre corchetes al final de cada regla no forma parte del requisito'
+
 [ "$fails" -eq 0 ] && { echo "OK: prompts"; exit 0; }
 exit 1
