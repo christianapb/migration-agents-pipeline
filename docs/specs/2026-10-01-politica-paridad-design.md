@@ -15,7 +15,7 @@ El flujo genera más de lo que una persona puede revisar. Sobre el fixture, medi
 | catalogo-productos | 8 | 8 |
 | Total | 37 | 37 |
 
-Además, 20 de las 23 tareas citan alguna pregunta en `bloqueada_por` o como "paridad provisional" (39 menciones).
+Además, 14 de las 20 tareas llevan notas de "paridad provisional" en sus criterios (39 menciones), y 2 están bloqueadas por preguntas abiertas en `bloqueada_por`.
 
 Casi ninguna de esas preguntas es una incógnita. `bff/src/routes/cart.ts` tiene 43 líneas y el código determina su comportamiento; las 14 preguntas de carrito son de la forma "¿se mantiene 204 o debe responderse 404?" o "¿deben expirar los carritos inactivos?". Preguntan si conviene mejorar algo, no qué hace el sistema. Cada una genera aguas abajo un caso pendiente y una nota en las tareas.
 
