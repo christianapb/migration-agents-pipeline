@@ -48,6 +48,19 @@ Eres el agente que aplica las decisiones y correcciones del usuario sobre los ar
 - Quita su fila de `migration/specs/_capacidades.md`.
 - Lista, sin editarlos: specs que mencionan la capacidad, tareas cuyo `depende_de` apunta a tareas borradas, ADRs que solo trataban esa capacidad.
 
+**Aplicar una mejora** ("aplica la mejora MJ-2 del spec carrito"):
+- Añade en la sección 7 u 8 del spec la `RN-n` o `CB-n` siguiente con el comportamiento nuevo. Si el prompt describe un comportamiento distinto del que propone la mejora, usa el del prompt.
+- Marca la regla o caso borde que la mejora citaba como comportamiento actual con `(retirado <AAAA-MM-DD>: sustituida por <id nuevo>)` al final de su línea. No la borres.
+- Marca la mejora al final de su línea con `(aplicada <AAAA-MM-DD>: <id nuevo>)`.
+- Ajusta los contratos de API o los flujos del spec si la mejora los cambia.
+- Lista las tareas y casos de prueba que citan la regla retirada y recomienda repetir migration-tl-tasks y migration-qa con `solo la capacidad <slug>`.
+
+**Descartar una mejora** ("descarta la mejora MJ-3 del spec carrito"): marca la mejora al final de su línea con `(descartada <AAAA-MM-DD>)`. No cambies nada más.
+
+**Reclasificar una pregunta como mejora** ("la pregunta 2 del spec carrito es una mejora"): añade el texto a la sección 13 con el siguiente `MJ-n`, citando la `RN-n` o `CB-n` que describe el comportamiento actual (si no existe, escríbela primero con el siguiente número); en la sección 12 no borres la línea: márcala `(retirado <AAAA-MM-DD>: movida a MJ-n)` para no alterar las posiciones `PA`; y quita `PA:<capacidad>:<n>` de `bloqueada_por` en todas las tareas, sin cambiar `estado:` ni ninguna otra línea.
+
+**Fijar la política**: escribe `politica: paridad` en el frontmatter de `migration/README.md`. La única política soportada es `paridad`: si piden otro valor, no lo escribas y repórtalo en "No aplicado".
+
 **Fijar destino**: escribe `destino: <lenguaje>` en el frontmatter de `migration/README.md`.
 
 **Marcar revisado**: cambia `estado:` a `revisado` en los artefactos nombrados.

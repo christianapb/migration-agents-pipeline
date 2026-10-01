@@ -15,6 +15,8 @@ make_ws() {
   cat > "$W/migration/README.md" <<'EOF'
 ---
 destino: Kotlin
+excluir: []
+politica: paridad
 ---
 # Migración
 1. [x] migration-indexer
@@ -53,7 +55,7 @@ x
 RN-1: regla uno.
 RN-10: regla diez.
 ## 8. Casos borde y errores
-CB-1: caso uno.
+CB-1: un producto oculto responde 200 sin cuerpo.
 ## 9. Dependencias externas
 x
 ## 10. ADRs relacionados
@@ -61,7 +63,9 @@ x
 ## 11. Evidencia en el código original
 bff/a.ts
 ## 12. Preguntas abiertas
-- ¿El producto oculto responde 200 vacío o 404?
+- ¿Qué responde el servicio de identidad si la cuenta está bloqueada?
+## 13. Posibles mejoras
+MJ-1: responder 404 para un producto oculto. Comportamiento actual: CB-1.
 EOF
     cat > "$W/migration/test-plans/$c.md" <<EOF
 ---
@@ -107,7 +111,7 @@ x
 ## Casos: errores
 ## Casos: contratos de API
 ## Casos pendientes de definición
-- **Pendiente 1**: ¿El producto oculto responde 200 vacío o 404?
+- **Pendiente 1**: ¿Qué responde el servicio de identidad si la cuenta está bloqueada?
 ## Hallazgos para el tech lead
 Ninguno.
 EOF
@@ -250,6 +254,48 @@ grep -qx -- '--agent' "$TMP/args.txt" && grep -qx 'migration-qa' "$TMP/args.txt"
 grep -qx -- '--no-session-persistence' "$TMP/args.txt" || fail "run-agent.sh no usa --no-session-persistence"
 grep -q 'Solo la capacidad carrito.' "$TMP/args.txt" || fail "run-agent.sh no pasa el texto adicional al agente"
 grep -q 'Invoca el subagente' "$TMP/args.txt" && fail "run-agent.sh sigue delegando desde una sesión principal"
+
+# 6. Política de paridad: lo que los verificadores deben rechazar
+expect_fail() { # <verificador> <workspace> <mensaje>
+  if WORKDIR="$2" bash "$ROOT/scripts/verify-$1.sh" >/dev/null 2>&1; then fail "$3"; fi
+}
+SP="migration/specs/alfa.md"
+W6="$TMP/p1"; make_ws "$W6"; sed -i '/^## 13\. Posibles mejoras/,$d' "$W6/$SP"
+expect_fail tl-specs "$W6" "verify-tl-specs acepta un spec sin sección 13"
+W6="$TMP/p2"; make_ws "$W6"; sed -i 's/Comportamiento actual: CB-1\./Comportamiento actual: CB-99./' "$W6/$SP"
+expect_fail tl-specs "$W6" "verify-tl-specs acepta una MJ que cita una regla inexistente"
+W6="$TMP/p3"; make_ws "$W6"; sed -i 's/^- ¿Qué responde el servicio de identidad.*/- Al quitar una línea que no existe, ¿se mantiene 204 o debe responderse 404?/' "$W6/$SP"
+expect_fail tl-specs "$W6" "verify-tl-specs acepta una pregunta con fórmula de mejora"
+W6="$TMP/p4"; make_ws "$W6"; sed -i 's/^- ¿Qué responde el servicio de identidad.*/- ¿Uno?\n- ¿Dos?\n- ¿Tres?\n- ¿Cuatro?\n- ¿Cinco?\n- ¿Seis?/' "$W6/$SP"
+expect_fail tl-specs "$W6" "verify-tl-specs acepta más preguntas que MAX_PREGUNTAS"
+MAX_PREGUNTAS=6 WORKDIR="$W6" bash "$ROOT/scripts/verify-tl-specs.sh" >/dev/null 2>&1 || fail "verify-tl-specs no respeta MAX_PREGUNTAS"
+W6="$TMP/p5"; make_ws "$W6"; sed -i 's/^- ¿Qué responde el servicio de identidad.*/- ¿Qué pasa con un producto oculto?/' "$W6/$SP"
+expect_fail tl-specs "$W6" "verify-tl-specs acepta el producto oculto como pregunta abierta"
+W6="$TMP/p6"; make_ws "$W6"; for c in alfa beta gamma; do sed -i '/^MJ-1:/d' "$W6/migration/specs/$c.md"; echo "Ninguna" >> "$W6/migration/specs/$c.md"; done
+expect_fail tl-specs "$W6" "verify-tl-specs acepta que el producto oculto no esté entre las mejoras"
+
+# Una viñeta en la sección 13 no es una pregunta: PA:alfa:2 no existe
+W6="$TMP/p7"; make_ws "$W6"; echo "- nota suelta en la sección 13" >> "$W6/$SP"
+sed -i 's/^bloqueada_por: \[0002\]/bloqueada_por: [0002, PA:alfa:2]/' "$W6/migration/tasks/T-002-alfa.md"
+expect_fail tl-tasks "$W6" "verify-tl-tasks cuenta viñetas de la sección 13 como preguntas"
+W6="$TMP/p8"; make_ws "$W6"; echo "- RN-1: pregunta abierta 1, paridad provisional." >> "$W6/migration/tasks/T-002-alfa.md"
+expect_fail tl-tasks "$W6" "verify-tl-tasks acepta 'paridad provisional'"
+W6="$TMP/p9"; make_ws "$W6"; sed -i 's/^bloqueada_por: \[0002\]/bloqueada_por: [0002, MJ-1]/' "$W6/migration/tasks/T-002-alfa.md"
+expect_fail tl-tasks "$W6" "verify-tl-tasks acepta una MJ en bloqueada_por"
+
+PL="migration/test-plans/alfa.md"
+W6="$TMP/p10"; make_ws "$W6"; sed -i 's/^- \*\*Pendiente 1\*\*: .*/&\n- **Pendiente 2**: MJ-1 responder 404 para un producto oculto./' "$W6/$PL"
+expect_fail qa "$W6" "verify-qa acepta mejoras entre los casos pendientes"
+W6="$TMP/p11"; make_ws "$W6"; sed -i 's/^- \*\*Pendiente 1\*\*: .*/&\n- **Pendiente 2**: otra cosa./' "$W6/$PL"
+expect_fail qa "$W6" "verify-qa acepta más pendientes que preguntas abiertas"
+# Sin preguntas abiertas ni pendientes: válido bajo paridad
+W6="$TMP/p12"; make_ws "$W6"
+for c in alfa beta gamma; do
+  sed -i 's/^- ¿Qué responde el servicio de identidad.*/Ninguna./' "$W6/migration/specs/$c.md"
+  sed -i 's/^- \*\*Pendiente 1\*\*: .*/Ninguno./' "$W6/migration/test-plans/$c.md"
+done
+WORKDIR="$W6" bash "$ROOT/scripts/verify-qa.sh" >/dev/null 2>&1 || fail "verify-qa rechaza un workspace sin preguntas abiertas"
+WORKDIR="$W6" bash "$ROOT/scripts/verify-tl-specs.sh" >/dev/null 2>&1 || fail "verify-tl-specs rechaza un workspace sin preguntas abiertas"
 
 [ "$fails" -eq 0 ] && { echo "OK: verificadores"; exit 0; }
 exit 1

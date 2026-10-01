@@ -37,16 +37,52 @@ grep -q '^estado: revisado' "$f" || fail "RF2: ADR $P dejó de estar revisado"
 grep -q 'Recomendación:' "$f" && fail "RF2: reapareció la recomendación"
 
 # Caso 5: responder una pregunta abierta sin renumerar
-S="$(for s in "$M"/specs/[!_]*.md; do awk '/^## 12\. Preguntas abiertas/{f=1;next} f' "$s" | grep -q '^- ' && { basename "$s" .md; break; }; done)"
-q1="$(awk '/^## 12\. Preguntas abiertas/{f=1;next} f' "$M/specs/$S.md" | grep '^- ' | head -n1)"
+sec12() { awk '/^## 12\. /{f=1;next} /^## /{f=0} f' "$1"; }
+S="$(for s in "$M"/specs/[!_]*.md; do sec12 "$s" | grep -q '^- ' && { basename "$s" .md; break; }; done)"
+if [ -z "$S" ]; then
+  # Bajo paridad puede no haber preguntas abiertas: se siembra una para probar la operación.
+  S="$(ls "$M"/specs | grep -v '^_' | head -n1 | sed 's/\.md$//')"
+  sed -i 's/^## 12\. Preguntas abiertas.*/&\n- ¿Qué responde el sistema externo de pagos ante un cobro duplicado?/' "$M/specs/$S.md"
+fi
+q1="$(sec12 "$M/specs/$S.md" | grep '^- ' | head -n1)"
 ids_before="$(grep -oE '^(- )?(RN|CB)-[0-9]+:' "$M/specs/$S.md" | sort)"
 R "En el spec $S, respuesta a la pregunta abierta 1: se conserva el comportamiento actual." >/dev/null
 grep -qF -- "$q1" "$M/specs/$S.md" || fail "caso 5: se borró la pregunta abierta 1"
 ids_after="$(grep -oE '^(- )?(RN|CB)-[0-9]+:' "$M/specs/$S.md" | sort)"
 [ -z "$(comm -23 <(printf '%s\n' "$ids_before") <(printf '%s\n' "$ids_after"))" ] || fail "caso 5: se perdieron o renumeraron RN/CB"
-grep -l "PA:$S:1\b" "$M"/tasks/*.md >/dev/null 2>&1 && fail "caso 5: alguna tarea sigue bloqueada por PA:$S:1"
+grep -l "^bloqueada_por:.*PA:$S:1\b" "$M"/tasks/*.md >/dev/null 2>&1 && fail "caso 5: alguna tarea sigue bloqueada por PA:$S:1"
 grep -qE '^[[:space:]]*- Respuesta \(' "$M/specs/$S.md" || fail "caso 5: no añadió la línea Respuesta"
 grep -q '^estado: revisado' "$M/specs/$S.md" || fail "caso 5: el spec no quedó revisado"
+
+# Caso 9: aplicar una mejora
+sec13() { awk '/^## 13\. /{f=1;next} /^## /{f=0} f' "$1"; }
+SM="$(for s in "$M"/specs/[!_]*.md; do [ "$(sec13 "$s" | grep -cE '^(- )?MJ-[0-9]+:')" -ge 2 ] && { basename "$s" .md; break; }; done)"
+if [ -z "$SM" ]; then
+  fail "caso 9: ningún spec tiene al menos dos mejoras MJ-n"
+else
+  spm="$M/specs/$SM.md"
+  mj1="$(sec13 "$spm" | grep -oE 'MJ-[0-9]+' | sed -n 1p)"
+  mj2="$(sec13 "$spm" | grep -oE '^(- )?MJ-[0-9]+' | grep -oE 'MJ-[0-9]+' | sed -n 2p)"
+  ids_b="$(grep -oE '^(- )?(RN|CB)-[0-9]+:' "$spm" | sort)"
+  R "Aplica la mejora $mj1 del spec $SM." >/dev/null
+  ids_a="$(grep -oE '^(- )?(RN|CB)-[0-9]+:' "$spm" | sort)"
+  grep -E "^(- )?$mj1:" "$spm" | grep -q '(aplicada ' || fail "caso 9: $mj1 no quedó marcada como aplicada"
+  [ -z "$(comm -23 <(printf '%s\n' "$ids_b") <(printf '%s\n' "$ids_a"))" ] || fail "caso 9: se perdieron o renumeraron RN/CB"
+  [ "$(printf '%s\n' "$ids_a" | grep -c .)" -gt "$(printf '%s\n' "$ids_b" | grep -c .)" ] || fail "caso 9: no añadió una regla o caso borde nuevo"
+  grep -E '^(- )?(RN|CB)-[0-9]+:' "$spm" | grep -q '(retirado .*sustituida' || fail "caso 9: no marcó como retirada la regla anterior"
+  grep -q '^estado: revisado' "$spm" || fail "caso 9: el spec no quedó revisado"
+
+  # Caso 10: descartar una mejora
+  before10="$(grep -vE "^(- )?$mj2:" "$spm" | md5sum)"
+  R "Descarta la mejora $mj2 del spec $SM." >/dev/null
+  grep -E "^(- )?$mj2:" "$spm" | grep -q '(descartada ' || fail "caso 10: $mj2 no quedó marcada como descartada"
+  [ "$(grep -vE "^(- )?$mj2:" "$spm" | md5sum)" = "$before10" ] || fail "caso 10: descartar cambió otras líneas del spec"
+fi
+
+# Caso 11: rechaza una política distinta de paridad
+out="$(R "Fija la política en modernizar.")"
+grep -q '^politica: paridad$' "$M/README.md" || fail "caso 11: cambió la política a un valor no soportado"
+printf '%s' "$out" | grep -qi 'paridad' || fail "caso 11: no explicó que la única política es paridad"
 
 # Caso 6: se niega a editar un derivado
 g="$(md5sum < "$W/index.md")"

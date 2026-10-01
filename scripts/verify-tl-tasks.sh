@@ -20,6 +20,7 @@ for t in "${tasks[@]}"; do
   grep -q '^depende_de: ' "$t" || fail "$n: sin depende_de"
   grep -q '^tamaño: [SML]$' "$t" || fail "$n: tamaño inválido"
   grep -q '^## Criterios de aceptación' "$t" || fail "$n: sin criterios de aceptación"
+  grep -qi 'paridad provisional' "$t" && fail "$n: usa 'paridad provisional'; bajo la política de paridad los criterios afirman el comportamiento actual"
   spec="$(sed -n 's/^spec:[[:space:]]*//p' "$t" | head -n1)"
   if [ -z "$spec" ]; then fund=$((fund+1)); else [ -f "$M/specs/$spec.md" ] || fail "$n: spec '$spec' no existe"; fi
   bp="$(sed -n 's/^bloqueada_por:[[:space:]]*\[\(.*\)\]/\1/p' "$t" | head -n1 | tr ',' ' ')"
@@ -29,7 +30,7 @@ for t in "${tasks[@]}"; do
       PA:*)
         s="$(printf '%s' "$x" | cut -d: -f2)"; k="$(printf '%s' "$x" | cut -d: -f3)"
         [ -f "$M/specs/$s.md" ] || { fail "$n: $x cita un spec inexistente"; continue; }
-        np="$(awk '/^## 12\. Preguntas abiertas/{f=1;next} f' "$M/specs/$s.md" | grep -c '^- ' || true)"
+        np="$(awk '/^## 12\. /{f=1;next} /^## /{f=0} f' "$M/specs/$s.md" | grep -c '^- ' || true)"
         [ "$k" -le "$np" ] 2>/dev/null || fail "$n: $x cita una pregunta inexistente"
         ;;
       [0-9][0-9][0-9][0-9])

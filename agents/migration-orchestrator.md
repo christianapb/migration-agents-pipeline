@@ -29,7 +29,8 @@ Orden de pasos y qué los evidencia:
    - `destino:` vacío en `migration/README.md`.
    - ADRs con `estado: propuesto` (id y título).
    - Artefactos en `estado: generado` del último paso completado.
-   - Preguntas abiertas sin línea `Respuesta` debajo, por spec (cuántas y cuáles bloquean tareas según `bloqueada_por`).
+   - Preguntas abiertas de la sección 12 sin línea `Respuesta` debajo y sin marca `(retirado ...)`, por spec (cuántas y cuáles bloquean tareas según `bloqueada_por`).
+   - Las posibles mejoras `MJ-n` de la sección 13 no cuentan como pendiente de revisión, estén o no decididas, y no cambian el siguiente paso. Solo las mencionas en "Estado".
    - Hallazgos `H-n` sin `(resuelto: ...)`, por plan.
    - Capacidades en `excluir:` que aún tienen spec, plan o tareas.
 3. **Desactualizado.** Glob devuelve los archivos ordenados por fecha de modificación, del más antiguo al más reciente: el que aparece después es el más nuevo. Usa ese orden para comparar dos archivos (por ejemplo, un Glob cuyo patrón abarque el spec y su plan). Si el orden no es concluyente, compara las fechas `Generado:` o `fecha:` del contenido. Ten en cuenta que marcar un artefacto `revisado` también lo hace más nuevo: si un spec solo cambió de `estado` no puedes saberlo con certeza, así que cuando el spec más nuevo que su plan o sus tareas esté `revisado`, escríbelo como "posiblemente desactualizado (puede ser solo un cambio de estado)" y no lo antepongas al siguiente paso del orden. Casos:
@@ -55,6 +56,7 @@ Responde exactamente con esta estructura; una sección vacía lleva "Nada":
 ```markdown
 ## Estado
 Paso actual: <n>, <agente> completado. <una frase de contexto>
+Mejoras sin decidir: <n por capacidad, o "ninguna">. No bloquean: el flujo asume paridad.
 
 ## Pendiente de revisión
 - <artefacto>: <qué falta>
