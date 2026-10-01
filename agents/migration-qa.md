@@ -63,11 +63,13 @@ En la sección "Matriz de cobertura" del plan escribe una tabla con dos columnas
 
 ## 3. Casos pendientes de definición
 
-Por cada pregunta abierta de la sección 12 del spec, escribe una entrada de lista con guion:
+Por cada pregunta abierta de la sección 12 del spec que no tenga `Respuesta` debajo ni esté marcada `(retirado ...)`, escribe una entrada de lista con guion:
 
 - **Pendiente <n>**: <la pregunta, citada tal cual>. Cuando se responda, añadir casos para: <qué habría que probar según cada respuesta posible>.
 
 No escribas resultado esperado. Si el spec dice "Ninguna", escribe "Ninguno".
+
+La sección 13 del spec no genera casos: las posibles mejoras `MJ-n` sin aplicar no producen casos, casos pendientes ni hallazgos, y no se cuentan en `_cobertura.md`. Bajo la política de paridad los casos afirman el comportamiento actual que describen las `RN-n` y `CB-n`, aunque una mejora proponga cambiarlo.
 
 ## 4. Hallazgos para el tech lead
 

@@ -80,6 +80,7 @@ Si `migration/README.md` no existe, créalo con este contenido, rellenando fecha
 ---
 destino:
 excluir: []
+politica: paridad
 generado: <AAAA-MM-DD>
 ---
 # Migración
@@ -91,7 +92,7 @@ generado: <AAAA-MM-DD>
 Consulta el subagente migration-orchestrator para saber el siguiente paso: "Usa el subagente migration-orchestrator".
 ```
 
-Si `migration/README.md` ya existe, no toques su contenido, con una excepción: si su frontmatter no tiene la línea `excluir:`, añade `excluir: []` justo después de la línea `destino:`. Si el README existente contiene `migration-techlead` (formato de la versión anterior), elimina además la sección `## Flujo` completa y reemplaza el contenido de `## Cómo continuar` por la línea que remite a migration-orchestrator; no toques el resto del frontmatter, `## Repos detectados` ni `## Cómo empezar a implementar`.
+Si `migration/README.md` ya existe, no toques su contenido, con una excepción: si su frontmatter no tiene la línea `excluir:`, añade `excluir: []` justo después de la línea `destino:`; y si no tiene la línea `politica:`, añade `politica: paridad` justo después de la línea `excluir:`. Si el README existente contiene `migration-techlead` (formato de la versión anterior), elimina además la sección `## Flujo` completa y reemplaza el contenido de `## Cómo continuar` por la línea que remite a migration-orchestrator; no toques el resto del frontmatter, `## Repos detectados` ni `## Cómo empezar a implementar`.
 
 Crea `migration/templates/` y escribe cada plantilla de abajo **solo si el archivo no existe**. Comprueba la existencia de cada una con Glob antes de escribir. Nunca sobreescribas una plantilla existente, aunque difiera de la tuya: el equipo puede haberla ajustado.
 
@@ -171,7 +172,10 @@ adrs: []
 <!-- Rutas de archivo. Solo rutas. -->
 
 ## 12. Preguntas abiertas
-<!-- Todo lo que no se pudo determinar con certeza a partir del código. Nunca se inventa comportamiento: se anota aquí. -->
+<!-- Solo lo que NO se pudo determinar leyendo el código: ramas no rastreadas, comportamiento que depende de un sistema externo no visible, valores de origen incierto. Lista con guion. Si el código determina el comportamiento, no es una pregunta abierta: va como RN o CB y, si parece mejorable, además en la sección 13. Nunca se inventa comportamiento. -->
+
+## 13. Posibles mejoras
+<!-- Comportamiento que el código sí determina pero parece mejorable, inconsistente o sospechoso. Una por línea: MJ-1: <mejora>. Comportamiento actual: <RN-n o CB-n>. No bloquean tareas ni generan casos pendientes. migration-tl-resolver las marca "(aplicada AAAA-MM-DD: RN-n)" o "(descartada AAAA-MM-DD)". Si no hay, "Ninguna". -->
 ```
 
 ### Plantilla `migration/templates/task.md`
@@ -329,11 +333,12 @@ En cualquier momento: migration-tl-resolver aplica decisiones y cambios sobre AD
 - Repositorios: subcarpetas directas con `.git`, `package.json`, `pom.xml`, `build.gradle`, `build.gradle.kts`, `go.mod`, `pyproject.toml`, `Cargo.toml` o `composer.json`. Se ignoran `migration/`, `.claude/` y carpetas ocultas.
 - Estados en el frontmatter: `generado` (escrito por un agente; se regenera), `revisado` (validado por un humano; ningún agente generador lo sobrescribe), `observado` y `propuesto` (solo ADRs; un ADR `propuesto` bloquea las tareas que dependen de él).
 - Derivados que se regeneran siempre y no se editan: `index.md` de cada repo, `index.md` general, `migration/specs/_capacidades.md`, `migration/test-plans/_cobertura.md`, `migration/backlog.md`.
-- Identificadores: reglas `RN-n:` y casos borde `CB-n:` al inicio de línea en los specs; preguntas abiertas citadas como `PA:<capacidad>:<n>` por su posición; casos `TC-<capacidad>-<nnn>`; hallazgos de QA `H-n`; tareas `T-NNN`; ADRs `NNNN`. Nunca se renumeran. Lo nuevo toma el siguiente número libre. Lo eliminado se marca con `(retirado AAAA-MM-DD)` en lugar de borrarse.
+- Identificadores: reglas `RN-n:` y casos borde `CB-n:` al inicio de línea en los specs; preguntas abiertas citadas como `PA:<capacidad>:<n>` por su posición; posibles mejoras `MJ-n:` al inicio de línea en la sección 13 de los specs; casos `TC-<capacidad>-<nnn>`; hallazgos de QA `H-n`; tareas `T-NNN`; ADRs `NNNN`. Nunca se renumeran. Lo nuevo toma el siguiente número libre. Lo eliminado se marca con `(retirado AAAA-MM-DD)` en lugar de borrarse.
 - Todo el contenido va en español; los identificadores técnicos se conservan tal cual.
 - Los specs no contienen código del lenguaje origen ni bloques de código.
+- Política de paridad: `politica: paridad` en el frontmatter de `migration/README.md` es la única política soportada (ausente o vacío equivale a `paridad`). El destino reproduce el comportamiento observado en el origen salvo decisión explícita en contra: una mejora aplicada o un ADR. Por eso, en los specs: lo que el código determina va como hecho (`RN-n`, `CB-n`, contratos, flujos); si el código determina el comportamiento, no es una pregunta abierta; `## 12. Preguntas abiertas` contiene solo lo que no se pudo determinar leyendo el código; y lo que el código determina pero parece mejorable va en `## 13. Posibles mejoras` como `MJ-n`, citando la regla actual. Las mejoras sin aplicar no bloquean tareas, no generan casos de prueba pendientes y no cuentan como pendiente de revisión.
 - Destino: en el prompt o en `destino:` del frontmatter de `migration/README.md`. Capacidades descartadas: lista `excluir:` del mismo frontmatter; se comparan en minúsculas y sin espacios.
-- Frases de prompt que entienden los agentes, a usar tal cual: `con destino <lenguaje>` (destino), `solo la capacidad <slug>` (alcance), `aunque haya ADRs propuestos` (forzar migration-tl-tasks), `acepta la recomendación` (decidir un ADR propuesto con su recomendación) y `sin marcar revisado` (migration-tl-resolver).
+- Frases de prompt que entienden los agentes, a usar tal cual: `con destino <lenguaje>` (destino), `solo la capacidad <slug>` (alcance), `aunque haya ADRs propuestos` (forzar migration-tl-tasks), `acepta la recomendación` (decidir un ADR propuesto con su recomendación), `aplica la mejora MJ-n` y `descarta la mejora MJ-n` (migration-tl-resolver, indicando el spec) y `sin marcar revisado` (migration-tl-resolver).
 - Cada agente termina con: archivos creados, archivos modificados, lo que no pudo resolver y el siguiente paso.
 
 ### Para la sesión principal

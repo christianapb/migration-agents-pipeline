@@ -33,5 +33,26 @@ has migration-tl-specs.md 'conserva el número de cada `RN-n` y `CB-n` cuyo cont
 has migration-tl-resolver.md '^[a-z0-9-]+$'
 has migration-tl-resolver.md 'nunca `rm -r`'
 
+# Política de paridad (docs/specs/2026-10-01-politica-paridad-design.md)
+for k in 'politica: paridad' 'MJ-n' 'aplica la mejora MJ-n' 'no es una pregunta abierta'; do
+  printf '%s' "$block" | grep -qF -- "$k" || fail "bloque de CLAUDE.md sin '$k'"
+done
+has migration-indexer.md '## 13. Posibles mejoras'
+has migration-indexer.md 'añade `politica: paridad`'
+has migration-tl-specs.md 'Política desconocida'
+has migration-tl-specs.md 'no es una pregunta abierta'
+has migration-tl-specs.md '## 13. Posibles mejoras'
+has migration-tl-specs.md 'conserva la numeración `MJ-n`'
+has migration-tl-specs.md 'ya lo cubre un ADR propuesto'
+has migration-tl-tasks.md 'Las mejoras `MJ-n` sin aplicar no existen para las tareas'
+has migration-qa.md 'La sección 13 del spec no genera casos'
+has migration-tl-resolver.md '**Aplicar una mejora**'
+has migration-tl-resolver.md '**Descartar una mejora**'
+has migration-tl-resolver.md '**Reclasificar una pregunta como mejora**'
+has migration-tl-resolver.md 'La única política soportada es `paridad`'
+has migration-orchestrator.md 'no cuentan como pendiente de revisión'
+has migration-pm.md 'mejoras sin decidir'
+grep -qF 'paridad provisional' "$A/migration-tl-tasks.md" && fail "migration-tl-tasks.md sigue usando 'paridad provisional'"
+
 [ "$fails" -eq 0 ] && { echo "OK: prompts"; exit 0; }
 exit 1
