@@ -21,7 +21,7 @@ echo "\$(date +%s%N) -1" >> "$TMP/events"
 $result
 EOF
 }
-for n in test-indexer-claude test-analyst test-tl-specs test-tl-tasks test-orchestrator; do
+for n in test-indexer-claude test-analyst test-tl-specs test-tl-tasks test-orchestrator test-auditor; do
   fake "$n" 'echo "OK"'
 done
 fake test-resolver 'echo "FAIL: falla a propósito"; exit 1'
@@ -37,7 +37,9 @@ sel="$(DRY_RUN=1 bash "$ROOT/scripts/test-agents.sh" migration-tl-resolver | pas
 [ "$sel" = "test-resolver" ] || fail "selección de migration-tl-resolver incorrecta: $sel"
 DRY_RUN=1 bash "$ROOT/scripts/test-agents.sh" migration-inventado >/dev/null 2>&1 && fail "aceptó un agente desconocido"
 n="$(DRY_RUN=1 bash "$ROOT/scripts/test-agents.sh" | grep -c .)"
-[ "$n" -eq 12 ] || fail "sin argumentos seleccionó $n pruebas, se esperaban 12"
+[ "$n" -eq 13 ] || fail "sin argumentos seleccionó $n pruebas, se esperaban 13"
+sel="$(DRY_RUN=1 bash "$ROOT/scripts/test-agents.sh" migration-auditor | paste -sd, -)"
+[ "$sel" = "test-auditor" ] || fail "selección de migration-auditor incorrecta: $sel"
 
 # 2. Ejecución: paralela hasta JOBS, un workspace por prueba, falla si alguna falla
 out="$(JOBS=3 bash "$ROOT/scripts/test-agents.sh" 2>&1)"; rc=$?
@@ -48,7 +50,7 @@ maxc="$(sort -n "$TMP/events" | awk '{c+=$2; if (c>m) m=c} END {print m+0}')"
 [ "$maxc" -ge 2 ] || fail "no corre en paralelo (concurrencia máxima $maxc)"
 [ "$maxc" -le 3 ] || fail "supera JOBS=3 (concurrencia máxima $maxc)"
 [ -f "$LOG_DIR/test-resolver.log" ] || fail "no dejó log por prueba"
-[ "$(cat "$TMP"/test-*.wd | sort -u | grep -c .)" -eq 6 ] || fail "las pruebas no usan workspaces distintos"
+[ "$(cat "$TMP"/test-*.wd | sort -u | grep -c .)" -eq 7 ] || fail "las pruebas no usan workspaces distintos"
 
 [ "$fails" -eq 0 ] && { echo "OK: runner"; exit 0; }
 exit 1

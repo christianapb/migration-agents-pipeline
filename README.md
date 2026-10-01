@@ -11,7 +11,7 @@ Subagentes de Claude Code que generan, a partir del código de un proyecto, la d
 bash scripts/install.sh
 ```
 
-Copia los nueve agentes a `~/.claude/agents/`, retira `migration-techlead` y no sobrescribe archivos ajenos con el mismo nombre. Abre una sesión nueva de Claude Code después.
+Copia los diez agentes a `~/.claude/agents/`, retira `migration-techlead` y no sobrescribe archivos ajenos con el mismo nombre. Abre una sesión nueva de Claude Code después.
 
 ## Agentes
 
@@ -26,6 +26,7 @@ Copia los nueve agentes a `~/.claude/agents/`, retira `migration-techlead` y no 
 | 7 | `migration-pm` | `backlog.md`, `fase` y `prioridad` por tarea |
 | — | `migration-tl-resolver` | aplica decisiones y cambios que describes |
 | — | `migration-orchestrator` | diagnóstico y prompt del siguiente paso (solo lectura) |
+| — | `migration-auditor` | `migration/specs/_auditoria.md`: veredicto por regla contra el código citado y hallazgos `AU-n`; no modifica specs |
 
 ## Uso
 
@@ -38,7 +39,7 @@ Revisa entre cada paso. Las tareas se generan una sola vez, después de decidir 
 
 ## Convenciones
 
-Viven en el bloque de `CLAUDE.md` que escribe el indexador: estados (`generado`, `revisado`, `observado`, `propuesto`), derivados que no se editan, identificadores que nunca se renumeran (`RN-n`, `CB-n`, `PA:<capacidad>:<n>`, `MJ-n`, `TC-…`, `H-n`, `T-NNN`, `NNNN`), destino, `excluir:` y `politica:` en `migration/README.md`.
+Viven en el bloque de `CLAUDE.md` que escribe el indexador: estados (`generado`, `revisado`, `observado`, `propuesto`), derivados que no se editan, identificadores que nunca se renumeran (`RN-n`, `CB-n`, `PA:<capacidad>:<n>`, `MJ-n`, `TC-…`, `H-n`, `AU-n`, `T-NNN`, `NNNN`), destino, `excluir:` y `politica:` en `migration/README.md`.
 
 **Política de paridad.** `politica: paridad` es la única política: el destino reproduce el comportamiento observado salvo decisión explícita. En cada spec, `## 12. Preguntas abiertas` contiene solo lo que el código no permite determinar, y `## 13. Posibles mejoras` lista como `MJ-n` lo que el código determina pero parece mejorable. Las mejoras no bloquean tareas ni generan casos pendientes; se aplican o descartan con `migration-tl-resolver`. Diseño: [`docs/specs/2026-10-01-politica-paridad-design.md`](docs/specs/2026-10-01-politica-paridad-design.md).
 
@@ -72,16 +73,19 @@ Pruebas individuales, todas aceptan `WORKDIR`:
 | `test-tl-tasks.sh` | parada ante ADRs propuestos y forzado |
 | `test-resolver.sh` | operaciones del resolver |
 | `test-orchestrator.sh` | diagnóstico en varios estados |
+| `test-auditor.sh` | el auditor no inventa contradicciones y detecta tres errores plantados sin modificar specs |
 | `verify-idempotency.sh` | un spec revisado sobrevive a una recorrida |
 
 Las corridas de agentes usan `claude -p` con permisos desactivados: solo sobre workspaces descartables de `.work/`. `run-agent.sh` sale con 2 si Claude responde con un aviso de límite de uso. En Windows, lanzar procesos es lento y más dentro de carpetas sincronizadas como OneDrive; `SNAPSHOT_DIR`, `WS_DIR` y `LOG_DIR` permiten mover los workspaces de prueba fuera de ellas.
 
 ## Estructura
 
-- `agents/`: los nueve subagentes.
+- `agents/`: los diez subagentes.
 - `fixtures/sample-workspace/`: frontend y BFF mínimos para probar.
 - `scripts/`: instalación, corrida y verificación.
 - `docs/`: tutorial, diseños y planes.
+
+**Evidencia por regla.** Cada `RN-n` y `CB-n` termina con la cita de la línea de código que la respalda (`[ruta:línea]`, `[ausente: ruta]` o `[decisión: ...]`), y el spec anota en `commits:` el commit de cada repo. `verify-tl-specs.sh` comprueba que cada ruta y línea citadas existen; `migration-auditor` comprueba que el código citado dice lo que la regla afirma. Diseño: [`docs/specs/2026-10-01-evidencia-y-auditor-design.md`](docs/specs/2026-10-01-evidencia-y-auditor-design.md).
 
 ## Limitaciones conocidas
 
