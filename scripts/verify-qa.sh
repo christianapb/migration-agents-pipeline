@@ -29,6 +29,10 @@ for s in "${specs[@]}"; do
     [ -z "$actual" ] || [ "$prev" -le "$actual" ] || fail "$slug: spec_rev $prev es mayor que el rev $actual del spec"
   fi
   grep -q '^tareas: \[' "$p" || fail "$slug: sin tareas en el frontmatter"
+  # La cobertura consolidada tiene una fila por plan, con el spec_rev del plan
+  crev="$(sed -nE "s/^\| *$slug *\| *([0-9]+) *\|.*/\1/p" "$M/test-plans/_cobertura.md" 2>/dev/null | head -n1)"
+  [ -n "$crev" ] || fail "$slug: _cobertura.md no tiene fila con Spec rev para este plan"
+  [ -z "$crev" ] || [ "$crev" = "$prev" ] || fail "$slug: _cobertura.md registra Spec rev $crev y el plan tiene spec_rev '$prev'"
   for tid in $(lista "$(campo "$p" tareas)"); do
     ls "$M"/tasks/"$tid"-*.md >/dev/null 2>&1 || fail "$slug: tareas nombra $tid, que no existe"
   done
@@ -38,7 +42,7 @@ for s in "${specs[@]}"; do
   cases=$(grep -c "^### TC-$slug-[0-9]\{3\}: " "$p" || true)
   [ "$cases" -ge 3 ] || fail "$slug: solo $cases casos TC-$slug-nnn"
   # Cada caso tiene Dado/Cuando/Entonces y Cubre
-  dado=$(grep -c '^- Dado ' "$p" || true); cuando=$(grep -c '^- Cuando ' "$p" || true); entonces=$(grep -c '^- Entonces ' "$p" || true)
+  dado=$(grep -c '^- Dado[ ,]' "$p" || true); cuando=$(grep -c '^- Cuando[ ,]' "$p" || true); entonces=$(grep -c '^- Entonces[ ,]' "$p" || true)
   [ "$dado" -ge "$cases" ] && [ "$cuando" -ge "$cases" ] && [ "$entonces" -ge "$cases" ] || fail "$slug: casos sin Dado/Cuando/Entonces completos ($dado/$cuando/$entonces de $cases)"
   cubre=$(grep -c '^- Cubre: ' "$p" || true)
   [ "$cubre" -ge "$cases" ] || fail "$slug: casos sin línea Cubre"

@@ -83,6 +83,8 @@ p="$M/test-plans/$S.md"
 esperadas="$(grep -l "^spec: $S$" "$M"/tasks/T-*.md | xargs -r -n1 basename | grep -oE '^T-[0-9]+' | sort | paste -sd' ' -)"
 anotadas="$(lista "$(campo "$p" tareas)" | sort | paste -sd' ' -)"
 [ "$esperadas" = "$anotadas" ] || fail "qa: el plan $S anota tareas '$anotadas' y las del spec son '$esperadas'"
+# Con alcance QA no escribe _cobertura.md: se consolida aparte
+run migration-qa "Solo la cobertura." >/dev/null
 bash "$ROOT/scripts/verify-qa.sh" >/dev/null || fail "qa: los planes no pasan el verificador"
 
 # 5. migration-pm registra el rev de cada tarea y no lo sube

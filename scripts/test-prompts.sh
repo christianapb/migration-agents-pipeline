@@ -107,6 +107,7 @@ has migration-tl-adrs.md 'es una restricción para el repositorio que se migra'
 has migration-tl-specs.md 'fuera de alcance'
 has migration-tl-specs.md '(se conserva)'
 has migration-tl-tasks.md 'tipo: adaptacion'
+has migration-tl-tasks.md 'migration/tasks/T-NNN-<slug>.md'
 has migration-tl-tasks.md 'Ninguna tarea de implementación tiene `repo_destino` en un repositorio conservado'
 has migration-qa.md 'no aplica: repositorio conservado'
 has migration-pm.md 'repositorios conservados'
@@ -139,6 +140,34 @@ has migration-orchestrator.md 'registra las versiones'
 for k in 'fecha de modificación' 'Glob devuelve' 'más antiguo' 'más nuevo' 'posiblemente'; do
   grep -qF -- "$k" "$ROOT/agents/migration-orchestrator.md" && fail "migration-orchestrator.md todavía contiene '$k'"
 done
+
+# Indexador reanudable y pasos en paralelo (docs/specs/2026-10-01-escala-indexador-y-paralelo-design.md)
+for k in 'solo el repo <nombre>' 'solo la cobertura' 'en paralelo' 'migration-tl-tasks y migration-auditor van siempre en serie'; do
+  printf '%s' "$block" | grep -qF -- "$k" || fail "bloque de CLAUDE.md sin '$k'"
+done
+IDX="$A/migration-indexer.md"
+orden() { grep -n -m1 -F -- "$1" "$IDX" | cut -d: -f1; }
+[ "$(orden '## 4. Bloque de convenciones en `CLAUDE.md`')" -lt "$(orden '## 7. Escribir `index.md` de forma incremental')" ] 2>/dev/null \
+  || fail "migration-indexer.md: el bloque de CLAUDE.md debe escribirse antes que los índices"
+[ "$(orden '## 3. Bootstrapear `migration/`')" -lt "$(orden '## 5. Listar archivos candidatos por repositorio')" ] 2>/dev/null \
+  || fail "migration-indexer.md: migration/ debe prepararse antes de indexar"
+has migration-indexer.md 'solo el repo <nombre>'
+has migration-indexer.md 'tu único archivo de salida es `<nombre>/index.md`'
+has migration-indexer.md 'Commit: <hash corto o sin-git>'
+has migration-indexer.md '**Reanudar.**'
+has migration-indexer.md 'No lo toques'
+grep -qF 'Si ya existe `index.md`, sobreescríbelo completo' "$IDX" && fail "migration-indexer.md conserva la regla de sobrescribir siempre el índice"
+has migration-analyst.md 'detente sin escribir nada y pide reanudar'
+has migration-tl-specs.md 'no escribas ni modifiques ningún otro archivo'
+has migration-qa.md 'solo la cobertura'
+has migration-qa.md 'no escribas `_cobertura.md`'
+has migration-qa.md 'Spec rev'
+has migration-orchestrator.md 'Lanza estos subagentes en paralelo, en un mismo mensaje:'
+has migration-orchestrator.md 'solo el repo <nombre>'
+has migration-orchestrator.md 'solo la cobertura'
+has migration-orchestrator.md 'Cuando terminen:'
+has migration-orchestrator.md 'van siempre en serie'
+has migration-orchestrator.md 'como máximo 5'
 
 [ "$fails" -eq 0 ] && { echo "OK: prompts"; exit 0; }
 exit 1

@@ -125,6 +125,11 @@ EOF
   done
   cat > "$W/migration/test-plans/_cobertura.md" <<'EOF'
 # Cobertura de pruebas
+| Capacidad | Spec rev | Camino feliz | Borde | Errores | Contratos | Pendientes | RN sin cubrir | CB sin cubrir |
+|---|---|---|---|---|---|---|---|---|
+| alfa | 1 | 2 | 1 | 0 | 0 | 1 | ninguna | ninguno |
+| beta | 1 | 2 | 1 | 0 | 0 | 1 | ninguna | ninguno |
+| gamma | 1 | 2 | 1 | 0 | 0 | 1 | ninguna | ninguno |
 ## Huecos
 EOF
   cat > "$W/migration/adr/0001-uno.md" <<'EOF'
@@ -458,6 +463,13 @@ expect_fail auditor "$W11" "verify-auditor acepta un Spec rev mayor que el rev d
 # Un derivado atrasado es válido: está desactualizado, no mal formado
 W11="$TMP/v16"; make_ws "$W11"; sed -i 's/^rev: 1$/rev: 3/' "$W11/$SP"
 for v in tl-specs tl-tasks qa auditor; do ok_ws "$v" "$W11" "verify-$v rechaza un derivado con una versión anterior de su insumo"; done
+
+# 12. Cobertura consolidada: una fila por plan con su spec_rev
+COB="migration/test-plans/_cobertura.md"
+W12="$TMP/c1"; make_ws "$W12"; sed -i '/^| gamma |/d' "$W12/$COB"
+expect_fail qa "$W12" "verify-qa acepta una cobertura sin la fila de un plan"
+W12="$TMP/c2"; make_ws "$W12"; sed -i 's/^| alfa | 1 |/| alfa | 7 |/' "$W12/$COB"
+expect_fail qa "$W12" "verify-qa acepta una cobertura con un Spec rev distinto del plan"
 
 [ "$fails" -eq 0 ] && { echo "OK: verificadores"; exit 0; }
 exit 1

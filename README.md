@@ -45,6 +45,8 @@ Viven en el bloque de `CLAUDE.md` que escribe el indexador: estados (`generado`,
 
 **Versiones.** Specs, ADRs y tareas llevan `rev:` (entero desde 1), que sube cuando cambia el contenido y no cuando solo cambia el estado. Los derivados anotan la versión de sus insumos: tareas `spec_rev:` y `adrs_rev: {0003: 1, 0011: 2}`; planes `spec_rev:` y `tareas: [T-011, T-012]`; auditoría `Spec rev: <n>.`; backlog, columna `Rev`. El orquestador decide lo desactualizado comparando esos números, nunca fechas de modificación, e informa de la completitud por capacidad. Diseño: [`docs/specs/2026-10-01-versiones-de-artefactos-design.md`](docs/specs/2026-10-01-versiones-de-artefactos-design.md).
 
+**Escala y paralelo.** El indexador escribe primero `migration/` y el bloque de `CLAUDE.md`, y después los índices. Un índice que termina en `> Índice incompleto: falta desde <carpeta>` se continúa en la corrida siguiente. `solo el repo <nombre>` acota a un repositorio y solo escribe su índice; una corrida sin alcance consolida y no reindexa los repositorios cuyo `Commit:` no cambió. Admiten varias corridas a la vez `migration-indexer`, `migration-tl-specs` y `migration-qa`, siempre con alcance; `migration-qa, solo la cobertura` consolida `_cobertura.md`. `migration-tl-tasks` y `migration-auditor` van en serie. El orquestador entrega el bloque de paralelo. Probado solo con el fixture y con el corte plantado: no demuestra el comportamiento con miles de archivos. Diseño: [`docs/specs/2026-10-01-escala-indexador-y-paralelo-design.md`](docs/specs/2026-10-01-escala-indexador-y-paralelo-design.md).
+
 **Política de paridad.** `politica: paridad` es la única política: el destino reproduce el comportamiento observado salvo decisión explícita. En cada spec, `## 12. Preguntas abiertas` contiene solo lo que el código no permite determinar, y `## 13. Posibles mejoras` lista como `MJ-n` lo que el código determina pero parece mejorable. Las mejoras no bloquean tareas ni generan casos pendientes; se aplican o descartan con `migration-tl-resolver`. Diseño: [`docs/specs/2026-10-01-politica-paridad-design.md`](docs/specs/2026-10-01-politica-paridad-design.md).
 
 ## Pruebas
@@ -77,6 +79,8 @@ Pruebas individuales, todas aceptan `WORKDIR`:
 | `test-tl-tasks.sh` | parada ante ADRs propuestos y forzado |
 | `test-resolver.sh` | operaciones del resolver |
 | `test-orchestrator.sh` | diagnóstico en varios estados |
+| `test-indexer-escala.sh` | reanuda un índice con el corte plantado sin reescribir lo hecho; `solo el repo bff` no escribe lo compartido; consolidar no reindexa |
+| `test-paralelo.sh` | tres `migration-tl-specs` y tres `migration-qa` a la vez en el mismo workspace, y `solo la cobertura` |
 | `test-versiones.sh` | cada generador sube `rev` al reescribir y anota sus insumos; `migration-pm` no sube el `rev` de las tareas |
 | `test-destino.sh` | con `{bff: Kotlin, frontend: conservar}` no hay ADRs propuestos ni tareas para el frontend, y un mapa incompleto detiene a tl-tasks |
 | `test-auditor.sh` | el auditor no inventa contradicciones y detecta tres errores plantados sin modificar specs |

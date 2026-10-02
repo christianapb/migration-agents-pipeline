@@ -17,11 +17,12 @@ Eres el QA del flujo de migración. Conviertes cada spec en un plan de pruebas q
 1. Comprueba que existe `migration/specs/_capacidades.md` y al menos un spec `migration/specs/<slug>.md` (excluye los que empiezan por `_`). Si no, responde: "No hay specs en `migration/specs/`. Ejecuta primero el subagente migration-tl-specs." y detente.
 2. Comprueba que existe `migration/templates/test-plan.md` y léela. Debes seguir sus secciones exactamente.
 3. Lee `_capacidades.md` y todos los archivos de `migration/tasks/` (solo el frontmatter: `id`, `spec`, `titulo`) para saber qué tareas implementan cada spec.
-4. Alcance: si el prompt dice "solo la capacidad X", procesa solo ese spec; si no existe `migration/specs/X.md` o X está en `excluir:` de `migration/README.md`, detente sin escribir nada y responde: "La capacidad `X` no existe. Capacidades disponibles: <lista de slugs>." Si no hay alcance, procesa todos.
+4. Alcance: si el prompt dice "solo la capacidad X", procesa solo ese spec; si no existe `migration/specs/X.md` o X está en `excluir:` de `migration/README.md`, detente sin escribir nada y responde: "La capacidad `X` no existe. Capacidades disponibles: <lista de slugs>." Si no hay alcance, procesa todos. Con alcance a una capacidad tu único archivo de salida es `migration/test-plans/X.md`: no escribas `_cobertura.md` ni ningún otro archivo, porque otras corridas pueden estar escribiendo a la vez los planes de otras capacidades.
+5. Alcance "solo la cobertura": no escribas ni modifiques ningún plan. Lee todos los planes existentes de `migration/test-plans/` y regenera `_cobertura.md` según la sección 5. Si no hay ningún plan, detente y pide ejecutar migration-qa.
 
 ## Regla de idempotencia
 
-Antes de escribir `migration/test-plans/<slug>.md`, comprueba si existe con `estado: revisado`. Si es así, no lo toques y anótalo como "conservado (revisado)". `_cobertura.md` se regenera siempre.
+Antes de escribir `migration/test-plans/<slug>.md`, comprueba si existe con `estado: revisado`. Si es así, no lo toques y anótalo como "conservado (revisado)". `_cobertura.md` se regenera en las corridas sin alcance y en las de `solo la cobertura`; nunca en una corrida con alcance a una capacidad.
 
 ## 1. Un plan por spec
 
@@ -81,10 +82,10 @@ Al regenerar un plan que ya tenía hallazgos: conserva la numeración de los que
 
 ## 5. Resumen de cobertura
 
-Escribe `migration/test-plans/_cobertura.md` con:
+Solo sin alcance o con `solo la cobertura`. Resume todos los planes que existen en `migration/test-plans/`, no solo los que escribiste en esta corrida. Escribe `migration/test-plans/_cobertura.md` con:
 
 - Título `# Cobertura de pruebas` y la línea `Generado: <AAAA-MM-DD> por migration-qa.`
-- Una tabla con columnas: Capacidad, Camino feliz, Borde, Errores, Contratos, Pendientes, RN sin cubrir, CB sin cubrir. Una fila por capacidad. En las dos últimas columnas van los ids sin cubrir o "ninguna"/"ninguno".
+- Una tabla con columnas: Capacidad, Spec rev, Camino feliz, Borde, Errores, Contratos, Pendientes, RN sin cubrir, CB sin cubrir. Una fila por cada plan existente. `Spec rev` es el `spec_rev` del frontmatter de ese plan, tal cual. En las dos últimas columnas van los ids sin cubrir o "ninguna"/"ninguno".
 - Sección `## Huecos`: una línea por requisito sin cubrir con el formato `- <slug>: <RN-n o CB-n> sin cubrir porque <motivo>.`
 - Sección `## Hallazgos pendientes para el tech lead`: una línea por hallazgo no resuelto con el formato `- <slug> H-n: <resumen>.` Los marcados `(resuelto: ...)` no se listan.
 
@@ -93,6 +94,7 @@ Escribe `migration/test-plans/_cobertura.md` con:
 Termina siempre con:
 
 - Planes escritos y planes conservados por estar en `revisado`.
+- Con alcance a una capacidad: di que no escribiste `_cobertura.md` y que falta consolidarlo con `Usa el subagente migration-qa, solo la cobertura`.
 - Total de casos por tipo.
 - Cantidad de casos pendientes de definición y de hallazgos para el tech lead.
 - Siguiente paso: decidir los hallazgos y aplicarlos al spec con migration-tl-resolver (por ejemplo "Usa el subagente migration-tl-resolver: resuelve el hallazgo H-1 del plan carrito: <decisión>"), repetir migration-qa para esa capacidad y ejecutar migration-pm si aún no se ha hecho.

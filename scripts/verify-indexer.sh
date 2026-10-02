@@ -10,7 +10,7 @@ for r in frontend bff; do
   f="$W/$r/index.md"
   [ -f "$f" ] || { fail "$r/index.md no existe"; continue; }
   grep -q "^# Índice: $r" "$f" || fail "$r/index.md sin encabezado '# Índice: $r'"
-  for k in "Stack:" "Entrada:" "Build:" "Dependencias clave:" "Generado:"; do
+  for k in "Stack:" "Entrada:" "Build:" "Dependencias clave:" "Commit:" "Generado:"; do
     grep -q "^$k" "$f" || fail "$r/index.md sin línea '$k'"
   done
   grep -q '^## ' "$f" || fail "$r/index.md sin secciones por carpeta"
@@ -62,7 +62,7 @@ if [ -f "$C" ]; then
   for a in migration-indexer migration-analyst migration-tl-adrs migration-tl-specs migration-tl-tasks migration-qa migration-pm migration-tl-resolver migration-orchestrator; do
     printf '%s' "$block" | grep -q "$a" || fail "bloque de CLAUDE.md no menciona $a"
   done
-  for k in 'revisado' 'excluir:' 'RN-n' 'MJ-n' 'politica:' 'aplica la mejora MJ-n' 'AU-n' '_auditoria.md' 'migration-auditor' '[ausente: ' 'conservar' 'con destino <repo>=<lenguaje>' 'rev: <entero>' 'spec_rev' 'adrs_rev' 'registra las versiones' 'Usa el subagente migration-orchestrator' 'Usa el subagente migration-tl-resolver'; do
+  for k in 'revisado' 'excluir:' 'RN-n' 'MJ-n' 'politica:' 'aplica la mejora MJ-n' 'AU-n' '_auditoria.md' 'migration-auditor' '[ausente: ' 'conservar' 'con destino <repo>=<lenguaje>' 'rev: <entero>' 'spec_rev' 'adrs_rev' 'registra las versiones' 'solo el repo <nombre>' 'solo la cobertura' 'Usa el subagente migration-orchestrator' 'Usa el subagente migration-tl-resolver'; do
     printf '%s' "$block" | grep -qF "$k" || fail "bloque de CLAUDE.md sin '$k'"
   done
 else

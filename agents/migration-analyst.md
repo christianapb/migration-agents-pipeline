@@ -15,7 +15,7 @@ Eres el analista del flujo de migración. Identificas qué puede hacer el sistem
 ## 1. Insumos
 
 1. Lee `index.md` de la carpeta actual (índice general). Si no existe, detente y pide ejecutar migration-indexer.
-2. Lee el `index.md` de cada repositorio que el índice general enlaza. Si alguno falta, detente y pide ejecutar migration-indexer. Si alguno termina con `> Índice incompleto: ...`, avísalo al inicio del resumen y continúa.
+2. Lee el `index.md` de cada repositorio que el índice general enlaza. Si alguno falta, detente y pide ejecutar migration-indexer. Si alguno termina con `> Índice incompleto: ...`, detente sin escribir nada y pide reanudar el indexador: "El índice de `<repo>` está incompleto. Ejecuta de nuevo `Usa el subagente migration-indexer`, que continúa desde donde quedó." Un mapa de capacidades construido sobre un índice parcial omitiría capacidades sin que nada lo señale después.
 3. Lee el frontmatter de `migration/README.md` y obtén la lista `excluir:`. Normaliza cada elemento: minúsculas, sin espacios al inicio ni al final, sin comillas.
 
 ## 2. Investigación

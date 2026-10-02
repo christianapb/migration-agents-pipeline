@@ -49,7 +49,7 @@ SP="$M/specs/$C.md"
 OTRA="$(ls "$M"/specs | grep -v '^_' | grep -v "^$C.md$" | head -n1 | sed 's/\.md$//')"
 
 # a) valor cambiado: el tope de cantidad, de 10 a 20
-ln="$(grep -nE '^RN-[0-9]+:' "$SP" | grep -Ei 'supera 10|nunca supera|tope' | grep '10' | head -n1 | cut -d: -f1)"
+ln="$(grep -nE '^RN-[0-9]+:' "$SP" | grep -Ei 'supera 10|nunca supera|tope|recorta|como máximo|máximo de' | grep '10' | head -n1 | cut -d: -f1)"
 [ -n "$ln" ] || { echo "FAIL: no se encontró la regla del tope de 10 en $C"; exit 1; }
 linea="$(sed -n "${ln}p" "$SP")"
 TOPE="$(printf '%s' "$linea" | grep -oE '^RN-[0-9]+')"

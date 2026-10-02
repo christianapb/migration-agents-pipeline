@@ -109,11 +109,26 @@ El `index.md` general anota además el commit de cada repo en el momento de inde
 | `excluir:` | Capacidades descartadas; el analista las omite siempre. | Tú, con el resolver. |
 | `politica:` | Siempre `paridad`: el destino reproduce el comportamiento del origen. Es el único valor que existe; los agentes se detienen si encuentran otro. | Nadie; lo escribe el indexador. |
 
+**Proyectos grandes.** El indexador lee cada archivo de código, así que en un proyecto grande una corrida puede no alcanzar. Tres cosas lo hacen manejable:
+
+- **Se reanuda.** Si se queda sin capacidad, deja el índice de ese repositorio con una última línea `> Índice incompleto: falta desde <carpeta>`. Vuelve a ejecutar `Usa el subagente migration-indexer`: continúa desde esa carpeta sin releer lo ya indexado. Repite hasta que no quede ningún índice incompleto. El bloque de `CLAUDE.md` y `migration/` se escriben antes de indexar, así que un corte no te deja sin ellos.
+- **Se acota a un repositorio.** `Usa el subagente migration-indexer, solo el repo bff` indexa solo ese repositorio y no escribe nada más. Con varios repositorios puedes lanzarlos a la vez, pidiéndoselo a la sesión principal en un mismo mensaje:
+
+  ```
+  Lanza estos subagentes en paralelo, en un mismo mensaje:
+  - Usa el subagente migration-indexer, solo el repo bff
+  - Usa el subagente migration-indexer, solo el repo frontend
+  ```
+
+- **Se consolida sin reindexar.** Cuando terminen, `Usa el subagente migration-indexer` sin alcance escribe `migration/`, el bloque de `CLAUDE.md` y el índice general, y deja como están los índices ya completos. Hasta que no consolides no hay bloque de `CLAUDE.md` y los demás agentes no trabajan.
+
+No hace falta recordar esto: el orquestador entrega el bloque de paralelo cuando hay varios repositorios sin indexar, y el prompt de reanudación cuando hay un índice incompleto. El analista se niega a trabajar sobre un índice incompleto.
+
 **Si vuelves a correr el indexador:**
 
 | Archivo | Qué pasa |
 |---|---|
-| `index.md` de cada repo | Se regenera entero desde el código actual. Pierdes cualquier edición manual. |
+| `index.md` de cada repo | Si no existe, se crea. Si está incompleto, se continúa. Si está completo y el repositorio sigue en el mismo commit (línea `Commit:` del encabezado), no se toca. Si el commit cambió o el repositorio no tiene git, se regenera entero. Para forzar la regeneración: `migration-indexer, solo el repo X`. Los cambios sin commit no se detectan. |
 | `index.md` general | Se regenera entero, incluida la columna con el commit actual de cada repo. |
 | `CLAUDE.md` | Solo se reemplaza el bloque entre las marcas; el resto no cambia. |
 | `migration/README.md` | No se toca, salvo añadir `excluir: []` y `politica: paridad` si faltan, o actualizar un README de la versión anterior. |
@@ -171,6 +186,26 @@ Lo que decide un ADR propuesto no se vuelve a preguntar en los specs. Si hay un 
 ```
 Usa el subagente migration-tl-specs
 ```
+
+Con muchas capacidades conviene repartirlas: cada corrida con `solo la capacidad X` escribe solo su spec, así que se pueden lanzar a la vez. El orquestador lo propone cuando hay dos o más pendientes, en tandas de cinco, con un bloque como este, que pegas tal cual en la sesión principal:
+
+```
+Lanza estos subagentes en paralelo, en un mismo mensaje:
+- Usa el subagente migration-tl-specs, solo la capacidad autenticacion
+- Usa el subagente migration-tl-specs, solo la capacidad carrito
+- Usa el subagente migration-tl-specs, solo la capacidad listado-productos
+```
+
+Qué se puede lanzar en paralelo y qué no:
+
+| Agente | En paralelo | Por qué |
+|---|---|---|
+| `migration-indexer, solo el repo X` | Sí | Cada corrida escribe solo el índice de su repositorio. Después se consolida sin alcance. |
+| `migration-tl-specs, solo la capacidad X` | Sí | Cada corrida escribe solo su spec. |
+| `migration-qa, solo la capacidad X` | Sí | Cada corrida escribe solo su plan. Después, `solo la cobertura`. |
+| `migration-tl-tasks` | No | Numera las tareas y crea las fundacionales: dos corridas a la vez duplicarían ids. |
+| `migration-auditor` | No | Reescribe `_auditoria.md` entero. |
+| Los demás | No | No trabajan por capacidad. |
 
 Es la revisión más importante: un error aquí llega a tareas y pruebas como requisito. Revisa primero los hechos (flujos, contratos, `RN-n`, `CB-n`): bajo paridad son lo que se va a construir, también los que describen un comportamiento raro del origen. Después responde las preguntas abiertas, que deberían ser pocas:
 
@@ -335,13 +370,19 @@ Antes de correr QA conviene tener los specs validados y las preguntas abiertas r
 Usa el subagente migration-qa
 ```
 
+Con alcance (`solo la capacidad X`) QA escribe solo el plan de esa capacidad y no toca `_cobertura.md`, para que varias corridas puedan ir a la vez. El resumen de cobertura se consolida aparte, sin tocar los planes:
+
+```
+Usa el subagente migration-qa, solo la cobertura
+```
+
 Revisa los hallazgos `H-n` al final de cada plan. Decide y aplica al spec:
 
 ```
 Usa el subagente migration-tl-resolver: resuelve el hallazgo H-1 del plan carrito: el esquema Bearer no distingue mayúsculas
 ```
 
-Luego repite QA para esa capacidad (`Usa el subagente migration-qa, solo la capacidad carrito`). Si falta un caso cuyo comportamiento no está en el spec, el resolver te pedirá añadirlo primero al spec.
+Luego repite QA para esa capacidad (`Usa el subagente migration-qa, solo la capacidad carrito`) y consolida la cobertura (`Usa el subagente migration-qa, solo la cobertura`). Si falta un caso cuyo comportamiento no está en el spec, el resolver te pedirá añadirlo primero al spec.
 
 ### Paso 7: backlog
 
@@ -406,6 +447,7 @@ QA encontró hallazgos en el plan de carrito:
 Usa el subagente migration-tl-resolver: resuelve el hallazgo H-1 del plan carrito: DELETE /cart/items/ sin id responde 404 sin cuerpo
 Usa el subagente migration-tl-tasks, solo la capacidad carrito
 Usa el subagente migration-qa, solo la capacidad carrito
+Usa el subagente migration-qa, solo la cobertura
 Usa el subagente migration-pm
 ```
 
@@ -446,6 +488,11 @@ El orquestador también informa de la completitud por capacidad: en la línea `F
 |---|---|
 | No encontré repositorios | Abre Claude Code en la carpeta padre. |
 | Falta el bloque de convenciones en `CLAUDE.md` | Corre `migration-indexer`. |
+| El indexador termina con "Índice incompleto" | Se quedó sin capacidad. Vuelve a ejecutar `Usa el subagente migration-indexer`: continúa desde la carpeta que indica, sin repetir lo hecho. |
+| El analista se detiene por un índice incompleto | Reanuda el indexador hasta que todos los índices estén completos. |
+| Indexaste con `solo el repo X` y los demás agentes dicen que falta el bloque de `CLAUDE.md` | Las corridas con alcance solo escriben el índice de su repositorio. Consolida con `Usa el subagente migration-indexer`. |
+| Volviste a correr el indexador y un índice no cambió | El repositorio sigue en el mismo commit. Haz commit de los cambios o fuerza con `migration-indexer, solo el repo X`. |
+| `_cobertura.md` no refleja un plan que acabas de regenerar | QA con alcance no lo actualiza. `Usa el subagente migration-qa, solo la cobertura`. |
 | No sé a qué lenguaje se migra | Fija el destino con el resolver. |
 | El mapa de destino no cubre el repositorio X | Falta la entrada de ese repositorio: `fija el destino de X en <lenguaje>` o `conserva el repositorio X`. |
 | El agente se detiene porque el destino del prompt y el del README difieren | El README manda. Quita el destino del prompt o corrige el README con el resolver. |
