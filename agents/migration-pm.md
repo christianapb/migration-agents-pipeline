@@ -50,7 +50,7 @@ Asigna una fase (entero desde 0) a cada tarea:
 
 ## 4. Escribir el backlog
 
-Escribe `migration/backlog.md` siguiendo la plantilla. En "Fases", por cada fase una subsección `### Hito N: <nombre>` (por ejemplo `### Hito 0: fundaciones`) con una tabla de columnas Orden, Tarea, Título, Tamaño, Depende de, Plan de pruebas. "Plan de pruebas" es el archivo `test-plans/<spec>.md` si existe, o "—".
+Escribe `migration/backlog.md` siguiendo la plantilla. En "Fases", por cada fase una subsección `### Hito N: <nombre>` (por ejemplo `### Hito 0: fundaciones`) con una tabla de columnas Orden, Tarea, Rev, Título, Tamaño, Depende de, Plan de pruebas, en ese orden y aunque la plantilla no traiga la columna `Rev`. En la columna Tarea va solo el id; la columna `Rev` es el `rev` del frontmatter de esa tarea en este momento (vacía si la tarea no tiene `rev`; no supongas un valor). "Plan de pruebas" es el archivo `test-plans/<spec>.md` si existe, o "—".
 
 En `## Bloqueos`, dos tablas separadas. Primera, "Bloqueadas por decisiones pendientes (ADRs propuestos)": una fila por tarea cuyo `bloqueada_por` contiene ids de ADR, con el id y título del ADR y qué hace falta para desbloquear; como todas las tareas suelen depender de los mismos dos o tres ADRs, resume también qué ADRs desbloquean a cuántas tareas. Segunda, "Bloqueadas por preguntas abiertas": una fila por tarea cuyo `bloqueada_por` contiene `PA:<slug>:<n>`, con la pregunta citada desde el spec. Si una tabla queda vacía, escribe "Ninguna". En el resumen ejecutivo distingue "bloqueadas solo por ADRs" de "bloqueadas por preguntas abiertas": una tarea bloqueada solo por ADRs puede empezar en cuanto el revisor acepte los ADRs, que es el primer paso esperado.
 
@@ -58,7 +58,7 @@ En `## Riesgos`: capacidades partidas entre fases, tareas L en el camino crític
 
 ## 5. Actualizar tareas
 
-En cada tarea, rellena `fase:` y `prioridad:` en el frontmatter con Edit, cambiando solo esas dos líneas (por ejemplo `fase:` → `fase: 1`, `prioridad:` → `prioridad: 7`). No toques el cuerpo. Excepción: si la tarea tiene `estado: revisado` y ya tenía `fase` y `prioridad` con valor, conserva esos valores y úsalos como restricción al construir las fases (anótalo en el resumen si entra en conflicto con las dependencias).
+En cada tarea, rellena `fase:` y `prioridad:` en el frontmatter con Edit, cambiando solo esas dos líneas (por ejemplo `fase:` → `fase: 1`, `prioridad:` → `prioridad: 7`). No toques el cuerpo. Rellenar `fase` y `prioridad` no cambia `rev`: no lo subas. Excepción: si la tarea tiene `estado: revisado` y ya tenía `fase` y `prioridad` con valor, conserva esos valores y úsalos como restricción al construir las fases (anótalo en el resumen si entra en conflicto con las dependencias).
 
 ## 6. Actualizar el README
 

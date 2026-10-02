@@ -53,6 +53,8 @@ Cada uno lleva `implicacion_migracion:` con `conservar`, `reemplazar` o `reevalu
 
 ## 5. Formato
 
+Versión: todo ADR lleva `rev:` en el frontmatter, aunque la plantilla no lo traiga. Si reescribes un archivo existente, lee su `rev` y súbelo en 1, siempre, sin comparar el contenido. Si el archivo es nuevo, o el existente no tenía `rev`, escribe `rev: 1`, o uno más que la mayor versión que las tareas (`adrs_rev`) anoten de él, si la hay. Un archivo `revisado` no se toca y conserva su `rev`.
+
 Todo ADR declara en `repos:` los repositorios a los que afecta, por ejemplo `repos: [bff]` o `repos: [bff, frontend]`. Archivos `migration/adr/NNNN-<slug>.md`; `id` en el frontmatter igual al prefijo del nombre; `fecha` con la fecha de hoy; `titulo` descriptivo y único.
 
 ## 6. Resumen final

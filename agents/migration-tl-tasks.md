@@ -40,6 +40,8 @@ Antes de escribir una tarea, lee `spec`, `repo_destino` y `titulo` de las existe
 4. Notas para el destino: nombra el lenguaje destino del repositorio de la tarea y la tecnología que los ADRs `revisado` eligieron. Si un ADR relevante sigue `propuesto` (solo cuando se forzó), escribe las notas de forma neutral y cita el ADR en `bloqueada_por`.
 5. `bloqueada_por`: ids de ADRs propuestos y `PA:<slug>:<n>` **solo** para preguntas abiertas sin responder cuya respuesta cambia qué se construye. Una pregunta con respuesta escrita debajo en el spec, o marcada `(retirado ...)`, no bloquea. Bajo la política de paridad el comportamiento observado es el requisito: no añadas avisos de provisionalidad a los criterios. Formato: `bloqueada_por: [0004, PA:carrito:1]`.
 6. `fase` y `prioridad` vacíos: los rellena migration-pm.
+7. Versión: toda tarea lleva `rev:` en el frontmatter, aunque la plantilla no lo traiga. Si reescribes un archivo existente, lee su `rev` y súbelo en 1, siempre, sin comparar el contenido. Si el archivo es nuevo, o el existente no tenía `rev`, escribe `rev: 1`, o uno más que la mayor versión que el backlog (columna `Rev`) anoten de él, si la hay. Un archivo `revisado` no se toca y conserva su `rev`.
+8. Versión de los insumos, en toda tarea y aunque la plantilla no lo traiga: `spec_rev` con el `rev` que tiene el spec en este momento (vacío en las fundacionales), y `adrs_rev` con el `rev` actual de cada ADR de `adrs:`, como mapa en una sola línea: `adrs_rev: {0003: 1, 0011: 2}` (`adrs_rev: {}` si `adrs` está vacío). Lee esos `rev` del frontmatter del spec y de cada ADR; si alguno no lo tiene, deja `spec_rev` vacío u omite esa entrada del mapa y dilo en el resumen: no supongas un valor.
 
 ## 4. Resumen final
 

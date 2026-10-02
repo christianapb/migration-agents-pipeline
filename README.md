@@ -43,6 +43,8 @@ Viven en el bloque de `CLAUDE.md` que escribe el indexador: estados (`generado`,
 
 **Destino.** `destino:` es un valor simple, que aplica a todos los repositorios (`destino: Kotlin`), o un mapa en una línea por repositorio (`destino: {bff: Kotlin, frontend: conservar}`). `conservar` deja ese repositorio sin migrar: no recibe ADRs propuestos, tareas de implementación ni casos de prueba, y los specs siguen describiendo su comportamiento como contrato. Un mapa al que le falta un repositorio detiene a los agentes. El README manda sobre el prompt. Diseño: [`docs/specs/2026-10-01-destino-por-repo-design.md`](docs/specs/2026-10-01-destino-por-repo-design.md).
 
+**Versiones.** Specs, ADRs y tareas llevan `rev:` (entero desde 1), que sube cuando cambia el contenido y no cuando solo cambia el estado. Los derivados anotan la versión de sus insumos: tareas `spec_rev:` y `adrs_rev: {0003: 1, 0011: 2}`; planes `spec_rev:` y `tareas: [T-011, T-012]`; auditoría `Spec rev: <n>.`; backlog, columna `Rev`. El orquestador decide lo desactualizado comparando esos números, nunca fechas de modificación, e informa de la completitud por capacidad. Diseño: [`docs/specs/2026-10-01-versiones-de-artefactos-design.md`](docs/specs/2026-10-01-versiones-de-artefactos-design.md).
+
 **Política de paridad.** `politica: paridad` es la única política: el destino reproduce el comportamiento observado salvo decisión explícita. En cada spec, `## 12. Preguntas abiertas` contiene solo lo que el código no permite determinar, y `## 13. Posibles mejoras` lista como `MJ-n` lo que el código determina pero parece mejorable. Las mejoras no bloquean tareas ni generan casos pendientes; se aplican o descartan con `migration-tl-resolver`. Diseño: [`docs/specs/2026-10-01-politica-paridad-design.md`](docs/specs/2026-10-01-politica-paridad-design.md).
 
 ## Pruebas
@@ -75,6 +77,7 @@ Pruebas individuales, todas aceptan `WORKDIR`:
 | `test-tl-tasks.sh` | parada ante ADRs propuestos y forzado |
 | `test-resolver.sh` | operaciones del resolver |
 | `test-orchestrator.sh` | diagnóstico en varios estados |
+| `test-versiones.sh` | cada generador sube `rev` al reescribir y anota sus insumos; `migration-pm` no sube el `rev` de las tareas |
 | `test-destino.sh` | con `{bff: Kotlin, frontend: conservar}` no hay ADRs propuestos ni tareas para el frontend, y un mapa incompleto detiene a tl-tasks |
 | `test-auditor.sh` | el auditor no inventa contradicciones y detecta tres errores plantados sin modificar specs |
 | `verify-idempotency.sh` | un spec revisado sobrevive a una recorrida |

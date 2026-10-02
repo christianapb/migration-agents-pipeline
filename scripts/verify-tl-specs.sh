@@ -10,6 +10,8 @@ M="$W/migration"
 MAXP="${MAX_PREGUNTAS:-5}"
 fails=0
 fail() { echo "FAIL: $*"; fails=$((fails+1)); }
+# shellcheck source=scripts/lib-rev.sh
+. "$ROOT/scripts/lib-rev.sh"
 
 # Contenido de una sección numerada, hasta el siguiente encabezado de nivel 2.
 section() { awk -v n="$2" '$0 ~ "^## " n "\\. " {f=1; next} /^## /{f=0} f' "$1"; }
@@ -34,6 +36,7 @@ for s in "${specs[@]}"; do
   grep -q '```' "$s" && fail "$n: contiene bloques de código"
 
   grep -q '^commits: ' "$s" || fail "$n: sin commits en el frontmatter"
+  es_rev "$(campo "$s" rev)" || fail "$n: rev ausente o no es un entero mayor que 0 ('$(campo "$s" rev)')"
 
   # Evidencia por regla: cada RN-n y CB-n no retirada termina en una cita válida
   while IFS= read -r regla; do

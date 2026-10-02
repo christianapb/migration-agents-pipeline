@@ -102,6 +102,7 @@ Crea `migration/templates/` y escribe cada plantilla de abajo **solo si el archi
 ---
 id: 0000
 titulo:
+rev: 1
 repos: []
 estado: observado
 fecha:
@@ -109,6 +110,7 @@ implicacion_migracion:
 ---
 <!-- estado: observado (decisión que el código ya tomó) | propuesto (decisión que la migración obliga a tomar) | revisado (validado por un humano; no se regenera) -->
 <!-- implicacion_migracion: conservar | reemplazar | reevaluar. Solo en observados. -->
+<!-- rev: versión del contenido. Sube en 1 cada vez que cambia el contenido; no al cambiar solo el estado. -->
 <!-- repos: repositorios a los que afecta la decisión. Un ADR propuesto nunca incluye un repositorio conservado. -->
 # ADR 0000: <título>
 
@@ -134,11 +136,13 @@ implicacion_migracion:
 ---
 capacidad:
 estado: generado
+rev: 1
 repos: []
 adrs: []
 commits: {}
 ---
 <!-- estado: generado | revisado. Un spec revisado no se regenera. -->
+<!-- rev: versión del contenido. Sube en 1 cada vez que cambia el contenido; no al cambiar solo el estado. -->
 # Spec: <nombre de la capacidad>
 
 ## 1. Resumen
@@ -187,18 +191,22 @@ commits: {}
 ---
 id: T-000
 titulo:
+rev: 1
 spec:
+spec_rev:
 repo_destino:
 tipo: implementacion
 depende_de: []
 tamaño: M
 adrs: []
+adrs_rev: {}
 estado: generado
 fase:
 prioridad:
 bloqueada_por: []
 ---
 <!-- spec: nombre de archivo del spec sin extensión; vacío en tareas fundacionales. -->
+<!-- rev: versión del contenido de la tarea. spec_rev: rev del spec del que se derivó. adrs_rev: rev de cada ADR de adrs, en una línea: {0003: 1, 0011: 2}. -->
 <!-- tipo: implementacion (reimplementa en un repositorio que se migra) | adaptacion (cambio forzado por una decisión en un repositorio conservado). -->
 <!-- tamaño: S (menos de medio día), M (uno o dos días), L (más de dos días). -->
 <!-- fase y prioridad: los rellena migration-pm. -->
@@ -221,8 +229,11 @@ bloqueada_por: []
 ---
 capacidad:
 spec:
+spec_rev:
+tareas: []
 estado: generado
 ---
+<!-- spec_rev: rev del spec del que se generó el plan. tareas: ids de las tareas de ese spec, en una línea: [T-011, T-012]. -->
 <!-- El nombre de archivo debe ser el mismo que el del spec. -->
 # Plan de pruebas: <capacidad>
 
@@ -275,7 +286,8 @@ generado:
 
 ## Fases
 <!-- ### Hito 0: fundaciones
-| Orden | Tarea | Título | Tamaño | Depende de | Plan de pruebas |
+| Orden | Tarea | Rev | Título | Tamaño | Depende de | Plan de pruebas |
+Rev es el rev de la tarea cuando se generó el backlog.
 Cada fase termina con al menos una capacidad completa. -->
 
 ## Bloqueos
@@ -344,7 +356,8 @@ En cualquier momento: migration-tl-resolver aplica decisiones y cambios sobre AD
 - Evidencia por regla: en los specs, cada `RN-n` y `CB-n` termina con una cita entre corchetes de la línea de código que la respalda: `[ruta:línea]` o `[ruta:inicio-fin]`, con la ruta relativa a esta carpeta empezando por el nombre del repo, y varias citas separadas por coma. Una regla deducida de que algo no existe usa `[ausente: ruta]`. Una regla que nace de una decisión del usuario y no del código usa `[decisión: MJ-n]`, `[decisión: PA n]` o `[decisión: ADR NNNN]`. La cita es solo ruta y línea, nunca código, y no forma parte del requisito. El frontmatter de cada spec anota en `commits:` el commit de cada repo sobre el que se escribió, tomado de la columna Commit del índice general. migration-auditor contrasta cada regla con su cita y escribe `migration/specs/_auditoria.md` con hallazgos `AU-n` por capacidad.
 - Política de paridad: `politica: paridad` en el frontmatter de `migration/README.md` es la única política soportada (ausente o vacío equivale a `paridad`). El destino reproduce el comportamiento observado en el origen salvo decisión explícita en contra: una mejora aplicada o un ADR. Por eso, en los specs: lo que el código determina va como hecho (`RN-n`, `CB-n`, contratos, flujos); si el código determina el comportamiento, no es una pregunta abierta; `## 12. Preguntas abiertas` contiene solo lo que no se pudo determinar leyendo el código; y lo que el código determina pero parece mejorable va en `## 13. Posibles mejoras` como `MJ-n`, citando la regla actual. Las mejoras sin aplicar no bloquean tareas, no generan casos de prueba pendientes y no cuentan como pendiente de revisión.
 - Destino: campo `destino:` del frontmatter de `migration/README.md`. Es un valor simple, que aplica a todos los repositorios (`destino: Kotlin`), o un mapa en una sola línea con un valor por repositorio (`destino: {bff: Kotlin, frontend: conservar}`). `conservar` es palabra reservada: ese repositorio se queda en su stack actual y no se migra. En un mapa, cada repositorio detectado debe tener entrada y cada clave debe ser un repositorio detectado; si no, el agente que necesita el destino se detiene y lo dice. El README manda: el destino del prompt solo se usa si el README no lo tiene, y si ambos existen y difieren el agente se detiene. Para un repositorio conservado no se proponen ADRs sobre su tecnología ni se generan tareas de implementación ni casos de prueba; sus ADRs observados y los specs sí se escriben, porque su comportamiento es el contrato que el repositorio migrado debe respetar. Una capacidad cuyos repositorios están todos conservados queda fuera de alcance: sigue en el mapa de capacidades pero no recibe spec, tareas ni plan. Capacidades descartadas: lista `excluir:` del mismo frontmatter; se comparan en minúsculas y sin espacios.
-- Frases de prompt que entienden los agentes, a usar tal cual: `con destino <lenguaje>` (destino único) y `con destino <repo>=<lenguaje>, <repo>=conservar` (destino por repositorio), ambas solo cuando el README no tiene destino; `fija el destino en <lenguaje>`, `fija el destino de <repo> en <lenguaje>` y `conserva el repositorio <repo>` (migration-tl-resolver); `solo la capacidad <slug>` (alcance), `aunque haya ADRs propuestos` (forzar migration-tl-tasks), `acepta la recomendación` (decidir un ADR propuesto con su recomendación), `aplica la mejora MJ-n` y `descarta la mejora MJ-n` (migration-tl-resolver, indicando el spec) y `sin marcar revisado` (migration-tl-resolver).
+- Versiones: los specs, ADRs y tareas llevan `rev: <entero>` en el frontmatter, desde 1. `rev` sube en 1 cada vez que cambia el contenido del artefacto: cuando un agente generador lo reescribe (siempre, sin comparar el contenido) y cuando migration-tl-resolver edita su contenido. No sube al marcar `revisado`, al limpiar `bloqueada_por`, al rellenar `fase` y `prioridad` ni al registrar versiones. Un artefacto nuevo lleva `rev: 1`, o uno más que la mayor versión que algún derivado anote de él, si la hay: un artefacto borrado y vuelto a generar no regresa a una versión ya anotada. Cada derivado anota la versión de sus insumos en el momento de generarse: las tareas, `spec_rev: <n>` (vacío en las fundacionales) y `adrs_rev: {0003: 1, 0011: 2}`, un mapa en una sola línea con una entrada por cada id de `adrs:`; los planes de prueba, `spec_rev: <n>` y `tareas: [T-011, T-012]` con los ids de las tareas de su spec; cada sección de `_auditoria.md`, `Spec rev: <n>.` en su línea `Auditada:`; el backlog, una columna `Rev` a continuación de la columna Tarea en las tablas de fases. Si un insumo no tiene `rev`, la anotación queda vacía: nunca se supone un valor. Estos campos se escriben aunque la plantilla de `migration/templates/` sea anterior y no los traiga. Un derivado está desactualizado cuando anota una versión menor que la actual de su insumo; las fechas de modificación de los archivos no significan nada. Quien edite a mano el contenido de un spec, un ADR o una tarea debe subir su `rev`.
+- Frases de prompt que entienden los agentes, a usar tal cual: `con destino <lenguaje>` (destino único) y `con destino <repo>=<lenguaje>, <repo>=conservar` (destino por repositorio), ambas solo cuando el README no tiene destino; `fija el destino en <lenguaje>`, `fija el destino de <repo> en <lenguaje>` y `conserva el repositorio <repo>` (migration-tl-resolver); `solo la capacidad <slug>` (alcance), `aunque haya ADRs propuestos` (forzar migration-tl-tasks), `acepta la recomendación` (decidir un ADR propuesto con su recomendación), `aplica la mejora MJ-n` y `descarta la mejora MJ-n` (migration-tl-resolver, indicando el spec), `registra las versiones` y `registra las versiones de <artefacto>` (migration-tl-resolver) y `sin marcar revisado` (migration-tl-resolver).
 - Cada agente termina con: archivos creados, archivos modificados, lo que no pudo resolver y el siguiente paso.
 
 ### Para la sesión principal

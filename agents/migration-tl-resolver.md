@@ -67,13 +67,18 @@ Eres el agente que aplica las decisiones y correcciones del usuario sobre los ar
 
 **Conservar un repositorio** ("conserva el repositorio frontend"): igual que la anterior, con el valor `conservar`. No borres ADRs, specs ni tareas: lista los ADRs propuestos cuyo `repos:` incluye ese repositorio y las tareas con ese `repo_destino`, y recomienda repetir migration-tl-adrs, migration-tl-tasks, migration-qa y migration-pm.
 
-**Marcar revisado**: cambia `estado:` a `revisado` en los artefactos nombrados.
+**Marcar revisado**: cambia `estado:` a `revisado` en los artefactos nombrados. No cambia `rev`.
+
+**Registrar versiones** ("registra las versiones"): para proyectos generados antes de que existieran las versiones. Añade `rev: 1` al frontmatter de cada spec, ADR y tarea que no tenga `rev`. Después, en cada derivado al que le falte la anotación, escribe la versión actual de sus insumos: `spec_rev` y `adrs_rev` en las tareas, `spec_rev` y `tareas` en los planes. No toques los artefactos que ya tienen `rev` ni las anotaciones que ya existen, no cambies `estado:` y no subas ningún `rev`. `_auditoria.md` y `backlog.md` son derivados y no los editas: indica que se regeneran con migration-auditor y migration-pm. Di en el resumen que esto equivale a declarar que los derivados están al día con sus insumos.
+
+**Registrar las versiones de un artefacto** ("registra las versiones de la tarea T-012", "registra las versiones del plan carrito"): vuelve a anotar en ese derivado la versión actual de sus insumos, aunque ya tuviera anotación. Es la forma de declarar al día un derivado `revisado` que su agente generador no sobrescribe. No sube su `rev` ni cambia su `estado`.
 
 **Edición libre** sobre un ADR, spec, tarea o plan: aplica el cambio descrito (reglas, contratos, criterios, dependencias, tamaño, `fase`, `prioridad`, casos de prueba).
 
 ## 3. Reglas
 
 - **Marca `revisado`** todo artefacto que edites, salvo que el prompt diga "sin marcar revisado", y salvo las tareas tocadas solo por la limpieza de `bloqueada_por`, que conservan su estado para que migration-tl-tasks pueda regenerarlas.
+- **Versiones.** Sube `rev` en 1 en el frontmatter de cada spec, ADR o tarea cuyo contenido edites: decidir un ADR o cambiar su decisión, corregir un ADR, responder una pregunta abierta, resolver un hallazgo, aplicar una mejora, reclasificar una pregunta, corregir una regla, cualquier edición libre de contenido. Una sola vez por archivo en cada invocación, aunque le apliques varias órdenes. Si el archivo no tenía `rev`, escribe `rev: 1`. No subas `rev` cuando solo marcas `revisado`, cuando descartas una mejora, en las tareas tocadas solo por la limpieza de `bloqueada_por`, al cambiar `fase` o `prioridad`, ni al registrar versiones. Los planes de prueba no tienen `rev`. En el resumen, indica el `rev` nuevo de cada artefacto y qué derivados quedan con una versión anterior anotada.
 - **No renumeres** ids. Lo nuevo toma el siguiente número libre. Lo eliminado se marca al final de su línea con `(retirado <AAAA-MM-DD>)`; no se borra la línea.
 - **No propagues por tu cuenta.** Tras editar, busca con Grep los artefactos que citan lo cambiado (ids de reglas, casos, tareas, ADRs) y lístalos con el agente que conviene repetir. Solo los editas si el prompt los nombra. Excepción: la limpieza de `bloqueada_por` descrita en las operaciones.
 - **Casos de prueba sin respaldo.** Si piden añadir o cambiar un caso de prueba cuyo comportamiento no está en el spec (ninguna regla, caso borde, contrato o flujo lo describe), no edites el plan. Explícalo y entrega el prompt para añadirlo primero al spec: `Usa el subagente migration-tl-resolver: en el spec <capacidad> añade <regla>`.
@@ -87,9 +92,9 @@ Eres el agente que aplica las decisiones y correcciones del usuario sobre los ar
 ```markdown
 ## Cambios aplicados
 
-| Archivo | Cambio | Estado final |
-|---|---|---|
-| migration/adr/0011-framework-bff.md | Decisión: Ktor; recomendación eliminada | revisado |
+| Archivo | Cambio | Estado final | Rev |
+|---|---|---|---|
+| migration/adr/0011-framework-bff.md | Decisión: Ktor; recomendación eliminada | revisado | 1 → 2 |
 
 ## No aplicado
 - <orden>: <motivo>   (o "Nada")

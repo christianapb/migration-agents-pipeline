@@ -39,12 +39,91 @@ orq "ADRs propuestos"
 printf '%s' "$out" | grep -q "$P" || fail "ADRs propuestos: no lista el ADR $P"
 printf '%s' "$next" | grep -Eq 'migration-tl-resolver|migration-tl-specs' || fail "ADRs propuestos: siguiente paso inesperado"
 
-# Estado 3: plan más antiguo que su spec
-bash "$ROOT/scripts/snapshot.sh" restore qa "$W" >/dev/null || { echo "FAIL: no se pudo restaurar la etapa qa"; exit 1; }
+# Estado 3: lo desactualizado se decide por versiones, no por fechas
+. "$ROOT/scripts/lib-rev.sh"
+qa_ws() { bash "$ROOT/scripts/snapshot.sh" restore qa "$W" >/dev/null || { echo "FAIL: no se pudo restaurar la etapa qa"; exit 1; }; }
+desact() { printf '%s' "$out" | awk '/^## Desactualizado/{f=1;next} /^## /{f=0} f' | grep -v '^[[:space:]]*$' || true; }
+nada() { # <caso>
+  local d; d="$(desact)"
+  printf '%s\n' "$d" | grep -Eqx -- '-? ?Nada\.?' && [ "$(printf '%s\n' "$d" | grep -c .)" -eq 1 ] \
+    || fail "$1: se esperaba 'Nada' en Desactualizado y dice: $(printf '%s' "$d" | head -n3 | cut -c1-200)"
+}
+ids_de() { xargs -r -n1 basename | grep -oE '^T-[0-9]+' | sort -u; }
+qa_ws
 S="$(ls "$M"/specs | grep -v '^_' | head -n1 | sed 's/\.md$//')"
+OTROS="$(ls "$M"/specs | grep -v '^_' | sed 's/\.md$//' | grep -vx "$S")"
+
+# 3.1 Sin tocar nada
+orq "sin cambios"
+nada "sin cambios"
+out_base="$out"
+
+# 3.2 Cambia la fecha de modificación de un spec, no su contenido
 sleep 2; touch "$M/specs/$S.md"
-orq "plan desactualizado"
-printf '%s' "$out" | awk '/^## Desactualizado/{f=1;next} /^## /{f=0} f' | grep -q "$S" || fail "plan desactualizado: no marca $S"
+orq "touch de un spec"
+nada "touch de un spec"
+
+# 3.3 Sube el rev de un spec: marca su plan y sus tareas, y nada de otros specs
+qa_ws
+sed -i "s/^rev: .*/rev: $(( $(rev_de "$M/specs/$S.md") + 1 ))/" "$M/specs/$S.md"
+orq "rev de un spec"
+d="$(desact)"
+printf '%s' "$d" | grep -q "$S" || fail "rev de un spec: no marca el plan de $S"
+for t in $(grep -l "^spec: $S$" "$M"/tasks/T-*.md | ids_de); do
+  printf '%s' "$d" | grep -q "\b$t\b" || fail "rev de un spec: no marca la tarea $t de $S"
+done
+for o in $OTROS; do
+  printf '%s' "$d" | grep -q "$o" && fail "rev de un spec: marca también $o"
+done
+for t in $(grep -L "^spec: $S$" "$M"/tasks/T-*.md | ids_de); do
+  printf '%s' "$d" | grep -q "\b$t\b" && fail "rev de un spec: marca la tarea $t, que no es de $S"
+done
+
+# 3.4 Cambia solo el estado de un spec a revisado
+qa_ws
+sed -i 's/^estado: generado/estado: revisado/' "$M/specs/$S.md"
+orq "solo cambio de estado"
+nada "solo cambio de estado"
+
+# 3.5 Sube el rev de un ADR: marca solo las tareas que lo citan
+qa_ws
+total="$(ls "$M"/tasks/T-*.md | wc -l)"; ADR=""
+for a in "$M"/adr/*.md; do
+  id="$(campo "$a" id)"
+  n="$(grep -lE "^adrs:.*\b$id\b" "$M"/tasks/T-*.md 2>/dev/null | wc -l)"
+  if [ "$n" -gt 0 ] && [ "$n" -lt "$total" ]; then ADR="$a"; break; fi
+done
+if [ -z "$ADR" ]; then
+  fail "rev de un ADR: ningún ADR está citado por una parte de las tareas"
+else
+  id="$(campo "$ADR" id)"
+  sed -i "s/^rev: .*/rev: $(( $(rev_de "$ADR") + 1 ))/" "$ADR"
+  orq "rev de un ADR"
+  d="$(desact)"
+  for t in $(grep -lE "^adrs:.*\b$id\b" "$M"/tasks/T-*.md | ids_de); do
+    printf '%s' "$d" | grep -q "\b$t\b" || fail "rev de un ADR: no marca la tarea $t, que cita el ADR $id"
+  done
+  for t in $(grep -LE "^adrs:.*\b$id\b" "$M"/tasks/T-*.md | ids_de); do
+    printf '%s' "$d" | grep -q "\b$t\b" && fail "rev de un ADR: marca la tarea $t, que no cita el ADR $id"
+  done
+fi
+
+# 3.6 Completitud por capacidad: sin tareas para una capacidad, el paso 5 no está completo
+qa_ws
+grep -l "^spec: $S$" "$M"/tasks/T-*.md | while IFS= read -r f; do rm -- "$f"; done
+orq "capacidad sin tareas"
+printf '%s' "$out" | grep -E '^Faltan:' | grep -q "$S" || fail "capacidad sin tareas: la línea Faltan no nombra $S"
+printf '%s' "$next" | grep -q 'migration-tl-tasks\|migration-tl-resolver' || fail "capacidad sin tareas: siguiente paso inesperado"
+
+# 3.7 Artefacto sin versión: no se puede determinar
+qa_ws
+sed -i '/^rev:/d' "$M/specs/$S.md"
+orq "spec sin versión"
+desact | grep -q 'no se puede determinar' || fail "spec sin versión: no dice 'no se puede determinar'"
+printf '%s' "$out" | grep -q 'registra las versiones' || fail "spec sin versión: no ofrece 'registra las versiones'"
+
+qa_ws
+out="$out_base"
 grep -rqE '^(- )?MJ-[0-9]+:' "$M"/specs/[!_]*.md || fail "paridad: el workspace no tiene mejoras MJ-n para probar al orquestador"
 printf '%s' "$out" | awk '/^## Pendiente de revisión/{f=1;next} /^## /{f=0} f' | grep -q 'MJ-[0-9]' && fail "paridad: el orquestador lista mejoras MJ-n como pendientes de revisión"
 

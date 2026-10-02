@@ -13,10 +13,13 @@ marker="MARCA-HUMANA-$(date +%s)"
 sed -i 's/^estado: generado/estado: revisado/' "$spec"
 printf '\n%s\n' "$marker" >> "$spec"
 before="$(md5sum "$spec")"
+rev_before="$(sed -n 's/^rev:[[:space:]]*//p' "$spec" | head -n1)"
 
 bash "$ROOT/scripts/run-agent.sh" migration-tl-specs >/dev/null
 
 after="$(md5sum "$spec")"
+rev_after="$(sed -n 's/^rev:[[:space:]]*//p' "$spec" | head -n1)"
+[ "$rev_before" = "$rev_after" ] || { echo "FAIL: el rev del spec revisado $slug cambió ($rev_before → $rev_after)"; exit 1; }
 if [ "$before" = "$after" ] && grep -q "$marker" "$spec"; then
   echo "OK: idempotencia ($slug conservado)"; exit 0
 fi

@@ -6,6 +6,8 @@ W="${WORKDIR:-$ROOT/.work/sample-workspace}"
 M="$W/migration"
 fails=0
 fail() { echo "FAIL: $*"; fails=$((fails+1)); }
+# shellcheck source=scripts/lib-rev.sh
+. "$ROOT/scripts/lib-rev.sh"
 
 [ -f "$M/backlog.md" ] || fail "backlog.md no existe"
 grep -q '^### Hito 0' "$M/backlog.md" 2>/dev/null || fail "backlog sin Hito 0"
@@ -39,6 +41,11 @@ for t in "$M"/tasks/T-*.md; do
   done
   # el backlog lista la tarea
   grep -q "$id" "$M/backlog.md" 2>/dev/null || fail "$id no aparece en el backlog"
+  # la fila de la tarea en las tablas de fases registra su rev en la columna siguiente
+  brev="$(awk '/^## Bloqueos/{exit} {print}' "$M/backlog.md" 2>/dev/null | sed -nE "s/^\|[^|]*\|[^|]*\b$id\b[^|]*\|[[:space:]]*([0-9]+)[[:space:]]*\|.*/\1/p" | head -n1)"
+  trev="$(rev_de "$t")"
+  [ -n "$brev" ] || fail "$id: su fila del backlog no tiene columna Rev"
+  [ -z "$brev" ] || [ "$brev" = "$trev" ] || fail "$id: el backlog registra rev $brev y la tarea tiene rev '$trev'"
 done
 
 # Tareas bloqueadas aparecen en la sección Bloqueos (rutas con espacios: sin word-splitting)
