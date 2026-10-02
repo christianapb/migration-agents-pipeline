@@ -42,7 +42,7 @@ for s in "${specs[@]}"; do
   cases=$(grep -c "^### TC-$slug-[0-9]\{3\}: " "$p" || true)
   [ "$cases" -ge 3 ] || fail "$slug: solo $cases casos TC-$slug-nnn"
   # Cada caso tiene Dado/Cuando/Entonces y Cubre
-  dado=$(grep -c '^- Dado ' "$p" || true); cuando=$(grep -c '^- Cuando ' "$p" || true); entonces=$(grep -c '^- Entonces ' "$p" || true)
+  dado=$(grep -c '^- Dado[ ,]' "$p" || true); cuando=$(grep -c '^- Cuando[ ,]' "$p" || true); entonces=$(grep -c '^- Entonces[ ,]' "$p" || true)
   [ "$dado" -ge "$cases" ] && [ "$cuando" -ge "$cases" ] && [ "$entonces" -ge "$cases" ] || fail "$slug: casos sin Dado/Cuando/Entonces completos ($dado/$cuando/$entonces de $cases)"
   cubre=$(grep -c '^- Cubre: ' "$p" || true)
   [ "$cubre" -ge "$cases" ] || fail "$slug: casos sin línea Cubre"
