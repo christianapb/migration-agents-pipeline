@@ -52,7 +52,7 @@ Compara el campo `commits:` del frontmatter de cada spec con la columna Commit d
 
 ## 5. Escribir `migration/specs/_auditoria.md`
 
-Es un derivado. Si auditas todo, escríbelo entero. Si auditas con alcance, lee el archivo existente, reemplaza la sección de esa capacidad y su fila del resumen, y conserva las secciones de las demás capacidades tal como estaban.
+Es un derivado. Si auditas todo, escríbelo entero. Si auditas con alcance, lee el archivo existente, reemplaza la sección de esa capacidad y su fila del resumen, y conserva las secciones de las demás capacidades tal como estaban: cópialas íntegras, desde su título hasta su última línea, incluida su subsección `### Hallazgos`, y comprueba al terminar que el archivo sigue teniendo una sección completa por cada capacidad que tenía.
 
 ```markdown
 # Auditoría de specs

@@ -156,7 +156,13 @@ else
   [ "$(campo "$M/test-plans/$S.md" spec_rev)" = "1" ] || fail "caso 14: el plan no anotó el spec_rev actual"
   [ "$(campo "$TS" rev)" = "$v_ts" ] || fail "caso 14: registrar versiones cambió el rev de la tarea"
   [ "$(grep -H '^rev:' "$M"/adr/*.md | sort)" = "$adrs_antes" ] || fail "caso 14: registrar versiones cambió el rev de algún ADR"
-  bash "$ROOT/scripts/verify-tl-tasks.sh" >/dev/null || fail "caso 14: las tareas no pasan el verificador tras registrar versiones"
+  # Cada ADR citado por la tarea tiene su versión anotada, y no supera la actual
+  pares="$(mapa_pares "$(campo "$TS" adrs_rev)")"
+  for a in $(lista "$(campo "$TS" adrs)"); do
+    ar="$(printf '%s
+' "$pares" | awk -v k="$a" '$1==k {print $2}')"
+    [ -n "$ar" ] && [ "$ar" = "$(rev_de "$(adrfile "$a")")" ] || fail "caso 14: adrs_rev anota '$ar' para el ADR $a, cuyo rev es $(rev_de "$(adrfile "$a")")"
+  done
 fi
 
 [ "$fails" -eq 0 ] && { echo "OK: resolver"; exit 0; }
