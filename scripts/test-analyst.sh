@@ -23,6 +23,16 @@ run migration-analyst >/dev/null
 grep -qE "^\| $slug \|" "$M/specs/_capacidades.md" && fail "la capacidad excluida '$slug' reapareció"
 MIN_CAPACIDADES=3 bash "$ROOT/scripts/verify-analyst.sh" >/dev/null || fail "verify-analyst falla con exclusión"
 
+# Índice incompleto: el analista se detiene y pide reanudar el indexador
+cp "$W/bff/index.md" "$SNAP_TMP/bff-index.bak"
+printf '> Índice incompleto: falta desde src/routes\n' >> "$W/bff/index.md"
+snap > "$SNAP_TMP/snap-a.txt"
+out="$(run migration-analyst)"
+snap > "$SNAP_TMP/snap-b.txt"
+diff -q "$SNAP_TMP/snap-a.txt" "$SNAP_TMP/snap-b.txt" >/dev/null || fail "escribió archivos con un índice incompleto"
+printf '%s' "$out" | grep -q 'migration-indexer' || fail "índice incompleto: no pidió reanudar migration-indexer"
+cp "$SNAP_TMP/bff-index.bak" "$W/bff/index.md"
+
 # Caso 10: sin bloque en CLAUDE.md el agente se detiene
 awk '/^<!-- migration-flow:begin -->$/{f=1} !f{print} /^<!-- migration-flow:end -->$/{f=0}' "$W/CLAUDE.md" > "$W/CLAUDE.tmp" && mv "$W/CLAUDE.tmp" "$W/CLAUDE.md"
 snap > "$SNAP_TMP/snap-a.txt"

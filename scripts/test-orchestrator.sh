@@ -32,12 +32,33 @@ bash "$ROOT/scripts/snapshot.sh" restore indexer "$W" >/dev/null || { echo "FAIL
 orq "tras indexer"
 printf '%s' "$next" | grep -q 'migration-analyst' || fail "tras indexer: no recomienda migration-analyst"
 
+# Estado 1b: un índice de repositorio incompleto; el paso 1 no está completado
+printf '> Índice incompleto: falta desde src/routes\n' >> "$W/bff/index.md"
+orq "índice incompleto"
+printf '%s' "$next" | grep -q 'migration-indexer' || fail "índice incompleto: el siguiente paso no es migration-indexer"
+printf '%s' "$next" | grep -q 'migration-analyst' && fail "índice incompleto: recomienda migration-analyst sobre un índice parcial"
+printf '%s' "$out" | grep -q 'bff' || fail "índice incompleto: no nombra el repositorio bff"
+
 # Estado 2: ADRs propuestos pendientes
 bash "$ROOT/scripts/snapshot.sh" restore tl-adrs "$W" >/dev/null || { echo "FAIL: no se pudo restaurar la etapa tl-adrs"; exit 1; }
 P="$(grep -l '^estado: propuesto' "$M"/adr/*.md | head -n1 | xargs basename | cut -c1-4)"
 orq "ADRs propuestos"
 printf '%s' "$out" | grep -q "$P" || fail "ADRs propuestos: no lista el ADR $P"
 printf '%s' "$next" | grep -Eq 'migration-tl-resolver|migration-tl-specs' || fail "ADRs propuestos: siguiente paso inesperado"
+# Con el mapa y los ADRs hechos y ningún spec: propone el paralelo con todas las capacidades
+printf '%s' "$next" | grep -qi 'en paralelo' || fail "specs pendientes: no propone lanzarlos en paralelo"
+for c in $(grep -oE '^\| [a-z0-9-]+ \|' "$M/specs/_capacidades.md" | sed -E 's/^\| //; s/ \|$//'); do
+  printf '%s' "$next" | grep -q "migration-tl-specs, solo la capacidad $c" || fail "specs pendientes: el paralelo no incluye la capacidad $c"
+done
+
+# Estado 2b: specs hechos, ADRs decididos y ninguna tarea: migration-tl-tasks va en serie
+bash "$ROOT/scripts/snapshot.sh" restore tl-specs "$W" >/dev/null || { echo "FAIL: no se pudo restaurar la etapa tl-specs"; exit 1; }
+sed -i 's/^estado: propuesto/estado: revisado/' "$M"/adr/*.md
+sed -i 's/^destino:.*/destino: Kotlin/' "$M/README.md"
+orq "tareas pendientes"
+printf '%s' "$out" | grep -q 'migration-tl-tasks' || fail "tareas pendientes: no menciona migration-tl-tasks"
+printf '%s' "$next" | grep -q 'migration-tl-tasks, solo la capacidad' && fail "tareas pendientes: reparte migration-tl-tasks por capacidad"
+printf '%s' "$next" | grep -i 'en paralelo' | grep -q 'migration-tl-tasks' && fail "tareas pendientes: propone migration-tl-tasks en paralelo"
 
 # Estado 3: lo desactualizado se decide por versiones, no por fechas
 . "$ROOT/scripts/lib-rev.sh"

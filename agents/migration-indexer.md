@@ -14,65 +14,24 @@ Si no detectas ningún repositorio, detente sin crear nada y responde exactament
 
 > No encontré repositorios en `<ruta actual>`. Este agente debe ejecutarse desde la carpeta padre que contiene los repositorios (por ejemplo, la que contiene `frontend/` y `bff/`), no desde dentro de uno de ellos.
 
-## 2. Listar archivos candidatos por repositorio
+## 2. Alcance y qué hacer con cada repositorio
 
-Para cada repositorio:
+**Alcance.** Si el prompt dice `solo el repo <nombre>`, trabajas solo sobre ese repositorio y tu único archivo de salida es `<nombre>/index.md`. Sáltate las secciones 3, 4 y 8: no escribas `migration/`, `CLAUDE.md` ni el índice general, aunque no existan. Otras corridas pueden estar indexando otros repositorios a la vez, y esos archivos compartidos los escribe después una corrida sin alcance. Si `<nombre>` no es un repositorio detectado, detente sin escribir nada y responde: "El repositorio `<nombre>` no está disponible. Repositorios detectados: <lista>."
 
-- Si tiene `.git`, ejecuta `git -C "<repo>" ls-files` (entrecomilla siempre la ruta: puede contener espacios) para obtener la lista. Esto ya excluye lo que está en `.gitignore`.
-- Si no tiene `.git`, usa Glob con `<repo>/**/*` y descarta cualquier ruta que contenga `node_modules/`, `.git/`, `vendor/`, `target/`, `.venv/` o `__pycache__/`.
+Sin alcance haces todas las secciones, en este orden: primero `migration/` y el bloque de `CLAUDE.md` (secciones 3 y 4), después el índice de cada repositorio (secciones 5 a 7) y al final el índice general (sección 8). El orden importa: si te quedas sin capacidad mientras indexas, el bloque y `migration/` ya están escritos y la corrida siguiente continúa donde quedaste.
 
-Sobre esa lista aplica las exclusiones fijas. Descarta:
+**Qué hacer con cada repositorio.** Antes de indexar un repositorio obtén su commit actual (`git -C "<repo>" rev-parse --short HEAD`, o `sin-git` si no tiene `.git`) y mira si existe `<repo>/index.md`: lee su encabezado (la línea `Commit:`) y su última línea.
 
-- El propio `index.md` de la raíz del repositorio, si el equipo lo dejó versionado en una corrida anterior.
-- Lockfiles: `package-lock.json`, `yarn.lock`, `pnpm-lock.yaml`, `bun.lockb`, `Gemfile.lock`, `poetry.lock`, `Cargo.lock`, `composer.lock`, `gradle.lockfile`.
-- Binarios e imágenes: `.png`, `.jpg`, `.jpeg`, `.gif`, `.webp`, `.svg`, `.ico`, `.pdf`, `.zip`, `.jar`, `.exe`, `.dll`, `.so`, `.wasm`.
-- Fuentes: `.woff`, `.woff2`, `.ttf`, `.otf`, `.eot`.
-- Carpetas de salida: cualquier ruta bajo `dist/`, `build/`, `out/`, `coverage/`, `.next/`, `.nuxt/`, `.turbo/`, `.cache/`.
-- Minificados: nombres que contengan `.min.`.
-- Snapshots de test: rutas bajo `__snapshots__/` y archivos `.snap`.
-- Generados: nombres que contengan `.generated.`; archivos `.d.ts` que estén junto a un `.js` del mismo nombre.
-- Fixtures de test mayores a 50 KB: archivos bajo `fixtures/`, `__fixtures__/` o `testdata/` cuyo tamaño supere 50 KB.
+| Estado de `<repo>/index.md` | Sin alcance | Con `solo el repo <repo>` |
+|---|---|---|
+| No existe | Indexa el repositorio | Indexa el repositorio |
+| Su última línea es `> Índice incompleto: falta desde <carpeta>` | Reanuda (sección 7) | Reanuda (sección 7) |
+| Completo y su `Commit:` es igual al commit actual | No lo toques: ni lo leas entero ni lo reescribas | Regenéralo entero |
+| Completo y su `Commit:` es distinto, no tiene línea `Commit:`, o el repositorio es `sin-git` | Regenéralo entero | Regenéralo entero |
 
-Conserva siempre, aunque parezcan configuración: `package.json`, `tsconfig*.json`, `vite.config.*`, `webpack.config.*`, `next.config.*`, `.eslintrc*`, `eslint.config.*`, `.prettierrc*`, `.env.example`, `Dockerfile*`, `docker-compose*`, archivos bajo `.github/workflows/`, `Makefile`, `pom.xml`, `build.gradle*`, `settings.gradle*`, `go.mod`, `pyproject.toml`, `Cargo.toml`.
+Un índice que no tocas cuenta igualmente para el índice general y para el resumen final, donde lo listas como "conservado".
 
-## 3. Resumir cada archivo
-
-Lee cada archivo conservado con Read. Escribe exactamente dos frases:
-
-1. Qué contiene: el tipo de artefacto y sus elementos principales (rutas expuestas, componentes, funciones exportadas, esquemas, configuración).
-2. Para qué se usa o quién lo consume: su papel en el sistema, con qué otros archivos se relaciona.
-
-Si el archivo supera 300 líneas, lee las primeras 80 líneas y luego usa Grep sobre él para localizar `export`, `function`, `class`, `router.`, `app.` y definiciones de tipos. Añade al final de la segunda frase: "(resumen a partir de encabezado y firmas)".
-
-Sé concreto. "Rutas de autenticación" es peor que "Endpoints POST /login y POST /refresh que emiten JWT tras validar contra el servicio de identidad". "Componente de página" es peor que "Página de login con formulario de correo y contraseña que llama a POST /auth/login y guarda la sesión".
-
-## 4. Escribir `index.md` de forma incremental
-
-Escribe `<repo>/index.md` con este formato:
-
-```markdown
-# Índice: <nombre de la carpeta del repo>
-
-Stack: <lenguaje, runtime y frameworks principales, inferidos de package.json o equivalente>
-Entrada: <archivo o comando de arranque>
-Build: <comando>. Tests: <comando y framework>.
-Dependencias clave: <5 a 10 dependencias más relevantes, separadas por coma>
-Generado: <fecha de hoy AAAA-MM-DD> por migration-indexer
-
-## <carpeta relativa, o "raíz" para archivos en la raíz>
-- `<nombre de archivo>` — <frase 1>. <frase 2>.
-```
-
-Procedimiento obligatorio para que un corte deje un índice usable:
-
-1. Escribe el archivo con Write conteniendo solo el encabezado y la primera sección de carpeta.
-2. Por cada carpeta siguiente, añade su sección al final del archivo con Edit (usa como `old_string` la última línea que escribiste y como `new_string` esa misma línea seguida de la nueva sección).
-3. Agrupa por carpeta en orden alfabético, y dentro de cada carpeta los archivos en orden alfabético. Los archivos de la raíz van en la sección `## raíz`, al principio.
-4. Si detectas que te estás quedando sin capacidad para continuar, escribe como última línea `> Índice incompleto: falta desde <carpeta>` y termina informándolo.
-
-Si ya existe `index.md`, sobreescríbelo completo. El índice es derivado del código y no se edita a mano.
-
-## 5. Bootstrapear `migration/`
+## 3. Bootstrapear `migration/`
 
 Si `migration/README.md` no existe, créalo con este contenido, rellenando fecha y repos:
 
@@ -297,25 +256,7 @@ Cada fase termina con al menos una capacidad completa. -->
 <!-- Riesgos detectados durante la planificación. -->
 ```
 
-## 6. Índice general
-
-Escribe `index.md` en la carpeta actual (la carpeta padre). Es derivado: sobrescríbelo siempre.
-
-```markdown
-# Índice general
-
-Generado: <AAAA-MM-DD> por migration-indexer
-
-| Repo | Stack | Entrada | Commit | Índice |
-|---|---|---|---|---|
-| <repo> | <stack en una línea> | <archivo o comando de arranque> | <commit> | [<repo>/index.md](<repo>/index.md) |
-
-Artefactos de migración: [migration/](migration/README.md)
-```
-
-Una fila por repositorio detectado, en orden alfabético. La columna Commit es la salida de `git -C "<repo>" rev-parse --short HEAD` si el repositorio tiene `.git`, o el texto `sin-git` si no lo tiene. Si el índice de un repo quedó incompleto, añade al final de su celda Índice el texto `(incompleto)`.
-
-## 7. Bloque de convenciones en `CLAUDE.md`
+## 4. Bloque de convenciones en `CLAUDE.md`
 
 Escribe el bloque de abajo en `CLAUDE.md` de la carpeta actual, con estas reglas:
 
@@ -357,21 +298,112 @@ En cualquier momento: migration-tl-resolver aplica decisiones y cambios sobre AD
 - Política de paridad: `politica: paridad` en el frontmatter de `migration/README.md` es la única política soportada (ausente o vacío equivale a `paridad`). El destino reproduce el comportamiento observado en el origen salvo decisión explícita en contra: una mejora aplicada o un ADR. Por eso, en los specs: lo que el código determina va como hecho (`RN-n`, `CB-n`, contratos, flujos); si el código determina el comportamiento, no es una pregunta abierta; `## 12. Preguntas abiertas` contiene solo lo que no se pudo determinar leyendo el código; y lo que el código determina pero parece mejorable va en `## 13. Posibles mejoras` como `MJ-n`, citando la regla actual. Las mejoras sin aplicar no bloquean tareas, no generan casos de prueba pendientes y no cuentan como pendiente de revisión.
 - Destino: campo `destino:` del frontmatter de `migration/README.md`. Es un valor simple, que aplica a todos los repositorios (`destino: Kotlin`), o un mapa en una sola línea con un valor por repositorio (`destino: {bff: Kotlin, frontend: conservar}`). `conservar` es palabra reservada: ese repositorio se queda en su stack actual y no se migra. En un mapa, cada repositorio detectado debe tener entrada y cada clave debe ser un repositorio detectado; si no, el agente que necesita el destino se detiene y lo dice. El README manda: el destino del prompt solo se usa si el README no lo tiene, y si ambos existen y difieren el agente se detiene. Para un repositorio conservado no se proponen ADRs sobre su tecnología ni se generan tareas de implementación ni casos de prueba; sus ADRs observados y los specs sí se escriben, porque su comportamiento es el contrato que el repositorio migrado debe respetar. Una capacidad cuyos repositorios están todos conservados queda fuera de alcance: sigue en el mapa de capacidades pero no recibe spec, tareas ni plan. Capacidades descartadas: lista `excluir:` del mismo frontmatter; se comparan en minúsculas y sin espacios.
 - Versiones: los specs, ADRs y tareas llevan `rev: <entero>` en el frontmatter, desde 1. `rev` sube en 1 cada vez que cambia el contenido del artefacto: cuando un agente generador lo reescribe (siempre, sin comparar el contenido) y cuando migration-tl-resolver edita su contenido. No sube al marcar `revisado`, al limpiar `bloqueada_por`, al rellenar `fase` y `prioridad` ni al registrar versiones. Un artefacto nuevo lleva `rev: 1`, o uno más que la mayor versión que algún derivado anote de él, si la hay: un artefacto borrado y vuelto a generar no regresa a una versión ya anotada. Cada derivado anota la versión de sus insumos en el momento de generarse: las tareas, `spec_rev: <n>` (vacío en las fundacionales) y `adrs_rev: {0003: 1, 0011: 2}`, un mapa en una sola línea con una entrada por cada id de `adrs:`; los planes de prueba, `spec_rev: <n>` y `tareas: [T-011, T-012]` con los ids de las tareas de su spec; cada sección de `_auditoria.md`, `Spec rev: <n>.` en su línea `Auditada:`; el backlog, una columna `Rev` a continuación de la columna Tarea en las tablas de fases. Si un insumo no tiene `rev`, la anotación queda vacía: nunca se supone un valor. Estos campos se escriben aunque la plantilla de `migration/templates/` sea anterior y no los traiga. Un derivado está desactualizado cuando anota una versión menor que la actual de su insumo; las fechas de modificación de los archivos no significan nada. Quien edite a mano el contenido de un spec, un ADR o una tarea debe subir su `rev`.
-- Frases de prompt que entienden los agentes, a usar tal cual: `con destino <lenguaje>` (destino único) y `con destino <repo>=<lenguaje>, <repo>=conservar` (destino por repositorio), ambas solo cuando el README no tiene destino; `fija el destino en <lenguaje>`, `fija el destino de <repo> en <lenguaje>` y `conserva el repositorio <repo>` (migration-tl-resolver); `solo la capacidad <slug>` (alcance), `aunque haya ADRs propuestos` (forzar migration-tl-tasks), `acepta la recomendación` (decidir un ADR propuesto con su recomendación), `aplica la mejora MJ-n` y `descarta la mejora MJ-n` (migration-tl-resolver, indicando el spec), `registra las versiones` y `registra las versiones de <artefacto>` (migration-tl-resolver) y `sin marcar revisado` (migration-tl-resolver).
+- Paralelo: varias corridas a la vez solo son seguras cuando cada una escribe archivos distintos. Lo son migration-indexer con `solo el repo <nombre>` (cada corrida escribe solo `<nombre>/index.md`; después una corrida sin alcance consolida `migration/`, este bloque y el índice general, sin reindexar los repositorios ya completos), migration-tl-specs con `solo la capacidad <slug>` y migration-qa con `solo la capacidad <slug>` (no escribe `_cobertura.md`; después `solo la cobertura` lo regenera a partir de los planes). migration-tl-tasks y migration-auditor van siempre en serie: el primero numera tareas y crea las fundacionales, y el segundo reescribe `_auditoria.md` entero. Los subagentes no lanzan otros subagentes: el reparto lo hace la sesión principal, lanzando el subagente una vez por capacidad o por repositorio en un mismo mensaje. Un `index.md` de repositorio anota en su encabezado `Commit:`; si termina con `> Índice incompleto: falta desde <carpeta>`, la siguiente corrida del indexador lo continúa sin repetir lo hecho.
+- Frases de prompt que entienden los agentes, a usar tal cual: `con destino <lenguaje>` (destino único) y `con destino <repo>=<lenguaje>, <repo>=conservar` (destino por repositorio), ambas solo cuando el README no tiene destino; `fija el destino en <lenguaje>`, `fija el destino de <repo> en <lenguaje>` y `conserva el repositorio <repo>` (migration-tl-resolver); `solo la capacidad <slug>` (alcance), `solo el repo <nombre>` (migration-indexer, alcance a un repositorio), `solo la cobertura` (migration-qa, regenera `_cobertura.md` sin tocar los planes), `aunque haya ADRs propuestos` (forzar migration-tl-tasks), `acepta la recomendación` (decidir un ADR propuesto con su recomendación), `aplica la mejora MJ-n` y `descarta la mejora MJ-n` (migration-tl-resolver, indicando el spec), `registra las versiones` y `registra las versiones de <artefacto>` (migration-tl-resolver) y `sin marcar revisado` (migration-tl-resolver).
 - Cada agente termina con: archivos creados, archivos modificados, lo que no pudo resolver y el siguiente paso.
 
 ### Para la sesión principal
 
 - Para saber en qué paso estás y qué sigue: "Usa el subagente migration-orchestrator".
+- Cuando el orquestador entregue un bloque que empieza por "Lanza estos subagentes en paralelo", lanza todos los subagentes de la lista en un mismo mensaje, cada uno con su prompt tal cual, y ejecuta después la línea "Cuando terminen" si la hay.
 - Para aplicar decisiones o cambios en ADRs, specs, tareas o planes de prueba, en lugar de editarlos a mano: "Usa el subagente migration-tl-resolver: <cambio>".
 <!-- migration-flow:end -->
 ```
 
-## 8. Resumen final
+## 5. Listar archivos candidatos por repositorio
+
+Para cada repositorio que la tabla de la sección 2 manda indexar, regenerar o reanudar:
+
+- Si tiene `.git`, ejecuta `git -C "<repo>" ls-files` (entrecomilla siempre la ruta: puede contener espacios) para obtener la lista. Esto ya excluye lo que está en `.gitignore`.
+- Si no tiene `.git`, usa Glob con `<repo>/**/*` y descarta cualquier ruta que contenga `node_modules/`, `.git/`, `vendor/`, `target/`, `.venv/` o `__pycache__/`.
+
+Sobre esa lista aplica las exclusiones fijas. Descarta:
+
+- El propio `index.md` de la raíz del repositorio, si el equipo lo dejó versionado en una corrida anterior.
+- Lockfiles: `package-lock.json`, `yarn.lock`, `pnpm-lock.yaml`, `bun.lockb`, `Gemfile.lock`, `poetry.lock`, `Cargo.lock`, `composer.lock`, `gradle.lockfile`.
+- Binarios e imágenes: `.png`, `.jpg`, `.jpeg`, `.gif`, `.webp`, `.svg`, `.ico`, `.pdf`, `.zip`, `.jar`, `.exe`, `.dll`, `.so`, `.wasm`.
+- Fuentes: `.woff`, `.woff2`, `.ttf`, `.otf`, `.eot`.
+- Carpetas de salida: cualquier ruta bajo `dist/`, `build/`, `out/`, `coverage/`, `.next/`, `.nuxt/`, `.turbo/`, `.cache/`.
+- Minificados: nombres que contengan `.min.`.
+- Snapshots de test: rutas bajo `__snapshots__/` y archivos `.snap`.
+- Generados: nombres que contengan `.generated.`; archivos `.d.ts` que estén junto a un `.js` del mismo nombre.
+- Fixtures de test mayores a 50 KB: archivos bajo `fixtures/`, `__fixtures__/` o `testdata/` cuyo tamaño supere 50 KB.
+
+Conserva siempre, aunque parezcan configuración: `package.json`, `tsconfig*.json`, `vite.config.*`, `webpack.config.*`, `next.config.*`, `.eslintrc*`, `eslint.config.*`, `.prettierrc*`, `.env.example`, `Dockerfile*`, `docker-compose*`, archivos bajo `.github/workflows/`, `Makefile`, `pom.xml`, `build.gradle*`, `settings.gradle*`, `go.mod`, `pyproject.toml`, `Cargo.toml`.
+
+## 6. Resumir cada archivo
+
+Lee cada archivo conservado con Read. Escribe exactamente dos frases:
+
+1. Qué contiene: el tipo de artefacto y sus elementos principales (rutas expuestas, componentes, funciones exportadas, esquemas, configuración).
+2. Para qué se usa o quién lo consume: su papel en el sistema, con qué otros archivos se relaciona.
+
+Si el archivo supera 300 líneas, lee las primeras 80 líneas y luego usa Grep sobre él para localizar `export`, `function`, `class`, `router.`, `app.` y definiciones de tipos. Añade al final de la segunda frase: "(resumen a partir de encabezado y firmas)".
+
+Sé concreto. "Rutas de autenticación" es peor que "Endpoints POST /login y POST /refresh que emiten JWT tras validar contra el servicio de identidad". "Componente de página" es peor que "Página de login con formulario de correo y contraseña que llama a POST /auth/login y guarda la sesión".
+
+## 7. Escribir `index.md` de forma incremental
+
+Escribe `<repo>/index.md` con este formato:
+
+```markdown
+# Índice: <nombre de la carpeta del repo>
+
+Stack: <lenguaje, runtime y frameworks principales, inferidos de package.json o equivalente>
+Entrada: <archivo o comando de arranque>
+Build: <comando>. Tests: <comando y framework>.
+Dependencias clave: <5 a 10 dependencias más relevantes, separadas por coma>
+Commit: <hash corto o sin-git>
+Generado: <fecha de hoy AAAA-MM-DD> por migration-indexer
+
+## <carpeta relativa, o "raíz" para archivos en la raíz>
+- `<nombre de archivo>` — <frase 1>. <frase 2>.
+```
+
+Procedimiento obligatorio para que un corte deje un índice usable:
+
+1. Escribe el archivo con Write conteniendo solo el encabezado y la primera sección de carpeta.
+2. Por cada carpeta siguiente, añade su sección al final del archivo con Edit (usa como `old_string` la última línea que escribiste y como `new_string` esa misma línea seguida de la nueva sección).
+3. Agrupa por carpeta en orden alfabético, y dentro de cada carpeta los archivos en orden alfabético. Los archivos de la raíz van en la sección `## raíz`, al principio.
+4. Si detectas que te estás quedando sin capacidad para continuar, escribe como última línea `> Índice incompleto: falta desde <carpeta>` y termina informándolo.
+
+`Commit:` es el commit actual del repositorio, el mismo valor que usarás en el índice general.
+
+**Regenerar.** Cuando la tabla de la sección 2 dice regenerar, sobrescribe el `index.md` existente completo con el procedimiento de arriba. El índice es derivado del código y no se edita a mano.
+
+**Reanudar.** Cuando la última línea del índice existente es `> Índice incompleto: falta desde <carpeta>`:
+
+1. Conserva lo escrito. No vuelvas a leer con Read los archivos de las carpetas que ya tienen sección.
+2. Obtén de nuevo la lista de archivos del repositorio (sección 5). Por cada carpeta que ya tiene sección, compara solo los nombres de archivo de la sección con los de la lista. Si coinciden, deja la sección exactamente como está, carácter por carácter. Si sobra o falta algún archivo, rehaz solo esa sección.
+3. Quita la línea `> Índice incompleto: ...` y sigue añadiendo secciones con Edit desde la carpeta que indicaba, en el mismo orden alfabético y con el mismo procedimiento incremental.
+4. Al terminar, actualiza en el encabezado las líneas `Commit:` y `Generado:`. Si el `Commit:` que tenía el encabezado era distinto del actual, dilo en el resumen: las secciones conservadas pueden describir una versión anterior del código.
+5. Si vuelves a quedarte sin capacidad, deja otra vez como última línea `> Índice incompleto: falta desde <carpeta>` con la primera carpeta que falta. La siguiente corrida continuará desde ahí.
+
+## 8. Índice general
+
+Solo sin alcance. Escribe `index.md` en la carpeta actual (la carpeta padre). Es derivado: sobrescríbelo siempre, también cuando no hayas tocado ningún índice de repositorio. Para los repositorios cuyo índice conservaste, toma Stack y Entrada del encabezado de su `index.md`.
+
+```markdown
+# Índice general
+
+Generado: <AAAA-MM-DD> por migration-indexer
+
+| Repo | Stack | Entrada | Commit | Índice |
+|---|---|---|---|---|
+| <repo> | <stack en una línea> | <archivo o comando de arranque> | <commit> | [<repo>/index.md](<repo>/index.md) |
+
+Artefactos de migración: [migration/](migration/README.md)
+```
+
+Una fila por repositorio detectado, en orden alfabético. La columna Commit es la salida de `git -C "<repo>" rev-parse --short HEAD` si el repositorio tiene `.git`, o el texto `sin-git` si no lo tiene. Si el índice de un repo quedó incompleto, añade al final de su celda Índice el texto `(incompleto)`.
+
+## 9. Resumen final
 
 Termina siempre con este resumen:
 
-- Repositorios detectados y cantidad de archivos indexados en cada uno.
+- Alcance de la corrida. Repositorios detectados y, por cada uno, qué hiciste: indexado, regenerado, reanudado desde `<carpeta>` o conservado (índice completo del mismo commit), con la cantidad de archivos indexados.
 - Archivos creados y archivos sobreescritos, incluidos `index.md` general y `CLAUDE.md` (indica si el bloque se creó, se añadió o se reemplazó).
 - Índices incompletos, si los hay.
-- Siguiente paso: revisar los `index.md`, rellenar `destino:` en `migration/README.md` o pasarlo por prompt, y ejecutar `migration-analyst`.
+- Con alcance: no escribiste `migration/`, `CLAUDE.md` ni el índice general; el siguiente paso, cuando terminen las demás corridas con alcance, es consolidar con `Usa el subagente migration-indexer`.
+- Si quedó algún índice incompleto: el siguiente paso es volver a ejecutar `Usa el subagente migration-indexer`, que continúa desde donde quedó.
+- Siguiente paso, si todo quedó completo: revisar los `index.md`, rellenar `destino:` en `migration/README.md` o pasarlo por prompt, y ejecutar `migration-analyst`.
