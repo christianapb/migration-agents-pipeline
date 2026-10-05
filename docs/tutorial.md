@@ -499,6 +499,18 @@ Marcar `revisado` no desactualiza nada. Decidir un ADR sí cambia su contenido: 
 
 Si un derivado está `revisado`, su agente no lo sobrescribe. Corrígelo con el resolver y, cuando esté al día, decláralo: `Usa el subagente migration-tl-resolver: registra las versiones de la tarea T-012`.
 
+**Cómo decide el orquestador el siguiente paso.** Siempre igual, con el primero de estos que aplique:
+
+1. Si falta indexar o consolidar, el indexador.
+2. Si hay artefactos sin versión registrada, `registra las versiones`.
+3. El agente del punto más temprano de la cadena al que le falte algo o tenga algo desactualizado: analista, ADRs, specs, auditor, QA, tareas, PM. Con una capacidad afectada, `solo la capacidad X`; con varias, en paralelo si el agente lo admite.
+4. Antes de ese agente pueden cerrarse tres puertas, que se resuelven con el resolver: el destino sin fijar (antes de los ADRs y de las tareas), los ADRs propuestos (antes de las tareas) y los hallazgos `H-n` de QA sin resolver (antes de las tareas). El agente frenado queda como camino alternativo, por si prefieres seguir.
+5. Si nada falta ni está desactualizado, no hay agente que ejecutar: queda revisar lo pendiente y empezar a implementar.
+
+Lo que está pendiente de revisión (artefactos en `generado`, preguntas abiertas, hallazgos del auditor, mejoras) aparece en su sección y no cambia el siguiente paso, salvo esas tres puertas.
+
+La respuesta termina con una sección `## Datos` de siete líneas (`agente`, `motivo`, `alcance`, `paralelo`, `faltan`, `desactualizado`, `sin-version`) que resume lo mismo en forma fija. Para ti es redundante; sirve si quieres automatizar algo sobre el orquestador, y es lo que comprueban las pruebas.
+
 El orquestador también informa de la completitud por capacidad: en la línea `Faltan:` dice a qué capacidades les falta spec, tareas o plan, aunque hayas corrido un paso con `solo la capacidad X`.
 
 ## 5. Reglas que conviene saber

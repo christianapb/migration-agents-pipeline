@@ -54,6 +54,8 @@ Viven en el bloque de `CLAUDE.md` que escribe el indexador: estados (`generado`,
 
 **Verificación para quien usa el flujo.** `scripts/install.sh <proyecto>` copia a `<proyecto>/.claude/migration/` los scripts que el flujo necesita. `bash .claude/migration/verificar.sh` comprueba la estructura de todo lo que haya en `migration/`. Las comprobaciones propias del fixture de este repo solo se activan con `FIXTURE=1`, que es lo que hacen las pruebas.
 
+**Diagnóstico del orquestador.** El siguiente paso sale de un procedimiento fijo: indexar, registrar versiones, el agente del punto más temprano de la cadena con algo que falte o esté desactualizado, y tres puertas que resuelve el resolver (destino, ADRs propuestos y hallazgos `H-n` antes de las tareas). La respuesta termina con una sección `## Datos` en forma fija. Diseño: [`docs/specs/2026-10-05-orquestador-estable-design.md`](docs/specs/2026-10-05-orquestador-estable-design.md).
+
 **Política de paridad.** `politica: paridad` es la única política: el destino reproduce el comportamiento observado salvo decisión explícita. En cada spec, `## 12. Preguntas abiertas` contiene solo lo que el código no permite determinar, y `## 13. Posibles mejoras` lista como `MJ-n` lo que el código determina pero parece mejorable. Las mejoras no bloquean tareas ni generan casos pendientes; se aplican o descartan con `migration-tl-resolver`. Diseño: [`docs/specs/2026-10-01-politica-paridad-design.md`](docs/specs/2026-10-01-politica-paridad-design.md).
 
 ## Pruebas
@@ -85,7 +87,7 @@ Pruebas individuales, todas aceptan `WORKDIR`:
 | `test-tl-specs.sh` | alcance sobre una capacidad excluida |
 | `test-tl-tasks.sh` | parada ante ADRs propuestos y forzado |
 | `test-resolver.sh` | operaciones del resolver |
-| `test-orchestrator.sh` | diagnóstico en varios estados |
+| `test-orchestrator.sh` | veinte estados preparados por la prueba; comprueba la sección `## Datos` de la respuesta, no su prosa. `CASOS="a b"` ejecuta solo esos casos y `ORQ_LOG=<carpeta>` guarda cada respuesta |
 | `test-indexer-escala.sh` | reanuda un índice con el corte plantado sin reescribir lo hecho; `solo el repo bff` no escribe lo compartido; consolidar no reindexa |
 | `test-paralelo.sh` | tres `migration-tl-specs` y tres `migration-qa` a la vez en el mismo workspace, y `solo la cobertura` |
 | `test-hallazgo.sh` | resolver un hallazgo de QA antes de generar tareas solo obliga a repetir el plan; después nada queda desactualizado |
