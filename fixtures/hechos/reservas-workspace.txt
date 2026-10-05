@@ -1,0 +1,68 @@
+# Hechos y trampas del fixture reservas-workspace (monolito Flask + SQLite).
+#
+# Escritos leyendo el código, antes de generar ningún spec. Formato y tipos:
+# ver sample-workspace.txt. Un patrón que empieza por "!" exige que la línea NO
+# lo cumpla: sirve para que una trampa no salte con una regla que dice la
+# verdad (por ejemplo, "la ruta /admin no está registrada").
+# En los patrones, una letra con tilde se escribe como ".+" (el comprobador
+# compara byte a byte).
+
+# --- Autenticación (services/sesion.py, routes/auth.py, routes/comun.py, repos/usuarios.py, config.py)
+hecho | A1 | auth|autentic|sesi|login|acceso | \b401\b && CREDENCIALES|Credenciales incorrectas | usuario desconocido o contraseña errónea responden 401 CREDENCIALES (sesion.py:17, sesion.py:22)
+hecho | A2 | auth|autentic|sesi|login|acceso | \b5\b && \b423\b|BLOQUEADA|bloque | con 5 intentos fallidos la cuenta queda bloqueada (sesion.py:8, sesion.py:18)
+hecho | A3 | auth|autentic|sesi|login|acceso | \b423\b | la cuenta bloqueada responde 423 (sesion.py:19)
+hecho | A4 | auth|autentic|sesi|login|acceso | 20 ?min|veinte min|\b1200\b | la sesión dura 20 minutos (config.py:8)
+hecho | A5 | auth|autentic|sesi|login|acceso | activo|desactivad|inactiv | un usuario desactivado se trata como inexistente (usuarios.py:6)
+hecho | A6 | auth|autentic|sesi|login|acceso | /login && next | sin sesión, las rutas protegidas redirigen a /login con el parámetro next (comun.py:10)
+hecho | A7 | auth|autentic|sesi|login|acceso | next && //|dos barras|doble barra | el destino tras entrar debe empezar por "/" y no por "//" (auth.py:25)
+hecho | A8 | auth|autentic|sesi|login|acceso | min.+scul|lower | el correo se compara sin espacios y en minúsculas (sesion.py:15)
+hecho | A9 | auth|autentic|sesi|login|acceso | /logout | cerrar sesión es un POST a /logout (auth.py:30)
+
+# --- Salas (routes/salas.py, repos/salas.py)
+hecho | S1 | sala | \bactiva|desactivad|inactiv | el listado excluye las salas desactivadas (repos/salas.py:11)
+hecho | S2 | sala | mantenimiento | el listado excluye las salas en mantenimiento; la regla vive en la consulta SQL (repos/salas.py:12)
+hecho | S3 | sala | \b400\b | un aforo mínimo que no es un número responde 400 (routes/salas.py:17)
+hecho | S4 | sala | nombre && orden | el listado sale ordenado por nombre (repos/salas.py:14)
+hecho | S5 | sala | \b404\b | una sala inexistente o desactivada responde 404 (routes/salas.py:25)
+hecho | S6 | sala | pendiente && confirmada | la ocupación del día muestra solo reservas pendientes o confirmadas (repos/reservas.py:71)
+
+# --- Reservas (services/reservas.py, repos/reservas.py, routes/reservas.py)
+hecho | B1 | reserv | \b4\b && hora | una reserva dura como máximo 4 horas (services/reservas.py:7)
+hecho | B2 | reserv | \b422\b && DURACION | superar la duración máxima responde 422 DURACION (services/reservas.py:38)
+hecho | B3 | reserv | \b7\b|07:00 && \b21\b|21:00 | el horario va de las 7 a las 21 (services/reservas.py:8-9)
+hecho | B4 | reserv | \b422\b && AFORO | asistentes fuera de 1..aforo responden 422 AFORO (services/reservas.py:42)
+hecho | B5 | reserv | \b3\b && LIMITE|\b409\b|activas | como máximo 3 reservas activas por usuario (services/reservas.py:10, repos/reservas.py:19)
+hecho | B6 | reserv | \b409\b && SOLAPADA | una reserva solapada responde 409 SOLAPADA (services/reservas.py:46)
+hecho | B7 | reserv | cancelad && caducad | solo bloquean las pendientes y confirmadas: canceladas y caducadas dejan libre el intervalo (repos/reservas.py:6)
+hecho | B8 | reserv | \b409\b && ESTADO | confirmar algo no pendiente, o cancelar algo no activo, responde 409 ESTADO (services/reservas.py:63, 70)
+hecho | B9 | reserv | \b403\b | actuar sobre la reserva de otra persona responde 403 (services/reservas.py:55)
+hecho | B10 | reserv | \b2\b && hora && TARDE|\b409\b|cancel | no se cancela con menos de 2 horas de antelación: 409 TARDE (services/reservas.py:11, 73)
+
+# --- Caducidad y consulta (services/caducidad.py, scripts/caducar_reservas.py, crontab.txt, repos/reservas.py)
+hecho | K1 | reserv|caduc | 15 ?min|quince min | una reserva pendiente caduca a los 15 minutos de crearse (caducidad.py:4)
+hecho | K2 | reserv|caduc | 30 d|treinta d | las canceladas y caducadas dejan de listarse a los 30 días de su inicio (repos/reservas.py:55)
+hecho | K3 | reserv|caduc | \b303\b | crear, confirmar y cancelar redirigen con 303 a las reservas propias (routes/reservas.py:27)
+hecho | K4 | reserv|caduc | PASADO|futuro|pasad | una reserva debe empezar en el futuro (services/reservas.py:36)
+
+# --- Trampas: señales engañosas que no deben acabar como regla
+trampa | T1 | . | \b8 horas|ocho horas|m.+ximo de 8 && !\b4\b && !comentario | un comentario dice "máximo 8 horas" y el código aplica 4 (services/reservas.py:6-7)
+trampa | T2 | . | recargo|25 ?% && !no se (usa|llama|invoca|aplica) && !nunca && !sin (uso|llamad) && !ning.+n && !nadie && !muerto | recargo_fin_de_semana no la llama nadie (utils/fechas.py:15)
+trampa | T3 | . | \.ics|icalendar|recordatorio && !no exist && !no est.+ implement && !README && !ausente && !ning.+n && !no hay | el README describe exportar a .ics y un recordatorio por correo que no existen (README.md:10-11)
+trampa | T4 | . | MAX_RESERVAS_DIA|10 reservas|reservas (por|al) d.+a && !no se (lee|usa|consulta) && !nunca && !sin efecto && !ignora && !ning.+n && !nadie | MAX_RESERVAS_DIA se declara y nadie la lee; el límite real son 3 activas (config.py:10)
+trampa | T5 | . | /admin|desactivar_sala && !no (est.+|se) regist && !no registr && !sin registrar && !\b404\b && !inalcanzable && !nunca && !no existe && !ausente | routes/admin.py define un blueprint que app.py no registra (app.py:16-18)
+
+# --- Índice: qué debe y qué no debe indexarse
+indice | reservas | reservas | app.py | código
+indice | reservas | reservas | config.py | código
+indice | reservas | reservas | schema.sql | esquema de la base de datos
+indice | reservas | reservas | 001_inicial.sql | migración
+indice | reservas | reservas | 002_caducidad_y_bloqueo.sql | migración
+indice | reservas | reservas | caducar_reservas.py | proceso programado
+indice | reservas | reservas | sesion.py | código
+indice | reservas | reservas | caducidad.py | código
+indice | reservas | reservas | admin.py | código (aunque no esté registrado, existe)
+indice | reservas | reservas | mis_reservas.html | plantilla
+indice | reservas | reservas | pyproject.toml | configuración relevante
+indice | reservas | reservas | test_reservas.py | tests
+no-indice | reservas | reservas | poetry.lock | lockfile
+no-indice | reservas | reservas | logo.png | imagen

@@ -1,0 +1,16 @@
+[tool.poetry]
+name = "reservas"
+version = "0.3.0"
+description = "Reserva de salas de reuniones de la oficina"
+authors = ["Equipo de servicios internos"]
+
+[tool.poetry.dependencies]
+python = "^3.11"
+flask = "^3.0"
+gunicorn = "^22.0"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^8.0"
+
+[tool.poetry.scripts]
+caducar-reservas = "scripts.caducar_reservas:main"

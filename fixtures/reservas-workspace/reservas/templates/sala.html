@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block contenido %}
+<h1>{{ sala.nombre }}</h1>
+<p>Aforo: {{ sala.aforo }} personas</p>
+<h2>Ocupación del {{ dia }}</h2>
+<ul>
+  {% for r in ocupacion %}
+  <li>{{ r.inicio[11:] }}–{{ r.fin[11:] }} {% if r.estado == 'pendiente' %}(sin confirmar){% endif %}</li>
+  {% else %}
+  <li>Libre todo el día</li>
+  {% endfor %}
+</ul>
+<form method="post" action="{{ url_for('reservas.crear') }}">
+  <input type="hidden" name="sala_id" value="{{ sala.id }}">
+  <label>Inicio <input name="inicio" type="datetime-local" required></label>
+  <label>Fin <input name="fin" type="datetime-local" required></label>
+  <label>Asistentes <input name="asistentes" type="number" min="1" max="{{ sala.aforo }}" value="1"></label>
+  <button>Reservar</button>
+</form>
+{% endblock %}
