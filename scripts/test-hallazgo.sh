@@ -70,9 +70,9 @@ bash "$ROOT/scripts/verify-qa.sh" >/dev/null || fail "los planes no pasan el ver
 
 # 4. Nada quedó desactualizado
 out="$(run migration-orchestrator)"
-d="$(printf '%s' "$out" | awk '/^## Desactualizado/{f=1;next} /^## /{f=0} f' | grep -v '^[[:space:]]*$' || true)"
-printf '%s\n' "$d" | grep -Eqx -- '-? ?Nada\.?' && [ "$(printf '%s\n' "$d" | grep -c .)" -eq 1 ] \
-  || fail "tras el recorrido el orquestador lista desactualizados: $(printf '%s' "$d" | head -n3 | cut -c1-200)"
+# Se lee la sección Datos de la respuesta, no su prosa
+d="$(printf '%s' "$out" | awk '/^## Datos/{f=1;next} /^## /{f=0} f' | tr -d '\r' | sed -n 's/^[[:space:]`*-]*desactualizado:[[:space:]]*//p' | head -n1 | sed -E 's/[[:space:].`*]+$//')"
+[ "$d" = "nada" ] || fail "tras el recorrido el orquestador lista desactualizados: '${d:-no hay línea desactualizado en Datos}'"
 
 [ "$fails" -eq 0 ] && { echo "OK: hallazgo resuelto antes de generar tareas"; exit 0; }
 exit 1
