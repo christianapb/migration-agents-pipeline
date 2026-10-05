@@ -181,8 +181,11 @@ has migration-tl-tasks.md '## Pruebas'
 has migration-tl-tasks.md 'Plan de pruebas: `migration/test-plans/<slug>.md`'
 has migration-orchestrator.md '| 5 | migration-qa |'
 has migration-orchestrator.md '| 6 | migration-tl-tasks |'
-has migration-orchestrator.md 'planes antes que tareas, tareas antes que backlog'
-has migration-orchestrator.md 'Los ADRs propuestos no frenan a migration-qa'
+has migration-orchestrator.md 'El candidato es el agente de la posición más baja que tenga algo'
+has migration-orchestrator.md 'no frenan a migration-qa'
+has migration-orchestrator.md 'no elijas por criterio propio'
+has migration-orchestrator.md '## Datos'
+has migration-orchestrator.md 'Nada más es una puerta'
 has migration-auditor.md 'antes de migration-qa'
 for f in migration-qa.md migration-indexer.md migration-tl-resolver.md; do
   grep -qE '^- Tareas:|tareas: \[\]|`tareas:`|y `tareas` en los planes' "$A/$f" && fail "$f todavía describe la referencia de los planes a las tareas"
