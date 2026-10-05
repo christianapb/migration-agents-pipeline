@@ -105,4 +105,8 @@ Mejoras sin decidir: <n por capacidad, o "ninguna">. No bloquean: el flujo asume
     <prompt exacto, o el bloque de paralelo de la sección 3>
 
 <camino alternativo en una línea, si lo hay>
+
+Para comprobar la estructura de lo generado: `bash .claude/migration/verificar.sh`
 ```
+
+La última línea es fija y va siempre que exista `migration/`: tú no ejecutas ese comando ni ningún otro; lo ejecuta el usuario en su terminal.

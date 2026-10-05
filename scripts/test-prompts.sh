@@ -128,8 +128,8 @@ has migration-tl-tasks.md 'adrs_rev: {0003: 1, 0011: 2}'
 has migration-tl-tasks.md 'spec_rev'
 has migration-qa.md 'spec_rev'
 has migration-auditor.md 'Spec rev: <n>.'
-has migration-pm.md 'columna `Rev`'
-has migration-pm.md 'no cambia `rev`'
+has migration-pm.md 'Orden, Tarea, Rev, Título'
+has migration-pm.md 'Aplicar no cambia `rev`'
 has migration-tl-resolver.md '**Registrar versiones**'
 has migration-tl-resolver.md 'migration-qa no podría regenerarlo'
 has migration-tl-resolver.md 'Sube `rev` en 1'
@@ -188,6 +188,19 @@ for f in migration-qa.md migration-indexer.md migration-tl-resolver.md; do
   grep -qE '^- Tareas:|tareas: \[\]|`tareas:`|y `tareas` en los planes' "$A/$f" && fail "$f todavía describe la referencia de los planes a las tareas"
 done
 grep -rnE 'tareas antes que planes|antes de migration-tl-tasks|antes del paso 5' "$A" "$ROOT/docs/tutorial.md" "$ROOT/README.md" >/dev/null && fail "queda texto que describe el orden anterior"
+
+# Backlog por script (docs/specs/2026-10-05-backlog-por-script-design.md)
+PMF="$A/migration-pm.md"
+grep -q '^tools: .*Bash' "$PMF" || fail "migration-pm.md no tiene Bash"
+for k in 'bash .claude/migration/backlog.sh validar' 'bash .claude/migration/backlog.sh calcular' 'bash .claude/migration/backlog.sh aplicar' 'Ningún otro comando' 'No calcules el backlog a mano' 'No escribas ni modifiques ningún archivo' 'copia tal cual' 'bash .claude/migration/verificar.sh'; do
+  has migration-pm.md "$k"
+done
+# El prompt del PM ya no describe ningún algoritmo
+for k in 'en profundidad' 'en la pila' 'transitivamente' 'desempate' 'fase mínima' 'S=1, M=2' 'procura que' 'Detecta ciclos'; do
+  grep -qF -- "$k" "$PMF" && fail "migration-pm.md todavía describe el cálculo: '$k'"
+done
+grep -q '^tools: .*Bash' "$A/migration-orchestrator.md" && fail "migration-orchestrator.md no debe tener Bash"
+has migration-orchestrator.md 'bash .claude/migration/verificar.sh'
 
 [ "$fails" -eq 0 ] && { echo "OK: prompts"; exit 0; }
 exit 1

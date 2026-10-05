@@ -15,6 +15,8 @@
 # SKIP_BUILD=1 (no construye instantáneas), TESTS_DIR y RESTORE_CMD (para
 # probar este script).
 set -uo pipefail
+# Activa las comprobaciones de los verificadores propias del fixture
+export FIXTURE="${FIXTURE:-1}"
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 TESTS="${TESTS_DIR:-$ROOT/scripts}"
 RESTORE="${RESTORE_CMD:-bash $ROOT/scripts/snapshot.sh restore}"
@@ -29,7 +31,7 @@ declare -A MAP=(
   [migration-tl-specs]="stage:tl-specs test-tl-specs test-versiones test-paralelo"
   [migration-tl-tasks]="stage:tl-tasks test-tl-tasks test-destino test-versiones test-hallazgo"
   [migration-qa]="stage:qa test-versiones test-paralelo test-hallazgo"
-  [migration-pm]="stage:pm test-versiones"
+  [migration-pm]="stage:pm test-versiones test-pm"
   [migration-tl-resolver]="test-resolver test-hallazgo"
   [migration-orchestrator]="test-orchestrator"
   [migration-auditor]="test-auditor"

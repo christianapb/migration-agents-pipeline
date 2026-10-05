@@ -8,7 +8,8 @@ Subagentes de Claude Code que generan, a partir del código de un proyecto, la d
 ## Instalación
 
 ```bash
-bash scripts/install.sh
+bash scripts/install.sh /ruta/al/proyecto   # agentes y scripts, en el proyecto
+bash scripts/install.sh                     # solo agentes, en ~/.claude/agents/
 ```
 
 Copia los diez agentes a `~/.claude/agents/`, retira `migration-techlead` y no sobrescribe archivos ajenos con el mismo nombre. Abre una sesión nueva de Claude Code después.
@@ -49,6 +50,10 @@ Viven en el bloque de `CLAUDE.md` que escribe el indexador: estados (`generado`,
 
 **Planes antes que tareas.** `migration-qa` es el paso 5 y `migration-tl-tasks` el 6. Los planes no leen ni citan tareas; la trazabilidad entre una tarea y sus casos sale de las `RN-n` y `CB-n` que ambos citan, y cada tarea apunta a su plan en la sección `## Pruebas`. Un plan solo queda desactualizado cuando cambia su spec. Diseño: [`docs/specs/2026-10-04-qa-antes-de-tareas-design.md`](docs/specs/2026-10-04-qa-antes-de-tareas-design.md).
 
+**Backlog por script.** Las fases y prioridades las calcula `scripts/backlog.sh` (`validar`, `calcular`, `aplicar`), no el modelo: valida referencias y ciclos, ordena las capacidades por dependencia, las agrupa hasta 12 puntos por fase y numera las prioridades sin empates. `migration-pm` lo ejecuta, copia sus tablas y escribe resumen y riesgos; si el script falta o encuentra un ciclo, se detiene sin escribir. Reglas exactas: [`docs/specs/2026-10-05-backlog-por-script-design.md`](docs/specs/2026-10-05-backlog-por-script-design.md), sección 3.
+
+**Verificación para quien usa el flujo.** `scripts/install.sh <proyecto>` copia a `<proyecto>/.claude/migration/` los scripts que el flujo necesita. `bash .claude/migration/verificar.sh` comprueba la estructura de todo lo que haya en `migration/`. Las comprobaciones propias del fixture de este repo solo se activan con `FIXTURE=1`, que es lo que hacen las pruebas.
+
 **Política de paridad.** `politica: paridad` es la única política: el destino reproduce el comportamiento observado salvo decisión explícita. En cada spec, `## 12. Preguntas abiertas` contiene solo lo que el código no permite determinar, y `## 13. Posibles mejoras` lista como `MJ-n` lo que el código determina pero parece mejorable. Las mejoras no bloquean tareas ni generan casos pendientes; se aplican o descartan con `migration-tl-resolver`. Diseño: [`docs/specs/2026-10-01-politica-paridad-design.md`](docs/specs/2026-10-01-politica-paridad-design.md).
 
 ## Pruebas
@@ -84,6 +89,7 @@ Pruebas individuales, todas aceptan `WORKDIR`:
 | `test-indexer-escala.sh` | reanuda un índice con el corte plantado sin reescribir lo hecho; `solo el repo bff` no escribe lo compartido; consolidar no reindexa |
 | `test-paralelo.sh` | tres `migration-tl-specs` y tres `migration-qa` a la vez en el mismo workspace, y `solo la cobertura` |
 | `test-hallazgo.sh` | resolver un hallazgo de QA antes de generar tareas solo obliga a repetir el plan; después nada queda desactualizado |
+| `test-pm.sh` | con un ciclo o una dependencia rota el PM no escribe nada; sin `backlog.sh` se detiene y lo dice |
 | `test-versiones.sh` | cada generador sube `rev` al reescribir y anota sus insumos; `migration-pm` no sube el `rev` de las tareas |
 | `test-destino.sh` | con `{bff: Kotlin, frontend: conservar}` no hay ADRs propuestos ni tareas para el frontend, y un mapa incompleto detiene a tl-tasks |
 | `test-auditor.sh` | el auditor no inventa contradicciones y detecta tres errores plantados sin modificar specs |

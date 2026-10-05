@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 # Caso 9 del spec v2 y Review Focus 4. Prepara sus propios estados.
 set -uo pipefail
+# Activa las comprobaciones de los verificadores propias del fixture
+export FIXTURE="${FIXTURE:-1}"
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 W="${WORKDIR:-$ROOT/.work/sample-workspace}"
 export WORKDIR="$W"
@@ -70,10 +72,15 @@ caps() { ls "$M"/specs | grep -v '^_' | sed 's/\.md$//'; }
 bash "$ROOT/scripts/snapshot.sh" restore tl-specs "$W" >/dev/null || { echo "FAIL: no se pudo restaurar la etapa tl-specs"; exit 1; }
 grep -lq '^estado: propuesto' "$M"/adr/*.md || fail "QA antes de ADRs: el workspace no tiene ADRs propuestos"
 planta_auditoria
+sed -i 's/^destino:.*/destino: Kotlin/' "$M/README.md"
 orq "QA con ADRs propuestos"
-printf '%s' "$next" | grep -qi 'en paralelo' || fail "QA con ADRs propuestos: no propone lanzar QA en paralelo"
+# Si los specs tienen preguntas abiertas, revisarlas puede ir primero y QA como
+# camino alternativo: lo que se exige es que QA se ofrezca ya, en paralelo y
+# para todas las capacidades, sin esperar a los ADRs.
+printf '%s' "$next" | grep -q 'migration-qa' || fail "QA con ADRs propuestos: no ofrece migration-qa"
+printf '%s' "$next" | grep -qi 'paralelo' || fail "QA con ADRs propuestos: no propone lanzar QA en paralelo"
 for c in $(caps); do
-  printf '%s' "$next" | grep -q "migration-qa, solo la capacidad $c" || fail "QA con ADRs propuestos: el paralelo no incluye la capacidad $c"
+  printf '%s' "$next" | grep -q "solo la capacidad $c" || fail "QA con ADRs propuestos: el paralelo no incluye la capacidad $c"
 done
 printf '%s' "$next" | grep -q 'migration-tl-resolver\|ADR' || fail "QA con ADRs propuestos: no menciona decidir los ADRs como camino alternativo"
 printf '%s' "$next" | grep -q 'Usa el subagente migration-tl-tasks' && fail "QA con ADRs propuestos: manda a migration-tl-tasks antes que a QA"

@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
-# Verifica los planes de prueba en .work/sample-workspace/migration/test-plans.
+# Verifica los planes de prueba (carpeta: WORKDIR o, por defecto, la actual).
 set -uo pipefail
-ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-W="${WORKDIR:-$ROOT/.work/sample-workspace}"
+HERE="$(cd "$(dirname "$0")" && pwd)"
+W="${WORKDIR:-$PWD}"
 M="$W/migration"
 fails=0
 fail() { echo "FAIL: $*"; fails=$((fails+1)); }
-# shellcheck source=scripts/lib-rev.sh
-. "$ROOT/scripts/lib-rev.sh"
+# shellcheck source=lib-rev.sh
+. "$HERE/lib-rev.sh"
 
 specs=()
 for f in "$M"/specs/[!_]*.md; do [ -f "$f" ] && specs+=("$f"); done

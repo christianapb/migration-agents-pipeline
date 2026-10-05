@@ -5,14 +5,14 @@
 # Variables: AUDIT_CAPS (lista de capacidades que deben estar auditadas,
 # separadas por espacio; por defecto todas las que tienen spec).
 set -uo pipefail
-ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-W="${WORKDIR:-$ROOT/.work/sample-workspace}"
+HERE="$(cd "$(dirname "$0")" && pwd)"
+W="${WORKDIR:-$PWD}"
 M="$W/migration"
 A="$M/specs/_auditoria.md"
 fails=0
 fail() { echo "FAIL: $*"; fails=$((fails+1)); }
-# shellcheck source=scripts/lib-rev.sh
-. "$ROOT/scripts/lib-rev.sh"
+# shellcheck source=lib-rev.sh
+. "$HERE/lib-rev.sh"
 
 [ -f "$A" ] || { echo "FAIL: _auditoria.md no existe"; exit 1; }
 grep -q '^# Auditoría de specs' "$A" || fail "sin título '# Auditoría de specs'"

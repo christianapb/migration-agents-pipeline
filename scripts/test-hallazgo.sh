@@ -3,6 +3,8 @@
 # de QA cuando todavía no hay tareas solo obliga a repetir el plan de esa
 # capacidad. Parte de la etapa qa, que no tiene tareas.
 set -uo pipefail
+# Activa las comprobaciones de los verificadores propias del fixture
+export FIXTURE="${FIXTURE:-1}"
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 W="${WORKDIR:-$ROOT/.work/sample-workspace}"
 export WORKDIR="$W"
