@@ -7,6 +7,8 @@ TMP="$(mktemp -d)"
 trap 'rm -rf "$TMP"' EXIT
 fails=0
 fail() { echo "FAIL: $*"; fails=$((fails+1)); }
+# Las comprobaciones propias del fixture están apagadas por defecto; aquí se prueban
+export FIXTURE=1
 
 # --- Workspace sintético mínimo que pasa verify-techlead, verify-qa y verify-pm
 make_ws() {
@@ -466,6 +468,46 @@ W12="$TMP/c1"; make_ws "$W12"; sed -i '/^| gamma |/d' "$W12/$COB"
 expect_fail qa "$W12" "verify-qa acepta una cobertura sin la fila de un plan"
 W12="$TMP/c2"; make_ws "$W12"; sed -i 's/^| alfa | 1 |/| alfa | 7 |/' "$W12/$COB"
 expect_fail qa "$W12" "verify-qa acepta una cobertura con un Spec rev distinto del plan"
+
+# 13. Comprobaciones propias del fixture: apagadas por defecto, las activa FIXTURE=1
+W13="$TMP/f1"; make_ws "$W13"; sed -i 's/^estado: propuesto/estado: revisado/' "$W13/migration/adr/0002-dos.md"; sed -i 's/^bloqueada_por: \[0002\]/bloqueada_por: []/' "$W13/migration/tasks/T-002-alfa.md"; sed -i '/^| T-002 | 0002 |/d' "$W13/migration/backlog.md"
+FIXTURE=0 WORKDIR="$W13" bash "$ROOT/scripts/verify-tl-adrs.sh" >/dev/null 2>&1 || fail "sin FIXTURE, verify-tl-adrs exige un ADR propuesto"
+expect_fail tl-adrs "$W13" "con FIXTURE=1, verify-tl-adrs acepta que no haya ningún ADR propuesto"
+W13="$TMP/f2"; make_ws "$W13"; for c in alfa beta gamma; do sed -i '/^MJ-1:/d; s/^CB-1: un producto oculto/CB-1: un producto retirado/' "$W13/migration/specs/$c.md"; echo "Ninguna" >> "$W13/migration/specs/$c.md"; done
+FIXTURE=0 WORKDIR="$W13" bash "$ROOT/scripts/verify-tl-specs.sh" >/dev/null 2>&1 || fail "sin FIXTURE, verify-tl-specs exige el producto oculto del fixture"
+W13="$TMP/f3"; make_ws "$W13"; sed -i '/^| beta |/d; /^| gamma |/d' "$W13/migration/specs/_capacidades.md"
+FIXTURE=0 WORKDIR="$W13" bash "$ROOT/scripts/verify-analyst.sh" >/dev/null 2>&1 || fail "sin FIXTURE, verify-analyst exige tres capacidades"
+expect_fail analyst "$W13" "con FIXTURE=1, verify-analyst acepta menos de tres capacidades"
+
+# 14. verify-pm compara el backlog y las tareas con el cálculo de backlog.sh
+W14="$TMP/b1"; make_ws "$W14"; sed -i 's/^prioridad: 2$/prioridad: 7/' "$W14/migration/tasks/T-002-alfa.md"
+expect_fail pm "$W14" "verify-pm acepta una prioridad distinta de la que calcula backlog.sh"
+W14="$TMP/b2"; make_ws "$W14"; sed -i 's/^fase: 1$/fase: 3/' "$W14/migration/tasks/T-002-alfa.md"
+expect_fail pm "$W14" "verify-pm acepta una fase distinta de la que calcula backlog.sh"
+W14="$TMP/b3"; make_ws "$W14"; sed -i 's/^| 2 | T-002 | 1 |/| 9 | T-002 | 1 |/' "$W14/migration/backlog.md"
+expect_fail pm "$W14" "verify-pm acepta una fila del backlog con un Orden distinto de la prioridad"
+W14="$TMP/b4"; make_ws "$W14"; sed -i 's/^depende_de: \[T-001\]/depende_de: [T-002]/' "$W14/migration/tasks/T-002-alfa.md"
+expect_fail pm "$W14" "verify-pm acepta un backlog sobre tareas con un ciclo"
+
+# 15. verificar.sh: punto de entrada para quien usa el flujo
+. "$ROOT/scripts/lib-dist.sh"
+W15="$TMP/u1"; make_ws "$W15"
+out="$(bash "$ROOT/scripts/verificar.sh" "$W15" 2>&1)" || fail "verificar.sh falla sobre un workspace válido: $(printf '%s' "$out" | grep -m3 'FALLA\|-' | tr '\n' ' ')"
+for k in 'OK     ADRs' 'OK     specs' 'OK     planes de prueba' 'OK     tareas' 'OK     auditoría' 'OK     backlog' 'Resumen:'; do
+  printf '%s' "$out" | grep -qF -- "$k" || fail "verificar.sh: la salida no contiene '$k'"
+done
+sed -i '/^rev:/d' "$W15/migration/specs/alfa.md"
+out="$(bash "$ROOT/scripts/verificar.sh" "$W15" 2>&1)" && fail "verificar.sh acepta un spec sin rev"
+printf '%s' "$out" | grep -q 'FALLA  specs' || fail "verificar.sh no marca los specs como fallidos"
+printf '%s' "$out" | grep -q 'alfa' || fail "verificar.sh no dice qué archivo falla"
+printf '%s' "$out" | grep -q 'OK     ADRs' || fail "verificar.sh deja de informar del resto cuando un tipo falla"
+bash "$ROOT/scripts/verificar.sh" "$TMP/no-existe" >/dev/null 2>&1 && fail "verificar.sh acepta una carpeta que no existe"
+# Fuera del repo: los scripts copiados a otra carpeta funcionan solos
+PROY="$TMP/proyecto de usuario"; make_ws "$PROY"; copiar_scripts "$ROOT/scripts" "$PROY" || fail "copiar_scripts falló"
+for s in "${DIST_SCRIPTS[@]}"; do [ -f "$PROY/.claude/migration/$s" ] || fail "no se instaló $s"; done
+grep -l 'sample-workspace\|\$ROOT' "$PROY"/.claude/migration/*.sh 2>/dev/null | grep -q . && fail "algún script instalado depende de la raíz del repo: $(grep -l 'sample-workspace\|\$ROOT' "$PROY"/.claude/migration/*.sh | xargs -n1 basename | paste -sd' ' -)"
+out="$(cd "$PROY" && env -u WORKDIR -u FIXTURE bash .claude/migration/verificar.sh 2>&1)" || fail "verificar.sh instalado en un proyecto falla: $(printf '%s' "$out" | grep -m3 -- '- ' | tr '\n' ' ')"
+(cd "$PROY" && env -u WORKDIR bash .claude/migration/backlog.sh validar >/dev/null 2>&1) || fail "backlog.sh instalado en un proyecto falla"
 
 [ "$fails" -eq 0 ] && { echo "OK: verificadores"; exit 0; }
 exit 1

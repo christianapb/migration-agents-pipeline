@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # Verifica el mapa de capacidades.
 set -uo pipefail
-ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-W="${WORKDIR:-$ROOT/.work/sample-workspace}"
+HERE="$(cd "$(dirname "$0")" && pwd)"
+W="${WORKDIR:-$PWD}"
 M="$W/migration"
 fails=0
 fail() { echo "FAIL: $*"; fails=$((fails+1)); }
@@ -17,7 +17,9 @@ excl="$(sed -n 's/^excluir:[[:space:]]*\[\(.*\)\]/\1/p' "$M/README.md" 2>/dev/nu
 for x in $excl; do
   printf '%s\n' "$slugs" | grep -qx "$x" && fail "la capacidad excluida '$x' aparece en el mapa"
 done
-MIN="${MIN_CAPACIDADES:-3}"
+# El mínimo de 3 es propio del fixture (FIXTURE=1); en un proyecto real basta una.
+MIN="${MIN_CAPACIDADES:-1}"
+[ -z "${MIN_CAPACIDADES:-}" ] && [ "${FIXTURE:-0}" = 1 ] && MIN=3
 total=$((n + $(printf '%s\n' $excl | grep -c . || true)))
 [ "$total" -ge "$MIN" ] || fail "$n capacidades (+ excluidas) < $MIN"
 

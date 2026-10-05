@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
-# Verifica el backlog y los campos fase/prioridad en .work/sample-workspace/migration.
+# Verifica el backlog y los campos fase/prioridad (carpeta: WORKDIR o, por defecto, la actual).
 set -uo pipefail
-ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-W="${WORKDIR:-$ROOT/.work/sample-workspace}"
+HERE="$(cd "$(dirname "$0")" && pwd)"
+W="${WORKDIR:-$PWD}"
 M="$W/migration"
 fails=0
 fail() { echo "FAIL: $*"; fails=$((fails+1)); }
-# shellcheck source=scripts/lib-rev.sh
-. "$ROOT/scripts/lib-rev.sh"
+# shellcheck source=lib-rev.sh
+. "$HERE/lib-rev.sh"
 
 [ -f "$M/backlog.md" ] || fail "backlog.md no existe"
 grep -q '^### Hito 0' "$M/backlog.md" 2>/dev/null || fail "backlog sin Hito 0"
@@ -47,6 +47,27 @@ for t in "$M"/tasks/T-*.md; do
   [ -n "$brev" ] || fail "$id: su fila del backlog no tiene columna Rev"
   [ -z "$brev" ] || [ "$brev" = "$trev" ] || fail "$id: el backlog registra rev $brev y la tarea tiene rev '$trev'"
 done
+
+# El backlog y las tareas coinciden con lo que calcula backlog.sh: fase,
+# prioridad, hito de cada fila y Orden igual a la prioridad.
+if [ -f "$HERE/backlog.sh" ]; then
+  calc="$(bash "$HERE/backlog.sh" calcular --tsv "$W" 2>&1)"; crc=$?
+  if [ "$crc" -ne 0 ]; then
+    fail "backlog.sh no puede calcular sobre estas tareas: $(printf '%s' "$calc" | head -n3 | tr '\n' ' ')"
+  else
+    filas="$(awk '/^## Bloqueos/{exit} /^### Hito [0-9]+/{h=$3; sub(/:.*/, "", h)} /^\|/ && match($0, /T-[0-9]+/) {n=split($0, c, "|"); o=c[2]; gsub(/ /, "", o); print substr($0, RSTART, RLENGTH) "\t" h "\t" o}' "$M/backlog.md" 2>/dev/null)"
+    while IFS=$'\t' read -r id cf cp; do
+      [ -n "$id" ] || continue
+      t="$(ls "$M"/tasks/"$id"-*.md 2>/dev/null | head -n1)"
+      [ "$(campo "$t" fase)" = "$cf" ] || fail "$id: fase '$(campo "$t" fase)' en la tarea y backlog.sh calcula $cf"
+      [ "$(campo "$t" prioridad)" = "$cp" ] || fail "$id: prioridad '$(campo "$t" prioridad)' en la tarea y backlog.sh calcula $cp"
+      fila="$(printf '%s\n' "$filas" | awk -F'\t' -v id="$id" '$1==id' | head -n1)"
+      [ -n "$fila" ] || continue
+      [ "$(printf '%s' "$fila" | cut -f2)" = "$cf" ] || fail "$id: figura en el hito $(printf '%s' "$fila" | cut -f2) del backlog y su fase es $cf"
+      [ "$(printf '%s' "$fila" | cut -f3)" = "$cp" ] || fail "$id: su fila del backlog tiene Orden '$(printf '%s' "$fila" | cut -f3)' y su prioridad es $cp"
+    done <<< "$calc"
+  fi
+fi
 
 # Tareas bloqueadas aparecen en la sección Bloqueos (rutas con espacios: sin word-splitting)
 for t in "$M"/tasks/T-*.md; do

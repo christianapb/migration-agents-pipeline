@@ -1,15 +1,15 @@
 #!/usr/bin/env bash
 # Verifica los ADRs.
 set -uo pipefail
-ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-W="${WORKDIR:-$ROOT/.work/sample-workspace}"
+HERE="$(cd "$(dirname "$0")" && pwd)"
+W="${WORKDIR:-$PWD}"
 M="$W/migration"
 fails=0
 fail() { echo "FAIL: $*"; fails=$((fails+1)); }
-# shellcheck source=scripts/lib-rev.sh
-. "$ROOT/scripts/lib-rev.sh"
-# shellcheck source=scripts/lib-destino.sh
-. "$ROOT/scripts/lib-destino.sh"
+# shellcheck source=lib-rev.sh
+. "$HERE/lib-rev.sh"
+# shellcheck source=lib-destino.sh
+. "$HERE/lib-destino.sh"
 while IFS= read -r prob; do [ -n "$prob" ] && fail "$prob"; done <<< "$(destino_problemas "$W")"
 conservados="$(destino_conservados "$W")"
 
@@ -17,7 +17,9 @@ adrs=()
 for f in "$M"/adr/*.md; do [ -f "$f" ] && adrs+=("$f"); done
 [ "${#adrs[@]}" -gt 0 ] || { echo "FAIL: no hay ADRs"; exit 1; }
 grep -lq '^estado: observado' "${adrs[@]}" || grep -lq '^estado: revisado' "${adrs[@]}" || fail "no hay ADR observado"
-if [ "${REQUIRE_PROPUESTO:-1}" = 1 ]; then
+# Propia del fixture (FIXTURE=1): recién generados, siempre hay algún ADR propuesto.
+# En un proyecto real dejan de existir en cuanto se deciden.
+if [ "${REQUIRE_PROPUESTO:-${FIXTURE:-0}}" = 1 ]; then
   grep -lq '^estado: propuesto' "${adrs[@]}" || fail "no hay ADR propuesto"
 fi
 for a in "${adrs[@]}"; do

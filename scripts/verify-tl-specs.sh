@@ -1,17 +1,17 @@
 #!/usr/bin/env bash
 # Verifica los specs.
 # Variables: MAX_PREGUNTAS (tope de preguntas abiertas por spec, por defecto 5),
-# REQUIRE_AMBIGUEDAD (1 por defecto: exige que el producto oculto del fixture
+# REQUIRE_AMBIGUEDAD (propia del fixture; activa solo con FIXTURE=1: exige que el producto oculto
 # esté como hecho y como mejora, y no como pregunta abierta).
 set -uo pipefail
-ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-W="${WORKDIR:-$ROOT/.work/sample-workspace}"
+HERE="$(cd "$(dirname "$0")" && pwd)"
+W="${WORKDIR:-$PWD}"
 M="$W/migration"
 MAXP="${MAX_PREGUNTAS:-5}"
 fails=0
 fail() { echo "FAIL: $*"; fails=$((fails+1)); }
-# shellcheck source=scripts/lib-rev.sh
-. "$ROOT/scripts/lib-rev.sh"
+# shellcheck source=lib-rev.sh
+. "$HERE/lib-rev.sh"
 
 # Contenido de una sección numerada, hasta el siguiente encabezado de nivel 2.
 section() { awk -v n="$2" '$0 ~ "^## " n "\\. " {f=1; next} /^## /{f=0} f' "$1"; }
@@ -109,7 +109,7 @@ for s in "${specs[@]}"; do
   todos_hechos+="$(grep -E '^(- )?(RN|CB)-[0-9]+:' "$s")"$'\n'
 done
 
-if [ "${REQUIRE_AMBIGUEDAD:-1}" = 1 ]; then
+if [ "${REQUIRE_AMBIGUEDAD:-${FIXTURE:-0}}" = 1 ]; then
   # El producto oculto (200 sin cuerpo) lo determina el código: hecho + mejora, no pregunta.
   printf '%s' "$todos_hechos" | grep -Eiq 'ocult|hidden' || fail "ninguna RN/CB recoge el comportamiento del producto oculto"
   printf '%s' "$todas_mejoras" | grep -Eiq 'ocult|hidden' || fail "ninguna mejora MJ-n menciona el producto oculto (200 vacío frente a 404)"
