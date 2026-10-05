@@ -167,5 +167,67 @@ else
   done
 fi
 
+# ---------- Reabrir (casos 15 a 20), sobre un workspace recién restaurado
+bash "$ROOT/scripts/snapshot.sh" restore tl-tasks "$W" >/dev/null || { echo "FAIL: no se pudo restaurar la etapa tl-tasks"; exit 1; }
+sin_estado() { grep -v '^estado:' "$1" | md5sum; }
+mapfile -t CAPS < <(ls "$M"/specs | grep -v '^_' | sed 's/\.md$//')
+C1="${CAPS[0]}"; C2="${CAPS[1]}"; C3="${CAPS[2]}"
+
+# Caso 15: reabrir un spec revisado con una respuesta y una mejora aplicada
+SPX="$M/specs/$C1.md"
+MJX="$(awk '/^## 13\. /{f=1;next} /^## /{f=0} f' "$SPX" | grep -oE '^(- )?MJ-[0-9]+' | grep -oE 'MJ-[0-9]+' | head -n1)"
+if [ -z "$MJX" ]; then sed -i 's/^## 13\. Posibles mejoras.*/&\nMJ-90: avisar del recorte. Comportamiento actual: RN-1./' "$SPX"; MJX="MJ-90"; fi
+sed -i -E "s/^((- )?$MJX:.*)\$/\1 (aplicada 2026-10-05: RN-1)/" "$SPX"
+sed -i 's/^## 12\. Preguntas abiertas.*/&\n- ¿Qué responde el sistema externo de pagos ante un cobro duplicado?\n  - Respuesta (2026-10-05): se ignora el segundo cobro./' "$SPX"
+sed -i 's/^estado: generado/estado: revisado/' "$SPX"
+v15="$(campo "$SPX" rev)"; h15="$(sin_estado "$SPX")"
+out="$(R "Reabre el spec $C1.")"
+grep -q '^estado: generado' "$SPX" || fail "caso 15: el spec $C1 no quedó en generado"
+[ "$(campo "$SPX" rev)" = "$v15" ] || fail "caso 15: reabrir cambió el rev ($v15 → $(campo "$SPX" rev))"
+[ "$(sin_estado "$SPX")" = "$h15" ] || fail "caso 15: reabrir cambió algo más que la línea estado"
+printf '%s' "$out" | grep -q "migration-tl-specs, solo la capacidad $C1" || fail "caso 15: el resumen no entrega el prompt de migration-tl-specs con alcance"
+printf '%s' "$out" | grep -q "$MJX" || fail "caso 15: el aviso no menciona la mejora aplicada $MJX"
+printf '%s' "$out" | grep -qi 'respuesta' || fail "caso 15: el aviso no menciona la respuesta a la pregunta abierta"
+printf '%s' "$out" | grep -q '^## Al regenerar' || fail "caso 15: el resumen no tiene la sección 'Al regenerar'"
+
+# Caso 16: un ADR decidido no se reabre
+AD="$(grep -l '^estado: propuesto' "$M"/adr/*.md | head -n1)"; ADID="$(campo "$AD" id)"
+sed -i 's/^estado: propuesto/estado: revisado/; s/^## Decisión$/&\n**Elegida: Opción 1, la recomendada.** Decidido en la prueba.\nMotivo: prueba./' "$AD"
+h16="$(md5sum < "$AD")"
+out="$(R "Reabre el ADR $ADID.")"
+[ "$(md5sum < "$AD")" = "$h16" ] || fail "caso 16: reabrir cambió un ADR decidido"
+printf '%s' "$out" | grep -qi 'cambi.* la decisi\|cambio la decisi' || fail "caso 16: no remite a cambiar la decisión"
+
+# Caso 17: un ADR observado y revisado vuelve a observado
+AO="$(grep -l '^estado: observado' "$M"/adr/*.md | head -n1)"; AOID="$(campo "$AO" id)"
+sed -i 's/^estado: observado/estado: revisado/' "$AO"
+h17="$(sin_estado "$AO")"
+R "Reabre el ADR $AOID." >/dev/null
+grep -q '^estado: observado' "$AO" || fail "caso 17: el ADR observado no volvió a observado (estado: $(campo "$AO" estado))"
+[ "$(sin_estado "$AO")" = "$h17" ] || fail "caso 17: reabrir cambió algo más que la línea estado del ADR"
+
+# Caso 18: un derivado no se reabre
+h18="$(md5sum < "$M/test-plans/_cobertura.md")"
+out="$(R "Reabre el archivo de cobertura _cobertura.md.")"
+[ "$(md5sum < "$M/test-plans/_cobertura.md")" = "$h18" ] || fail "caso 18: tocó un derivado"
+printf '%s' "$out" | grep -q 'migration-qa' || fail "caso 18: no nombró el agente que regenera la cobertura"
+
+# Caso 19: algo que ya está generado
+h19="$(md5sum < "$M/specs/$C2.md")"
+out="$(R "Reabre el spec $C2.")"
+[ "$(md5sum < "$M/specs/$C2.md")" = "$h19" ] || fail "caso 19: cambió un spec que ya estaba en generado"
+printf '%s' "$out" | grep -qi 'ya \(estaba\|está\|se regenera\)\|generado' || fail "caso 19: no dijo que ya estaba en un estado regenerable"
+
+# Caso 20: reabrir una capacidad entera
+sed -i 's/^estado: generado/estado: revisado/' "$M/specs/$C3.md" "$M/test-plans/$C3.md" "$M"/tasks/T-*.md
+FUND="$(grep -L '^spec: .\+' "$M"/tasks/T-*.md | head -n1)"; AJENA="$(grep -l "^spec: $C2$" "$M"/tasks/T-*.md | head -n1)"
+R "Reabre la capacidad $C3." >/dev/null
+grep -q '^estado: generado' "$M/specs/$C3.md" || fail "caso 20: el spec de $C3 no quedó en generado"
+grep -q '^estado: generado' "$M/test-plans/$C3.md" || fail "caso 20: el plan de $C3 no quedó en generado"
+quedan="$(grep -l "^spec: $C3$" "$M"/tasks/T-*.md | xargs grep -L '^estado: generado' | wc -l)"
+[ "$quedan" -eq 0 ] || fail "caso 20: $quedan tareas de $C3 no quedaron en generado"
+grep -q '^estado: revisado' "$FUND" || fail "caso 20: reabrió una tarea fundacional"
+grep -q '^estado: revisado' "$AJENA" || fail "caso 20: reabrió una tarea de otra capacidad"
+
 [ "$fails" -eq 0 ] && { echo "OK: resolver"; exit 0; }
 exit 1

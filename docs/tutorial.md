@@ -451,8 +451,8 @@ Los agentes forman una cadena: specs → planes de prueba → tareas → backlog
 | El destino de un repositorio, o pasaste uno a `conservar` | `migration-tl-adrs` (retira o añade las decisiones de ese repositorio); `migration-qa`; `migration-tl-tasks`; `migration-pm`. El resolver te lista los ADRs y tareas afectados y no borra nada. Los specs solo cambian en la nota de alcance. |
 | Aplicaste una mejora `MJ-n` | Igual que un cambio de spec: `migration-qa` y, si ya hay tareas, `migration-tl-tasks` y `migration-pm`, con `solo la capacidad X`. Descartarla no requiere repetir nada. |
 | Reclasificaste una pregunta como mejora | `migration-qa, solo la capacidad X` para que desaparezca el caso pendiente. Si esa pregunta bloqueaba tareas, el resolver ya quitó el bloqueo; `migration-pm` para actualizar el backlog. |
-| Actualizaste los agentes a la versión con citas y auditor en un proyecto ya empezado | `migration-indexer` (añade el commit de cada repo y el bloque nuevo); `migration-tl-specs` para que los specs `generado` reciban citas y `commits:`; `migration-auditor`. Los specs `revisado` no se regeneran: el auditor los revisa igual y reporta cada regla sin cita con la línea que encontró, para que la añadas con el resolver. |
-| Actualizaste los agentes a la versión con política de paridad en un proyecto ya empezado | `migration-indexer` (añade `politica: paridad` y el bloque nuevo); `migration-tl-specs` para reclasificar los specs `generado`; luego `migration-qa`, `migration-tl-tasks` y `migration-pm`. Los specs `revisado` no se regeneran: reclasifica sus preguntas con el resolver. |
+| Actualizaste los agentes a la versión con citas y auditor en un proyecto ya empezado | `migration-indexer` (añade el commit de cada repo y el bloque nuevo); `migration-tl-specs` para que los specs `generado` reciban citas y `commits:`; `migration-auditor`. Los specs `revisado` no se regeneran: el auditor los revisa igual y reporta cada regla sin cita con la línea que encontró, para que la añadas con el resolver; o los reabres (`reabre el spec X`) y repites `migration-tl-specs`. |
+| Actualizaste los agentes a la versión con política de paridad en un proyecto ya empezado | `migration-indexer` (añade `politica: paridad` y el bloque nuevo); `migration-tl-specs` para reclasificar los specs `generado`; luego `migration-qa`, `migration-tl-tasks` y `migration-pm`. Los specs `revisado` no se regeneran: reclasifica sus preguntas con el resolver, o reábrelos (`reabre el spec X`) y repite `migration-tl-specs`. |
 | Respondiste una pregunta abierta | Si la convertiste en regla o cambia qué se construye, igual que la fila anterior. Si solo confirma el comportamiento actual, `migration-qa, solo la capacidad X` para que el caso pendiente pase a ser un caso normal. |
 | Resolviste un hallazgo `H-n` de QA | `migration-qa, solo la capacidad X` y `migration-qa, solo la cobertura`. Si todavía no generaste tareas, nada más. Si ya las hay y cambia qué se construye, `migration-tl-tasks, solo la capacidad X` y `migration-pm`. |
 | Una tarea: dependencias, tamaño, fase o prioridad | `migration-pm`. Los planes no cambian. |
@@ -482,7 +482,25 @@ Usa el subagente migration-qa, solo la cobertura
 
 Eso es todo si aún no generaste las tareas, que es lo normal: QA va antes precisamente para que resolver sus hallazgos no obligue a rehacer nada más. Si las tareas ya existían y la decisión cambia qué se construye, añade `Usa el subagente migration-tl-tasks, solo la capacidad carrito` y `Usa el subagente migration-pm`.
 
-**Lo `revisado` no se regenera.** Si marcaste `revisado` un spec, una tarea o un plan, el agente correspondiente lo conserva tal cual, incluidos los que editó el resolver, porque él marca `revisado` lo que toca. Si quieres que se regenere, cambia a mano su línea `estado: revisado` por `estado: generado` y repite el agente. Es la única edición manual que el flujo espera de ti.
+**Lo `revisado` no se regenera, hasta que lo reabres.** Si marcaste `revisado` un spec, una tarea o un plan, el agente correspondiente lo conserva tal cual, incluidos los que editó el resolver, porque él marca `revisado` lo que toca. Cuando quieras que se regenere (cambió el código, actualizaste los agentes, quieres otra pasada), pídeselo al resolver:
+
+```
+Usa el subagente migration-tl-resolver: reabre el spec carrito
+Usa el subagente migration-tl-resolver: reabre la capacidad carrito
+```
+
+La primera forma vale también para una tarea (`reabre la tarea T-012`), un plan (`reabre el plan carrito`) o un ADR observado (`reabre el ADR 0003`). La segunda reabre de una vez el spec, el plan y las tareas de esa capacidad, que es lo habitual cuando cambió su código. Reabrir solo cambia el estado: no toca el contenido ni la versión, y no regenera nada. El resolver te da el prompt del agente que regenera.
+
+Antes de regenerar, lee la sección "Al regenerar" de la respuesta del resolver: te dice qué hay en ese artefacto que salió de ti y qué pasará con ello.
+
+| Artefacto | Se conserva al regenerar | Se pierde al regenerar |
+|---|---|---|
+| Spec | Respuestas a preguntas abiertas; mejoras aplicadas y descartadas; reglas que nacieron de una decisión tuya (`[decisión: ...]`); reglas retiradas; la numeración | Correcciones de reglas, contratos o flujos que el código no respalde: el spec se vuelve a derivar del código |
+| Plan de pruebas | Hallazgos resueltos y su numeración | Casos añadidos o editados a mano; los casos se reescriben desde el spec y se renumeran |
+| Tarea | Su id | Dependencias, tamaño, criterios y notas que hayas cambiado; `fase` y `prioridad` fijadas, con lo que deja de ser una restricción para el backlog |
+| ADR observado | Su id | El texto y la implicación que hayas corregido: se vuelven a derivar del código |
+
+Un ADR que decidiste no se reabre: regenerarlo borraría la decisión. Para cambiarla, `en el ADR 0011 cambio la decisión: elijo <opción>`. Los derivados (`index.md`, `_capacidades.md`, `_auditoria.md`, `_cobertura.md`, `backlog.md`) no tienen estado: se regeneran siempre.
 
 **Si dudas**, pregunta al orquestador: compara versiones y te dice qué quedó desactualizado y con qué prompt regenerarlo.
 
@@ -515,7 +533,7 @@ El orquestador también informa de la completitud por capacidad: en la línea `F
 
 ## 5. Reglas que conviene saber
 
-- `revisado` protege un artefacto: ningún agente generador lo sobrescribe. El resolver marca `revisado` lo que edita.
+- `revisado` protege un artefacto: ningún agente generador lo sobrescribe. El resolver marca `revisado` lo que edita, y lo devuelve a un estado regenerable cuando se lo pides con `reabre <artefacto>` o `reabre la capacidad <slug>`, avisando de qué se conserva y qué se pierde al regenerar.
 - No edites derivados: `index.md`, `_capacidades.md`, `_auditoria.md`, `_cobertura.md`, `backlog.md`. El resolver se niega y te dice qué agente los regenera.
 - Cada regla de un spec cita la línea de código que la respalda. El auditor comprueba esas citas y nunca modifica un spec: informa, y tú corriges con el resolver. Un hallazgo corregido desaparece al repetir la auditoría.
 - Los identificadores nunca se renumeran; lo retirado queda marcado como retirado.
@@ -541,15 +559,17 @@ El orquestador también informa de la completitud por capacidad: en la línea `F
 | El mapa de destino no cubre el repositorio X | Falta la entrada de ese repositorio: `fija el destino de X en <lenguaje>` o `conserva el repositorio X`. |
 | El agente se detiene porque el destino del prompt y el del README difieren | El README manda. Quita el destino del prompt o corrige el README con el resolver. |
 | Pediste al resolver que marcara resuelto un hallazgo `AU-n` y se negó | El informe de auditoría es un derivado. Corrige el spec y repite `migration-auditor, solo la capacidad X`: el hallazgo desaparece solo. |
-| El auditor marca reglas como "sin cita" | El spec es anterior a las citas o está `revisado`. Si está `generado`, repite `migration-tl-specs`; si está `revisado`, añade las citas con el resolver usando la línea que da cada hallazgo. |
+| El auditor marca reglas como "sin cita" | El spec es anterior a las citas o está `revisado`. Si está `generado`, repite `migration-tl-specs`; si está `revisado`, añade las citas con el resolver usando la línea que da cada hallazgo, o reábrelo (`reabre el spec X`) y repite `migration-tl-specs`. |
 | El auditor marca muchas reglas como sin respaldo o no localizables a la vez | El código cambió desde que se escribió el spec y las líneas se desplazaron. Mira si avisa de que los commits no coinciden; repite `migration-indexer` y `migration-tl-specs` para esa capacidad. |
 | El auditor marca una regla como contradicha y crees que el spec está bien | Abre la línea citada: el veredicto dice qué leyó. Si el auditor se equivoca, deja la regla como está; el informe no cambia nada por sí solo. |
 | El orquestador dice "no se puede determinar, no tiene versión registrada" | El proyecto se generó antes de que existieran las versiones. Si sabes que nada cambió desde entonces: `Usa el subagente migration-tl-resolver: registra las versiones`, que pone `rev: 1` y anota en cada tarea y plan la versión actual de sus insumos; luego repite `migration-auditor` y `migration-pm`, que regeneran sus derivados. Si no lo sabes, regenera con el agente de cada paso. |
 | Política desconocida | `politica:` en `migration/README.md` tiene un valor distinto de `paridad`. Corrígelo: `Usa el subagente migration-tl-resolver: fija la política en paridad`. |
-| Un spec tiene muchas preguntas del tipo "¿se mantiene X o debería ser Y?" | Se generó antes de la política de paridad o quedó `revisado`. Si está `generado`, repite `migration-tl-specs`; si está `revisado`, reclasifica cada pregunta con el resolver. |
+| Un spec tiene muchas preguntas del tipo "¿se mantiene X o debería ser Y?" | Se generó antes de la política de paridad o quedó `revisado`. Si está `generado`, repite `migration-tl-specs`; si está `revisado`, reclasifica cada pregunta con el resolver, o reábrelo (`reabre el spec X`) y repite `migration-tl-specs`. |
 | Aplicaste una mejora y las tareas siguen igual | Aplicar solo cambia el spec. Repite `migration-tl-tasks` y `migration-qa` con `solo la capacidad X`. |
 | `migration-tl-tasks` se detiene | Hay ADRs propuestos. Decide con el resolver o fuerza con "aunque haya ADRs propuestos". |
 | El resolver no aplicó algo | Revisa la sección "No aplicado" de su resumen: id inexistente u orden ambigua. |
 | El PM reporta un ciclo | Corrige `depende_de` con el resolver y repite el PM. |
-| Una tarea o un spec no cambió al repetir el agente | Está `revisado`. Cambia su estado a `generado` y repite (sección 4). |
+| Una tarea o un spec no cambió al repetir el agente | Está `revisado`. Reábrelo con el resolver (`reabre el spec X`, `reabre la tarea T-012`), lee qué se pierde al regenerar y repite el agente (sección 4). |
+| El orquestador dice que un plan o una tarea `revisado` está desactualizado | Su agente no lo sobrescribe. O lo corriges con el resolver y lo declaras al día con `registra las versiones de <artefacto>`, o lo reabres con `reabre <artefacto>` y repites el agente. |
+| Pediste reabrir un ADR y el resolver se negó | Es un ADR decidido. Para cambiar la decisión: `en el ADR NNNN cambio la decisión: elijo <opción>`. |
 | No sabes qué sigue | `Usa el subagente migration-orchestrator`. |

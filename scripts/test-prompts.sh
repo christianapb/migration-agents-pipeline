@@ -205,5 +205,20 @@ done
 grep -q '^tools: .*Bash' "$A/migration-orchestrator.md" && fail "migration-orchestrator.md no debe tener Bash"
 has migration-orchestrator.md 'bash .claude/migration/verificar.sh'
 
+# Reabrir (docs/specs/2026-10-05-reabrir-design.md)
+for k in 'reabre <artefacto>' 'reabre la capacidad <slug>'; do
+  printf '%s' "$block" | grep -qF -- "$k" || fail "bloque de CLAUDE.md sin '$k'"
+  has migration-orchestrator.md "$k"
+done
+has migration-tl-resolver.md '**Reabrir**'
+has migration-tl-resolver.md '**Reabrir una capacidad**'
+has migration-tl-resolver.md '## Al regenerar'
+has migration-tl-resolver.md 'es un ADR decidido y no se reabre'
+has migration-tl-resolver.md 'salvo que la orden sea reabrirlo'
+has migration-tl-resolver.md 'Solo cambia la línea `estado:`'
+has migration-orchestrator.md 'motivo `revisado`'
+has migration-tl-specs.md 'cuya cita es `[decisión: ...]`'
+grep -nE 'cambia a mano su línea|Cambia su estado a `generado`|única edición manual' "$ROOT/docs/tutorial.md" >/dev/null && fail "el tutorial todavía pide cambiar estado a mano"
+
 [ "$fails" -eq 0 ] && { echo "OK: prompts"; exit 0; }
 exit 1

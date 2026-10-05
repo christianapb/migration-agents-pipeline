@@ -288,6 +288,20 @@ if quiere spec-sin-version; then
   printf '%s' "$next" | grep -q 'registra las versiones' || fail "el prompt no es 'registra las versiones'"
 fi
 
+if quiere plan-revisado-atrasado; then
+  # Un plan revisado cuyo spec cambió: su agente no lo sobrescribe. Dos salidas, ambas con el resolver
+  completo_sin_backlog
+  S="$(caps | head -n1)"
+  sed -i 's/^estado: generado/estado: revisado/' "$M/test-plans/$S.md"
+  sed -i "s/^rev: .*/rev: $(( $(rev_de "$M/specs/$S.md") + 1 ))/" "$M/specs/$S.md"
+  orq "plan-revisado-atrasado"
+  contiene desactualizado "plan:$S"
+  es agente migration-tl-resolver
+  motivo_tiene revisado
+  printf '%s' "$next" | grep "migration-tl-resolver: reabre " | grep -q "$S" || fail "no ofrece reabrir el plan de $S"
+  printf '%s' "$next" | grep "migration-tl-resolver: registra las versiones de " | grep -q "$S" || fail "no ofrece registrar las versiones del plan de $S"
+fi
+
 if quiere tarea-nueva-en-un-spec; then
   # Añadir una tarea a un spec no desactualiza su plan
   completo_sin_backlog
