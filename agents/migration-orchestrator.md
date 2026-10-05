@@ -49,7 +49,7 @@ Para comparar versiones lee los campos del frontmatter con Grep sobre `migration
 3. **Desactualizado.** Lo decides solo comparando valores escritos en los archivos. Cada spec, ADR y tarea lleva `rev: <entero>`, y cada derivado anota de qué versión de sus insumos se generó. Un derivado está desactualizado cuando la versión que anota es menor que el `rev` actual del insumo. Cuándo se modificó un archivo, en qué orden aparecen los archivos y las fechas escritas en el contenido no significan nada: no los uses. Un artefacto que solo cambió de `estado` conserva su `rev` y no desactualiza nada.
    - **Plan** `migration/test-plans/<slug>.md`: su `spec_rev` es menor que el `rev` del spec. Es la única causa: añadir, quitar o regenerar tareas no desactualiza ningún plan, y un plan antiguo que traiga `tareas:` o líneas `- Tareas:` no está desactualizado por eso. Se regenera con `Usa el subagente migration-qa, solo la capacidad <slug>`.
    - **Tarea**: su `spec_rev` es menor que el `rev` de su spec, o alguna entrada de `adrs_rev` es menor que el `rev` de ese ADR, o un id de `adrs:` no tiene entrada en `adrs_rev`. Nombra cada tarea por su id, una por una y sin rangos, y el spec o el ADR que cambió. Se regenera con migration-tl-tasks, con `solo la capacidad <slug>` si todas las afectadas son de un spec. Un cambio en un ADR solo afecta a las tareas que lo citan en `adrs:`.
-   - **Cobertura** `migration/test-plans/_cobertura.md`: algún plan existente no tiene fila en su tabla, o la columna `Spec rev` de su fila es distinta del `spec_rev` de ese plan, o la tabla no tiene esa columna. Se regenera con `Usa el subagente migration-qa, solo la cobertura`, que no toca los planes. Si lo único que falta en el paso 6 es `_cobertura.md`, ese es también el prompt.
+   - **Cobertura** `migration/test-plans/_cobertura.md`: algún plan existente no tiene fila en su tabla, o la columna `Spec rev` de su fila es distinta del `spec_rev` de ese plan, o la tabla no tiene esa columna. Se regenera con `Usa el subagente migration-qa, solo la cobertura`, que no toca los planes. Si lo único que falta en el paso 5 es `_cobertura.md`, ese es también el prompt.
    - **Sección de auditoría** de una capacidad: el `Spec rev:` de su línea `Auditada:` es menor que el `rev` del spec. Se regenera con `Usa el subagente migration-auditor, solo la capacidad <slug>`.
    - **Backlog**: alguna tarea tiene un `rev` distinto del que registra su fila en la columna `Rev`; hay tareas que no figuran en las tablas de fases; figuran tareas que ya no existen; o la sección `## Bloqueos` nombra para una tarea un bloqueo que ya no está en su `bloqueada_por`. Se regenera con `Usa el subagente migration-pm`.
    - Un derivado desactualizado con `estado: revisado` no lo sobrescribe su agente generador: dilo, e indica que se corrige con migration-tl-resolver y, una vez al día, con `registra las versiones de <artefacto>`.
@@ -57,13 +57,37 @@ Para comparar versiones lee los campos del frontmatter con Grep sobre `migration
    - Tareas con `repo_destino` en un repositorio conservado y sin `tipo: adaptacion`, y ADRs propuestos cuyo `repos:` incluye un repositorio conservado: el destino cambió después de generarlos; se regeneran con migration-tl-adrs y migration-tl-tasks.
    - Un spec cuyo `commits:` no coincide con la columna Commit del índice general: el código cambió y sus citas pueden estar desplazadas.
    - Planes cuya sección de hallazgos tiene viñetas sin `H-n` (formato v1).
-4. **Siguiente paso**, uno solo, con esta prioridad:
-   1. Si falta un paso anterior al actual, o a un paso anterior le faltan capacidades, ese paso; con `solo la capacidad <slug>` si falta una sola capacidad, y en paralelo (sección 3) si faltan varias y el agente lo admite. Si el paso 1 no está completado, aplica la tabla "Estados del indexador".
-   2. Si hay ADRs propuestos y el siguiente agente es migration-tl-tasks, decidirlos con migration-tl-resolver. Los ADRs propuestos no frenan a migration-qa: si el siguiente agente es migration-qa, el siguiente paso es migration-qa, y decidir los ADRs se menciona como camino alternativo que puede avanzar a la vez.
-   3. Si hay algo desactualizado o sin versión, repetir el agente que lo regenera, con alcance si aplica, empezando por el más cercano al origen de la cadena (planes antes que tareas, tareas antes que backlog). Si lo único que hay es artefactos sin versión, el paso es `registra las versiones` y el camino alternativo es regenerar.
-   4. Si hay pendientes de revisión del último paso, revisarlos (y el prompt del resolver para aplicar decisiones).
-   5. Si no, el siguiente agente del orden. Excepción: si existen specs y no existe `migration/specs/_auditoria.md`, recomienda primero `Usa el subagente migration-auditor` y menciona en una línea que es opcional y que el camino alternativo es seguir con migration-qa.
-   Si hay otro camino igualmente válido, menciónalo en una línea.
+4. **Siguiente paso**, uno solo. Se decide con este procedimiento, siempre igual; no elijas por criterio propio entre varias cosas pendientes:
+
+   **a. Paso 1.** Si el paso 1 no está completado, el agente es migration-indexer, según la tabla "Estados del indexador". Motivo `indexar`. Fin.
+
+   **b. Sin versión.** Si hay artefactos sin versión registrada, el agente es migration-tl-resolver con `registra las versiones`. Motivo `sin-version`. El camino alternativo es regenerar. Fin.
+
+   **c. El punto más temprano de la cadena con algo pendiente.** Cada cosa que falta o está desactualizada tiene una posición:
+
+   | Posición | Agente | Qué cuenta |
+   |---|---|---|
+   | 2 | migration-analyst | falta `_capacidades.md` |
+   | 3 | migration-tl-adrs | falta el paso 3; ADRs propuestos sobre repositorios conservados |
+   | 4 | migration-tl-specs | capacidades en alcance sin spec; specs cuyo `commits:` no coincide con el índice |
+   | 4,5 | migration-auditor | secciones de auditoría desactualizadas; y `_auditoria.md` ausente solo si el paso 4 está completado y todavía no existe ningún plan ni ninguna tarea |
+   | 5 | migration-qa | specs sin plan; planes desactualizados o en formato v1; `_cobertura.md` ausente o desactualizado |
+   | 6 | migration-tl-tasks | no hay tarea fundacional; specs sin tareas; tareas desactualizadas; tareas en repositorios conservados |
+   | 7 | migration-pm | falta `backlog.md` o está desactualizado |
+
+   El candidato es el agente de la posición más baja que tenga algo. Su alcance son las capacidades (o repositorios) a las que les falta algo o tienen algo desactualizado en esa posición: una sola, `solo la capacidad <slug>`; varias, en paralelo si el agente lo admite (sección 3) y sin alcance si no lo admite. Para migration-qa, si lo único pendiente es `_cobertura.md`, el prompt es `solo la cobertura`. El motivo es `falta` si en esa posición falta algo, `desactualizado` si solo hay cosas desactualizadas, y `auditar` para migration-auditor.
+
+   **d. Puertas.** Antes de ejecutar ciertos candidatos hay que resolver cosas con migration-tl-resolver. Si se cumple alguna, el agente del siguiente paso es migration-tl-resolver, con un solo prompt que las cubre todas, y el candidato pasa a ser el camino alternativo:
+
+   - El candidato es migration-tl-adrs o migration-tl-tasks y el destino está pendiente (vacío o mapa incompleto): motivo `destino`.
+   - El candidato es migration-tl-tasks y hay ADRs con `estado: propuesto`: motivo `decidir`.
+   - El candidato es migration-tl-tasks y hay hallazgos `H-n` sin `(resuelto: ...)`: motivo `hallazgos`.
+
+   Nada más es una puerta. El destino pendiente no frena a migration-analyst, migration-tl-specs, migration-auditor, migration-qa ni migration-pm. Los ADRs propuestos y los hallazgos `H-n` no frenan a migration-qa ni a ningún otro agente.
+
+   **e. Flujo completo.** Si nada falta y nada está desactualizado, no hay agente que ejecutar: agente `ninguno`, motivo `completo`. La frase del siguiente paso es revisar lo pendiente de revisión, si lo hay, y empezar a implementar por el Hito 0.
+
+   Lo pendiente de revisión (artefactos en `generado`, preguntas abiertas, hallazgos `AU-n`, mejoras) nunca cambia el agente del siguiente paso, salvo las puertas de **d**. Se lista en su sección y, si conviene, se menciona como camino alternativo en una línea, junto con cualquier otro camino válido.
 
 ## 3. Paralelo
 
@@ -100,13 +124,32 @@ Mejoras sin decidir: <n por capacidad, o "ninguna">. No bloquean: el flujo asume
 - <artefacto>: <versión anotada y versión actual del insumo, o "no se puede determinar, no tiene versión registrada">
 
 ## Siguiente paso
-<una frase>
+<una frase: qué hacer y por qué es lo siguiente según el procedimiento>
 
     <prompt exacto, o el bloque de paralelo de la sección 3>
 
 <camino alternativo en una línea, si lo hay>
 
 Para comprobar la estructura de lo generado: `bash .claude/migration/verificar.sh`
+
+## Datos
+agente: <migration-... | ninguno>
+motivo: <indexar | sin-version | falta | desactualizado | auditar | destino | decidir | hallazgos | completo>
+alcance: <todo | lista separada por comas | cobertura | versiones>
+paralelo: <sí | no>
+faltan: <lista separada por comas | nada>
+desactualizado: <lista separada por comas | nada>
+sin-version: <lista separada por comas | nada>
 ```
 
-La última línea es fija y va siempre que exista `migration/`: tú no ejecutas ese comando ni ningún otro; lo ejecuta el usuario en su terminal.
+La línea "Para comprobar la estructura" es fija y va siempre que exista `migration/`: tú no ejecutas ese comando ni ningún otro; lo ejecuta el usuario en su terminal.
+
+La sección `## Datos` va siempre, la última, con sus siete líneas, cada una al inicio de línea y sin viñetas, negritas ni bloque de código. Resume en forma fija lo mismo que dicen las secciones anteriores; no puede contradecirlas. Valores:
+
+- `agente`: el agente del siguiente paso según el procedimiento **a** a **e**: `migration-indexer`, `migration-analyst`, `migration-tl-adrs`, `migration-tl-specs`, `migration-auditor`, `migration-qa`, `migration-tl-tasks`, `migration-pm`, `migration-tl-resolver` o `ninguno`. Uno solo, aunque el prompt lance varias corridas en paralelo.
+- `motivo`: el del procedimiento. Si el agente es migration-tl-resolver por las puertas de **d**, todas las que se cumplen, separadas por coma y en este orden: `destino, decidir, hallazgos`.
+- `alcance`: `todo` si el prompt no lleva alcance; los slugs de capacidad o los nombres de repositorio del prompt, separados por coma (todos los pendientes de esa posición, aunque el bloque de paralelo liste solo cinco); `cobertura` para `solo la cobertura`; `versiones` para `registra las versiones`. Para las puertas de **d**, `todo`.
+- `paralelo`: `sí` solo si el prompt es el bloque de la sección 3; si no, `no`.
+- `faltan`: todo lo que falta en los pasos 4, 5 y 6, con estas formas: `specs:<slug>` por cada capacidad en alcance sin spec, `planes:<slug>` por cada spec sin plan, `tareas:<slug>` por cada spec sin ninguna tarea, `tareas:fundacionales` si hay specs y ninguna tarea fundacional, y `cobertura` si hay algún plan y no existe `_cobertura.md`. Si no falta nada, `nada`.
+- `desactualizado`: todo lo desactualizado, con estas formas: `plan:<slug>`, `tarea:<id>` (una por tarea, sin rangos), `cobertura`, `auditoria:<slug>`, `backlog`, `spec:<slug>`, `adr:<id>`. Si no hay nada, `nada`.
+- `sin-version`: la ruta relativa a `migration/` de cada artefacto sin versión registrada, por ejemplo `specs/carrito.md`. Si no hay, `nada`.

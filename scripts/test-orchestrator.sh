@@ -1,5 +1,14 @@
 #!/usr/bin/env bash
-# Caso 9 del spec v2 y Review Focus 4. Prepara sus propios estados.
+# Diagnóstico del orquestador en estados preparados por la propia prueba.
+#
+# Las comprobaciones leen la sección "## Datos" de la respuesta (agente, motivo,
+# alcance, paralelo, faltan, desactualizado, sin-version), no su prosa: la
+# redacción cambia de una corrida a otra y los datos no deben hacerlo.
+# Cada caso deja el workspace en un estado que no depende de lo que el modelo
+# generó en esa instantánea (preguntas abiertas, hallazgos, destino).
+#
+# Variables: CASOS (lista de casos a ejecutar, separados por espacio; por
+# defecto todos), ORQ_LOG (carpeta donde guardar la respuesta de cada caso).
 set -uo pipefail
 # Activa las comprobaciones de los verificadores propias del fixture
 export FIXTURE="${FIXTURE:-1}"
@@ -9,51 +18,62 @@ export WORKDIR="$W"
 SNAP_TMP="$(mktemp -d)"
 trap 'rm -rf "$SNAP_TMP"' EXIT
 M="$W/migration"
+. "$ROOT/scripts/lib-rev.sh"
 fails=0
-fail() { echo "FAIL: $*"; fails=$((fails+1)); }
+CASO=""
+fail() { echo "FAIL: $CASO: $*"; fails=$((fails+1)); }
 run() { bash "$ROOT/scripts/run-agent.sh" "$@"; rc=$?; [ $rc -eq 2 ] && { echo "ERROR: límite de uso, repetir"; exit 2; }; return $rc; }
 snap() { find "$W" -path "$W/*/.git" -prune -o -type f -print0 | sort -z | xargs -0 md5sum; }
+quiere() { [ -z "${CASOS:-}" ] || case " $CASOS " in *" $1 "*) return 0 ;; *) return 1 ;; esac; }
+etapa() { bash "$ROOT/scripts/snapshot.sh" restore "$1" "$W" >/dev/null || { echo "FAIL: no se pudo restaurar la etapa $1"; exit 1; }; }
+
+# Ejecuta el orquestador y deja su respuesta en $out. Comprueba que no escribió
+# nada y que la respuesta tiene las secciones y los siete datos.
 orq() {
+  CASO="$1"
   snap > "$SNAP_TMP/snap-a.txt"
   out="$(run migration-orchestrator)"
   snap > "$SNAP_TMP/snap-b.txt"
-  diff -q "$SNAP_TMP/snap-a.txt" "$SNAP_TMP/snap-b.txt" >/dev/null || fail "$1: el orquestador escribió archivos"
-  for s in '## Estado' '## Pendiente de revisión' '## Desactualizado' '## Siguiente paso'; do
-    printf '%s' "$out" | grep -q "^$s" || fail "$1: falta '$s'"
+  [ -n "${ORQ_LOG:-}" ] && { mkdir -p "$ORQ_LOG"; printf '%s\n' "$out" > "$ORQ_LOG/${CASO// /-}.md"; }
+  diff -q "$SNAP_TMP/snap-a.txt" "$SNAP_TMP/snap-b.txt" >/dev/null || fail "el orquestador escribió archivos"
+  for s in '## Estado' '## Pendiente de revisión' '## Desactualizado' '## Siguiente paso' '## Datos'; do
+    printf '%s' "$out" | grep -q "^$s" || fail "falta la sección '$s'"
   done
-  next="$(printf '%s' "$out" | awk '/^## Siguiente paso/{f=1;next} f')"
+  datos="$(printf '%s' "$out" | awk '/^## Datos/{f=1;next} /^## /{f=0} f' | tr -d '\r' | sed -E 's/^[[:space:]`*-]+//; s/[[:space:]`*]+$//')"
+  for k in agente motivo alcance paralelo faltan desactualizado sin-version; do
+    printf '%s\n' "$datos" | grep -q "^$k:" || fail "la sección Datos no tiene la línea '$k:'"
+  done
+  next="$(printf '%s' "$out" | awk '/^## Siguiente paso/{f=1;next} /^## /{f=0} f')"
 }
+dato() { printf '%s\n' "$datos" | sed -n "s/^$1:[[:space:]]*//p" | head -n1 | sed -E 's/[[:space:].]+$//'; }
+# Valor de una lista como elementos ordenados y separados por espacio; "nada" queda vacío
+lista_dato() { dato "$1" | tr ',' '\n' | sed -E 's/^[[:space:]`]+//; s/[[:space:]`]+$//' | grep -v '^$' | grep -vix 'nada' | sort | paste -sd' ' -; }
+ordena() { tr ' ' '\n' | grep -v '^$' | sort | paste -sd' ' -; }
+es() { # <clave> <valor esperado>
+  [ "$(dato "$1")" = "$2" ] || fail "$1 es '$(dato "$1")', se esperaba '$2'"
+}
+lista_es() { # <clave> <elementos esperados, separados por espacio>
+  local got exp; got="$(lista_dato "$1")"; exp="$(printf '%s' "$2" | ordena)"
+  [ "$got" = "$exp" ] || fail "$1 es '${got:-nada}', se esperaba '${exp:-nada}'"
+}
+contiene() { # <clave> <elemento>
+  lista_dato "$1" | tr ' ' '\n' | grep -qx -- "$2" || fail "$1 no contiene '$2' (es '$(dato "$1")')"
+}
+motivo_tiene() { dato motivo | tr ',' '\n' | sed -E 's/^[[:space:]]+//; s/[[:space:]]+$//' | grep -qx "$1" || fail "motivo no incluye '$1' (es '$(dato motivo)')"; }
 
-# RF4: carpeta sin CLAUDE.md
-bash "$ROOT/scripts/snapshot.sh" restore fixture "$W" >/dev/null || { echo "FAIL: no se pudo restaurar la etapa fixture"; exit 1; }
-orq "sin indexar"
-printf '%s' "$next" | grep -q 'migration-indexer' || fail "sin indexar: no recomienda migration-indexer"
-
-# Estado 1: tras el indexador
-bash "$ROOT/scripts/snapshot.sh" restore indexer "$W" >/dev/null || { echo "FAIL: no se pudo restaurar la etapa indexer"; exit 1; }
-orq "tras indexer"
-printf '%s' "$next" | grep -q 'migration-analyst' || fail "tras indexer: no recomienda migration-analyst"
-
-# Estado 1b: un índice de repositorio incompleto; el paso 1 no está completado
-printf '> Índice incompleto: falta desde src/routes\n' >> "$W/bff/index.md"
-orq "índice incompleto"
-printf '%s' "$next" | grep -q 'migration-indexer' || fail "índice incompleto: el siguiente paso no es migration-indexer"
-printf '%s' "$next" | grep -q 'migration-analyst' && fail "índice incompleto: recomienda migration-analyst sobre un índice parcial"
-printf '%s' "$out" | grep -q 'bff' || fail "índice incompleto: no nombra el repositorio bff"
-
-# Estado 2: ADRs propuestos pendientes
-bash "$ROOT/scripts/snapshot.sh" restore tl-adrs "$W" >/dev/null || { echo "FAIL: no se pudo restaurar la etapa tl-adrs"; exit 1; }
-P="$(grep -l '^estado: propuesto' "$M"/adr/*.md | head -n1 | xargs basename | cut -c1-4)"
-orq "ADRs propuestos"
-printf '%s' "$out" | grep -q "$P" || fail "ADRs propuestos: no lista el ADR $P"
-printf '%s' "$next" | grep -Eq 'migration-tl-resolver|migration-tl-specs' || fail "ADRs propuestos: siguiente paso inesperado"
-# Con el mapa y los ADRs hechos y ningún spec: propone el paralelo con todas las capacidades
-printf '%s' "$next" | grep -qi 'en paralelo' || fail "specs pendientes: no propone lanzarlos en paralelo"
-for c in $(grep -oE '^\| [a-z0-9-]+ \|' "$M/specs/_capacidades.md" | sed -E 's/^\| //; s/ \|$//'); do
-  printf '%s' "$next" | grep -q "migration-tl-specs, solo la capacidad $c" || fail "specs pendientes: el paralelo no incluye la capacidad $c"
-done
-
-# Auditoría mínima y válida, para que el orquestador no recomiende antes el auditor
+# --- Preparación de estados
+caps() { ls "$M"/specs | grep -v '^_' | sed 's/\.md$//'; }
+fija_destino() { sed -i 's/^destino:.*/destino: Kotlin/' "$M/README.md"; }
+decide_adrs() { sed -i 's/^estado: propuesto/estado: revisado/' "$M"/adr/*.md; }
+# Marca como resueltos los hallazgos de QA que haya generado el modelo
+resuelve_hallazgos() {
+  local p
+  for p in "$M"/test-plans/[!_]*.md; do
+    [ -f "$p" ] && sed -i -E '/^- \*\*H-[0-9]+\*\*/{/\(resuelto/!s/$/ (resuelto: decidido en la prueba)/}' "$p"
+  done
+  return 0
+}
+# Auditoría mínima y válida, al día con cada spec
 planta_auditoria() {
   local f s
   {
@@ -66,152 +86,255 @@ planta_auditoria() {
     done
   } > "$M/specs/_auditoria.md"
 }
-caps() { ls "$M"/specs | grep -v '^_' | sed 's/\.md$//'; }
-
-# Estado 2b: specs hechos, ADRs propuestos, sin planes ni tareas: QA no espera a los ADRs
-bash "$ROOT/scripts/snapshot.sh" restore tl-specs "$W" >/dev/null || { echo "FAIL: no se pudo restaurar la etapa tl-specs"; exit 1; }
-grep -lq '^estado: propuesto' "$M"/adr/*.md || fail "QA antes de ADRs: el workspace no tiene ADRs propuestos"
-planta_auditoria
-sed -i 's/^destino:.*/destino: Kotlin/' "$M/README.md"
-orq "QA con ADRs propuestos"
-# Si los specs tienen preguntas abiertas, revisarlas puede ir primero y QA como
-# camino alternativo: lo que se exige es que QA se ofrezca ya, en paralelo y
-# para todas las capacidades, sin esperar a los ADRs.
-printf '%s' "$next" | grep -q 'migration-qa' || fail "QA con ADRs propuestos: no ofrece migration-qa"
-printf '%s' "$next" | grep -qi 'paralelo' || fail "QA con ADRs propuestos: no propone lanzar QA en paralelo"
-for c in $(caps); do
-  printf '%s' "$next" | grep -q "solo la capacidad $c" || fail "QA con ADRs propuestos: el paralelo no incluye la capacidad $c"
-done
-printf '%s' "$next" | grep -q 'migration-tl-resolver\|ADR' || fail "QA con ADRs propuestos: no menciona decidir los ADRs como camino alternativo"
-printf '%s' "$next" | grep -q 'Usa el subagente migration-tl-tasks' && fail "QA con ADRs propuestos: manda a migration-tl-tasks antes que a QA"
-
-# Estado 2c: planes hechos, ADRs propuestos: ahora sí toca decidirlos
-bash "$ROOT/scripts/snapshot.sh" restore qa "$W" >/dev/null || { echo "FAIL: no se pudo restaurar la etapa qa"; exit 1; }
-ls "$M"/tasks/T-*.md >/dev/null 2>&1 && fail "la etapa qa contiene tareas; el orden de etapas no es el nuevo"
-planta_auditoria
-orq "planes hechos y ADRs propuestos"
-printf '%s' "$next" | grep -q 'Usa el subagente migration-tl-resolver' || fail "planes hechos y ADRs propuestos: el siguiente paso no es decidir los ADRs con el resolver"
-
-# Estado 2d: planes hechos y ADRs decididos: migration-tl-tasks va en serie
-sed -i 's/^estado: propuesto/estado: revisado/' "$M"/adr/*.md
-sed -i 's/^destino:.*/destino: Kotlin/' "$M/README.md"
-orq "tareas pendientes"
-printf '%s' "$next" | grep -q 'migration-tl-tasks' || fail "tareas pendientes: el siguiente paso no es migration-tl-tasks"
-printf '%s' "$next" | grep -q 'migration-tl-tasks, solo la capacidad' && fail "tareas pendientes: reparte migration-tl-tasks por capacidad"
-printf '%s' "$next" | grep -i 'en paralelo' | grep -q 'migration-tl-tasks' && fail "tareas pendientes: propone migration-tl-tasks en paralelo"
-
-# Estado 3: lo desactualizado se decide por versiones, no por fechas
-. "$ROOT/scripts/lib-rev.sh"
-# Etapa tl-tasks: specs, planes y tareas (los planes van antes que las tareas)
-qa_ws() { bash "$ROOT/scripts/snapshot.sh" restore tl-tasks "$W" >/dev/null || { echo "FAIL: no se pudo restaurar la etapa tl-tasks"; exit 1; }; }
-desact() { printf '%s' "$out" | awk '/^## Desactualizado/{f=1;next} /^## /{f=0} f' | grep -v '^[[:space:]]*$' || true; }
-nada() { # <caso>
-  local d; d="$(desact)"
-  printf '%s\n' "$d" | grep -Eqx -- '-? ?Nada\.?' && [ "$(printf '%s\n' "$d" | grep -c .)" -eq 1 ] \
-    || fail "$1: se esperaba 'Nada' en Desactualizado y dice: $(printf '%s' "$d" | head -n3 | cut -c1-200)"
-}
 ids_de() { xargs -r -n1 basename | grep -oE '^T-[0-9]+' | sort -u; }
-qa_ws
-S="$(ls "$M"/specs | grep -v '^_' | head -n1 | sed 's/\.md$//')"
-OTROS="$(ls "$M"/specs | grep -v '^_' | sed 's/\.md$//' | grep -vx "$S")"
+tareas_de() { grep -l "^spec: $1$" "$M"/tasks/T-*.md | ids_de | sed 's/^/tarea:/' | paste -sd' ' -; }
+# Etapa con specs, planes y tareas, sin backlog; destino fijado, ADRs decididos y
+# hallazgos resueltos, para que solo cuente lo que cada caso cambia
+completo_sin_backlog() { etapa tl-tasks; fija_destino; decide_adrs; resuelve_hallazgos; }
 
-# 3.1 Sin tocar nada
-orq "sin cambios"
-nada "sin cambios"
-out_base="$out"
-
-# 3.2 Cambia la fecha de modificación de un spec, no su contenido
-sleep 2; touch "$M/specs/$S.md"
-orq "touch de un spec"
-nada "touch de un spec"
-
-# 3.3 Sube el rev de un spec: marca su plan y sus tareas, y nada de otros specs
-qa_ws
-sed -i "s/^rev: .*/rev: $(( $(rev_de "$M/specs/$S.md") + 1 ))/" "$M/specs/$S.md"
-orq "rev de un spec"
-d="$(desact)"
-printf '%s' "$d" | grep -q "$S" || fail "rev de un spec: no marca el plan de $S"
-for t in $(grep -l "^spec: $S$" "$M"/tasks/T-*.md | ids_de); do
-  printf '%s' "$d" | grep -q "\b$t\b" || fail "rev de un spec: no marca la tarea $t de $S"
-done
-for o in $OTROS; do
-  printf '%s' "$d" | grep -q "$o" && fail "rev de un spec: marca también $o"
-done
-for t in $(grep -L "^spec: $S$" "$M"/tasks/T-*.md | ids_de); do
-  printf '%s' "$d" | grep -q "\b$t\b" && fail "rev de un spec: marca la tarea $t, que no es de $S"
-done
-# La regeneración empieza por el plan: planes antes que tareas
-printf '%s' "$next" | grep -m1 'Usa el subagente' | grep -q 'migration-qa' || fail "rev de un spec: el primer prompt no regenera el plan con migration-qa"
-
-# 3.4 Cambia solo el estado de un spec a revisado
-qa_ws
-sed -i 's/^estado: generado/estado: revisado/' "$M/specs/$S.md"
-orq "solo cambio de estado"
-nada "solo cambio de estado"
-
-# 3.5 Sube el rev de un ADR: marca solo las tareas que lo citan
-qa_ws
-total="$(ls "$M"/tasks/T-*.md | wc -l)"; ADR=""
-for a in "$M"/adr/*.md; do
-  id="$(campo "$a" id)"
-  n="$(grep -lE "^adrs:.*\b$id\b" "$M"/tasks/T-*.md 2>/dev/null | wc -l)"
-  if [ "$n" -gt 0 ] && [ "$n" -lt "$total" ]; then ADR="$a"; break; fi
-done
-if [ -z "$ADR" ]; then
-  fail "rev de un ADR: ningún ADR está citado por una parte de las tareas"
-else
-  id="$(campo "$ADR" id)"
-  sed -i "s/^rev: .*/rev: $(( $(rev_de "$ADR") + 1 ))/" "$ADR"
-  orq "rev de un ADR"
-  d="$(desact)"
-  for t in $(grep -lE "^adrs:.*\b$id\b" "$M"/tasks/T-*.md | ids_de); do
-    printf '%s' "$d" | grep -q "\b$t\b" || fail "rev de un ADR: no marca la tarea $t, que cita el ADR $id"
-  done
-  for t in $(grep -LE "^adrs:.*\b$id\b" "$M"/tasks/T-*.md | ids_de); do
-    printf '%s' "$d" | grep -q "\b$t\b" && fail "rev de un ADR: marca la tarea $t, que no cita el ADR $id"
-  done
+# ============================================================ Paso 1
+if quiere sin-indexar; then
+  etapa fixture
+  orq "sin-indexar"
+  es agente migration-indexer
+  es motivo indexar
+  es paralelo sí
+  lista_es alcance "bff frontend"
 fi
 
-# 3.6 Completitud por capacidad: sin tareas para una capacidad, el paso 6 no está completo
-qa_ws
-grep -l "^spec: $S$" "$M"/tasks/T-*.md | while IFS= read -r f; do rm -- "$f"; done
-orq "capacidad sin tareas"
-printf '%s' "$out" | grep -E '^Faltan:' | grep -q "$S" || fail "capacidad sin tareas: la línea Faltan no nombra $S"
-printf '%s' "$next" | grep -q 'migration-tl-tasks\|migration-tl-resolver' || fail "capacidad sin tareas: siguiente paso inesperado"
+if quiere tras-indexer; then
+  etapa indexer
+  orq "tras-indexer"
+  es agente migration-analyst
+  es paralelo no
+fi
 
-# 3.7 Artefacto sin versión: no se puede determinar
-qa_ws
-sed -i '/^rev:/d' "$M/specs/$S.md"
-orq "spec sin versión"
-desact | grep -q 'no se puede determinar' || fail "spec sin versión: no dice 'no se puede determinar'"
-printf '%s' "$out" | grep -q 'registra las versiones' || fail "spec sin versión: no ofrece 'registra las versiones'"
+if quiere indice-incompleto; then
+  etapa indexer
+  printf '> Índice incompleto: falta desde src/routes\n' >> "$W/bff/index.md"
+  orq "indice-incompleto"
+  es agente migration-indexer
+  es motivo indexar
+  es paralelo no
+  printf '%s' "$out" | grep -q 'bff' || fail "no nombra el repositorio bff"
+fi
 
-# 3.8 Añadir una tarea a un spec no desactualiza su plan
-qa_ws
-T0="$(grep -l "^spec: $S$" "$M"/tasks/T-*.md | head -n1)"
-sed -e 's/^id: T-[0-9]*/id: T-900/' -e 's/^titulo: .*/titulo: Tarea añadida a mano/' -e 's/^# T-[0-9]*:.*/# T-900: Tarea añadida a mano/' "$T0" > "$M/tasks/T-900-tarea-anadida-a-mano.md"
-orq "tarea nueva en un spec"
-desact | grep -q 'test-plans\|[Pp]lan' && fail "tarea nueva en un spec: marca algún plan como desactualizado: $(desact | head -n2 | cut -c1-200)"
-nada "tarea nueva en un spec"
+# ============================================================ Puertas y pasos por capacidad
+if quiere destino-antes-de-adrs; then
+  etapa analyst
+  orq "destino-antes-de-adrs"
+  es agente migration-tl-resolver
+  es motivo destino
+fi
 
-# 3.9 Proyecto del orden anterior: tareas y ningún plan
-qa_ws
-rm -rf "$M/test-plans"
-orq "tareas sin planes"
-printf '%s' "$next" | grep -q 'migration-qa' || fail "tareas sin planes: el siguiente paso no es migration-qa"
-printf '%s' "$next" | grep -q 'Usa el subagente migration-tl-tasks' && fail "tareas sin planes: pide regenerar las tareas"
-desact | grep -q 'T-[0-9]' && fail "tareas sin planes: lista tareas como desactualizadas"
+if quiere specs-en-paralelo; then
+  # Mapa y ADRs hechos, ningún spec. Destino vacío y ADRs propuestos: no frenan a los specs
+  etapa tl-adrs
+  P="$(grep -l '^estado: propuesto' "$M"/adr/*.md | head -n1 | xargs basename | cut -c1-4)"
+  orq "specs-en-paralelo"
+  es agente migration-tl-specs
+  es motivo falta
+  es paralelo sí
+  lista_es alcance "$(grep -oE '^\| [a-z0-9-]+ \|' "$M/specs/_capacidades.md" | sed -E 's/^\| //; s/ \|$//' | paste -sd' ' -)"
+  printf '%s' "$out" | awk '/^## Pendiente de revisión/{f=1;next} /^## /{f=0} f' | grep -q "$P" || fail "no lista el ADR propuesto $P como pendiente de revisión"
+fi
 
-qa_ws
-out="$out_base"
-grep -rqE '^(- )?MJ-[0-9]+:' "$M"/specs/[!_]*.md || fail "paridad: el workspace no tiene mejoras MJ-n para probar al orquestador"
-printf '%s' "$out" | awk '/^## Pendiente de revisión/{f=1;next} /^## /{f=0} f' | grep -q 'MJ-[0-9]' && fail "paridad: el orquestador lista mejoras MJ-n como pendientes de revisión"
+if quiere auditar-antes-de-qa; then
+  # Specs hechos, sin auditoría, sin planes ni tareas
+  etapa tl-specs
+  orq "auditar-antes-de-qa"
+  es agente migration-auditor
+  es motivo auditar
+  es paralelo no
+fi
 
-# Estado 4: con el destino ya en el README, los prompts no lo repiten
-sed -i 's/^destino:.*/destino: {bff: Kotlin, frontend: conservar}/' "$M/README.md"
-orq "destino en el README"
-printf '%s' "$next" | grep -q 'con destino' && fail "destino en el README: el prompt recomendado repite 'con destino'"
-printf '%s' "$out" | awk '/^## Pendiente de revisión/{f=1;next} /^## /{f=0} f' | grep -qi 'destino.*vac' && fail "destino en el README: sigue listando el destino como pendiente"
+if quiere qa-con-adrs-propuestos; then
+  # Specs auditados, ADRs propuestos y destino vacío: nada de eso frena a QA
+  etapa tl-specs
+  grep -lq '^estado: propuesto' "$M"/adr/*.md || fail "el workspace no tiene ADRs propuestos"
+  planta_auditoria
+  orq "qa-con-adrs-propuestos"
+  es agente migration-qa
+  es motivo falta
+  es paralelo sí
+  lista_es alcance "$(caps | paste -sd' ' -)"
+  for c in $(caps); do contiene faltan "planes:$c"; done
+fi
+
+if quiere decidir-antes-de-tareas; then
+  # Planes hechos, ADRs propuestos: ahora sí toca decidirlos
+  etapa qa
+  ls "$M"/tasks/T-*.md >/dev/null 2>&1 && fail "la etapa qa contiene tareas; el orden de etapas no es el nuevo"
+  planta_auditoria; fija_destino; resuelve_hallazgos
+  orq "decidir-antes-de-tareas"
+  es agente migration-tl-resolver
+  es motivo decidir
+fi
+
+if quiere hallazgos-antes-de-tareas; then
+  # Planes hechos, destino y ADRs decididos, un hallazgo de QA sin resolver
+  etapa qa
+  planta_auditoria; fija_destino; decide_adrs; resuelve_hallazgos
+  S="$(caps | head -n1)"
+  sed -i 's/^## Hallazgos para el tech lead.*/&\n- **H-90**: sección 7: el spec no dice qué responde el sistema con la cabecera de traza vacía./' "$M/test-plans/$S.md"
+  orq "hallazgos-antes-de-tareas"
+  es agente migration-tl-resolver
+  es motivo hallazgos
+fi
+
+if quiere tareas-en-serie; then
+  # Planes hechos y nada pendiente de decidir: migration-tl-tasks, una sola corrida
+  etapa qa
+  planta_auditoria; fija_destino; decide_adrs; resuelve_hallazgos
+  orq "tareas-en-serie"
+  es agente migration-tl-tasks
+  es motivo falta
+  es alcance todo
+  es paralelo no
+  printf '%s' "$next" | grep -q 'migration-tl-tasks, solo la capacidad' && fail "reparte migration-tl-tasks por capacidad"
+fi
+
+# ============================================================ Versiones
+if quiere sin-cambios || quiere mejoras-no-pendientes; then
+  completo_sin_backlog
+  S="$(caps | head -n1)"
+  orq "sin-cambios"
+  lista_es desactualizado ""
+  lista_es sin-version ""
+  lista_es faltan ""
+  es agente migration-pm
+  # Paridad: las mejoras MJ-n no son pendientes de revisión
+  grep -rqE '^(- )?MJ-[0-9]+:' "$M"/specs/[!_]*.md || fail "el workspace no tiene mejoras MJ-n para probar al orquestador"
+  printf '%s' "$out" | awk '/^## Pendiente de revisión/{f=1;next} /^## /{f=0} f' | grep -q 'MJ-[0-9]' && fail "lista mejoras MJ-n como pendientes de revisión"
+fi
+
+if quiere touch-de-un-spec; then
+  # Cambia la fecha de modificación de un spec, no su contenido
+  completo_sin_backlog
+  S="$(caps | head -n1)"
+  sleep 2; touch "$M/specs/$S.md"
+  orq "touch-de-un-spec"
+  lista_es desactualizado ""
+  es agente migration-pm
+fi
+
+if quiere rev-de-un-spec; then
+  # Sube el rev de un spec: su plan y sus tareas, y nada de otros specs
+  completo_sin_backlog
+  S="$(caps | head -n1)"
+  sed -i "s/^rev: .*/rev: $(( $(rev_de "$M/specs/$S.md") + 1 ))/" "$M/specs/$S.md"
+  orq "rev-de-un-spec"
+  lista_es desactualizado "plan:$S $(tareas_de "$S")"
+  # La regeneración empieza por el plan: planes antes que tareas
+  es agente migration-qa
+  es motivo desactualizado
+  es alcance "$S"
+  es paralelo no
+fi
+
+if quiere solo-cambio-de-estado; then
+  completo_sin_backlog
+  S="$(caps | head -n1)"
+  sed -i 's/^estado: generado/estado: revisado/' "$M/specs/$S.md"
+  orq "solo-cambio-de-estado"
+  lista_es desactualizado ""
+  es agente migration-pm
+fi
+
+if quiere rev-de-un-adr; then
+  # Sube el rev de un ADR: solo las tareas que lo citan
+  completo_sin_backlog
+  total="$(ls "$M"/tasks/T-*.md | wc -l)"; ADR=""
+  for a in "$M"/adr/*.md; do
+    id="$(campo "$a" id)"
+    n="$(grep -lE "^adrs:.*\b$id\b" "$M"/tasks/T-*.md 2>/dev/null | wc -l)"
+    if [ "$n" -gt 0 ] && [ "$n" -lt "$total" ]; then ADR="$a"; break; fi
+  done
+  if [ -z "$ADR" ]; then
+    CASO="rev-de-un-adr"; fail "ningún ADR está citado por una parte de las tareas"
+  else
+    id="$(campo "$ADR" id)"
+    sed -i "s/^rev: .*/rev: $(( $(rev_de "$ADR") + 1 ))/" "$ADR"
+    orq "rev-de-un-adr"
+    lista_es desactualizado "$(grep -lE "^adrs:.*\b$id\b" "$M"/tasks/T-*.md | ids_de | sed 's/^/tarea:/' | paste -sd' ' -)"
+    es agente migration-tl-tasks
+    es motivo desactualizado
+    es paralelo no
+  fi
+fi
+
+if quiere capacidad-sin-tareas; then
+  # Completitud por capacidad: sin tareas para una capacidad, el paso 6 no está completo
+  completo_sin_backlog
+  S="$(caps | head -n1)"
+  grep -l "^spec: $S$" "$M"/tasks/T-*.md | while IFS= read -r f; do rm -- "$f"; done
+  orq "capacidad-sin-tareas"
+  lista_es faltan "tareas:$S"
+  es agente migration-tl-tasks
+  es motivo falta
+  es alcance "$S"
+  printf '%s' "$out" | grep -E '^Faltan:' | grep -q "$S" || fail "la línea Faltan de Estado no nombra $S"
+fi
+
+if quiere spec-sin-version; then
+  completo_sin_backlog
+  S="$(caps | head -n1)"
+  sed -i '/^rev:/d' "$M/specs/$S.md"
+  orq "spec-sin-version"
+  contiene sin-version "specs/$S.md"
+  es agente migration-tl-resolver
+  es motivo sin-version
+  es alcance versiones
+  printf '%s' "$next" | grep -q 'registra las versiones' || fail "el prompt no es 'registra las versiones'"
+fi
+
+if quiere tarea-nueva-en-un-spec; then
+  # Añadir una tarea a un spec no desactualiza su plan
+  completo_sin_backlog
+  S="$(caps | head -n1)"
+  T0="$(grep -l "^spec: $S$" "$M"/tasks/T-*.md | head -n1)"
+  sed -e 's/^id: T-[0-9]*/id: T-900/' -e 's/^titulo: .*/titulo: Tarea añadida a mano/' -e 's/^# T-[0-9]*:.*/# T-900: Tarea añadida a mano/' "$T0" > "$M/tasks/T-900-tarea-anadida-a-mano.md"
+  orq "tarea-nueva-en-un-spec"
+  lista_es desactualizado ""
+  es agente migration-pm
+fi
+
+if quiere tareas-sin-planes; then
+  # Proyecto del orden anterior: tareas y ningún plan. Se propone QA y no se regeneran las tareas
+  completo_sin_backlog
+  rm -rf "$M/test-plans"
+  orq "tareas-sin-planes"
+  es agente migration-qa
+  es motivo falta
+  es paralelo sí
+  lista_es alcance "$(caps | paste -sd' ' -)"
+  lista_es desactualizado ""
+  lista_es faltan "$(caps | sed 's/^/planes:/' | paste -sd' ' -)"
+fi
+
+if quiere backlog-desactualizado; then
+  # Flujo completo y después cambia una tarea: solo el backlog
+  etapa pm
+  fija_destino; decide_adrs; resuelve_hallazgos
+  sed -i 's/^bloqueada_por:.*/bloqueada_por: []/' "$M"/tasks/T-*.md
+  T0="$(ls "$M"/tasks/T-*.md | head -n1)"
+  sed -i "s/^rev: .*/rev: $(( $(rev_de "$T0") + 1 ))/" "$T0"
+  orq "backlog-desactualizado"
+  lista_es desactualizado "backlog"
+  es agente migration-pm
+  es motivo desactualizado
+fi
+
+# ============================================================ Destino
+if quiere destino-en-el-readme; then
+  # Con el destino ya en el README, los prompts no lo repiten
+  etapa qa
+  planta_auditoria; decide_adrs; resuelve_hallazgos
+  sed -i 's/^destino:.*/destino: Kotlin/' "$M/README.md"
+  orq "destino-en-el-readme"
+  es agente migration-tl-tasks
+  printf '%s' "$next" | grep -q 'con destino' && fail "el prompt recomendado repite 'con destino'"
+fi
 
 [ "$fails" -eq 0 ] && { echo "OK: orchestrator"; exit 0; }
 exit 1
