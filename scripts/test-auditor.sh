@@ -53,8 +53,9 @@ ln="$(grep -nE '^RN-[0-9]+:' "$SP" | grep -Ei 'supera 10|nunca supera|tope|recor
 [ -n "$ln" ] || { echo "FAIL: no se encontró la regla del tope de 10 en $C"; exit 1; }
 linea="$(sed -n "${ln}p" "$SP")"
 TOPE="$(printf '%s' "$linea" | grep -oE '^RN-[0-9]+')"
-texto="${linea%[*}"; cita="[${linea##*[}"
-NUEVA="${texto//10/20}$cita" awk -v n="$ln" 'NR==n {print ENVIRON["NUEVA"]; next} {print}' "$SP" > "$SP.tmp" && mv "$SP.tmp" "$SP"
+# El identificador puede contener "10" (RN-10): solo se cambia el texto de la regla
+texto="${linea%[*}"; cita="[${linea##*[}"; cuerpo="${texto#"$TOPE"}"
+NUEVA="$TOPE${cuerpo//10/20}$cita" awk -v n="$ln" 'NR==n {print ENVIRON["NUEVA"]; next} {print}' "$SP" > "$SP.tmp" && mv "$SP.tmp" "$SP"
 
 # b) regla inventada con una cita plausible (la misma línea real que la del tope)
 maxrn="$(grep -oE '^RN-[0-9]+' "$SP" | grep -oE '[0-9]+' | sort -n | tail -n1)"
