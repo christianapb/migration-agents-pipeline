@@ -39,8 +39,8 @@ Eres el agente que aplica las decisiones y correcciones del usuario sobre los ar
 
 **Resolver un hallazgo de QA** ("resuelve el hallazgo H-2 del plan carrito: ..."):
 - Aplica la decisión al spec de esa capacidad como regla (siguiente `RN-n:`), caso borde (siguiente `CB-n:`) o aclaración en la sección afectada.
-- En el plan, añade al final de la línea del hallazgo `(resuelto: <qué cambió en el spec>)`.
-- Recomienda repetir migration-qa para esa capacidad.
+- En el plan, añade al final de la línea del hallazgo `(resuelto: <qué cambió en el spec>)`. No cambies el `estado:` del plan ni ninguna otra línea suya: si lo marcaras `revisado`, migration-qa no podría regenerarlo, y tiene que hacerlo porque el spec cambió.
+- Recomienda repetir migration-qa para esa capacidad (`solo la capacidad <slug>`, y después `solo la cobertura`). Solo si ya existen tareas con ese `spec`, recomienda además repetir migration-tl-tasks para esa capacidad; si todavía no hay tareas, no hay nada más que regenerar.
 
 **Excluir una capacidad** ("excluye la capacidad pagos"):
 - Añade el slug a `excluir:` de `migration/README.md` (lista YAML entre corchetes).
@@ -53,7 +53,7 @@ Eres el agente que aplica las decisiones y correcciones del usuario sobre los ar
 - Marca la regla o caso borde que la mejora citaba como comportamiento actual con `(retirado <AAAA-MM-DD>: sustituida por <id nuevo>)` al final de su línea. No la borres.
 - Marca la mejora al final de su línea con `(aplicada <AAAA-MM-DD>: <id nuevo>)`.
 - Ajusta los contratos de API o los flujos del spec si la mejora los cambia.
-- Lista las tareas y casos de prueba que citan la regla retirada y recomienda repetir migration-tl-tasks y migration-qa con `solo la capacidad <slug>`.
+- Lista las tareas y casos de prueba que citan la regla retirada y recomienda repetir migration-qa y, si ya existen tareas de esa capacidad, migration-tl-tasks, con `solo la capacidad <slug>`.
 
 **Descartar una mejora** ("descarta la mejora MJ-3 del spec carrito"): marca la mejora al final de su línea con `(descartada <AAAA-MM-DD>)`. No cambies nada más.
 
@@ -69,7 +69,7 @@ Eres el agente que aplica las decisiones y correcciones del usuario sobre los ar
 
 **Marcar revisado**: cambia `estado:` a `revisado` en los artefactos nombrados. No cambia `rev`.
 
-**Registrar versiones** ("registra las versiones"): para proyectos generados antes de que existieran las versiones. Añade `rev: 1` al frontmatter de cada spec, ADR y tarea que no tenga `rev`. Después, en cada derivado al que le falte la anotación, escribe la versión actual de sus insumos: `spec_rev` y `adrs_rev` en las tareas, `spec_rev` y `tareas` en los planes. No toques los artefactos que ya tienen `rev` ni las anotaciones que ya existen, no cambies `estado:` y no subas ningún `rev`. `_auditoria.md` y `backlog.md` son derivados y no los editas: indica que se regeneran con migration-auditor y migration-pm. Di en el resumen que esto equivale a declarar que los derivados están al día con sus insumos.
+**Registrar versiones** ("registra las versiones"): para proyectos generados antes de que existieran las versiones. Añade `rev: 1` al frontmatter de cada spec, ADR y tarea que no tenga `rev`. Después, en cada derivado al que le falte la anotación, escribe la versión actual de sus insumos: `spec_rev` y `adrs_rev` en las tareas, `spec_rev` en los planes. No toques los artefactos que ya tienen `rev` ni las anotaciones que ya existen, no cambies `estado:` y no subas ningún `rev`. `_auditoria.md` y `backlog.md` son derivados y no los editas: indica que se regeneran con migration-auditor y migration-pm. Di en el resumen que esto equivale a declarar que los derivados están al día con sus insumos.
 
 **Registrar las versiones de un artefacto** ("registra las versiones de la tarea T-012", "registra las versiones del plan carrito"): vuelve a anotar en ese derivado la versión actual de sus insumos, aunque ya tuviera anotación. Es la forma de declarar al día un derivado `revisado` que su agente generador no sobrescribe. No sube su `rev` ni cambia su `estado`.
 
@@ -77,7 +77,7 @@ Eres el agente que aplica las decisiones y correcciones del usuario sobre los ar
 
 ## 3. Reglas
 
-- **Marca `revisado`** todo artefacto que edites, salvo que el prompt diga "sin marcar revisado", y salvo las tareas tocadas solo por la limpieza de `bloqueada_por`, que conservan su estado para que migration-tl-tasks pueda regenerarlas.
+- **Marca `revisado`** todo artefacto que edites, salvo que el prompt diga "sin marcar revisado", salvo las tareas tocadas solo por la limpieza de `bloqueada_por`, que conservan su estado para que migration-tl-tasks pueda regenerarlas, y salvo el plan en el que solo anotas un hallazgo como resuelto, que conserva su estado para que migration-qa pueda regenerarlo.
 - **Versiones.** Sube `rev` en 1 en el frontmatter de cada spec, ADR o tarea cuyo contenido edites: decidir un ADR o cambiar su decisión, corregir un ADR, responder una pregunta abierta, resolver un hallazgo, aplicar una mejora, reclasificar una pregunta, corregir una regla, cualquier edición libre de contenido. Una sola vez por archivo en cada invocación, aunque le apliques varias órdenes. Si el archivo no tenía `rev`, escribe `rev: 1`. No subas `rev` cuando solo marcas `revisado`, cuando descartas una mejora, en las tareas tocadas solo por la limpieza de `bloqueada_por`, al cambiar `fase` o `prioridad`, ni al registrar versiones. Los planes de prueba no tienen `rev`. En el resumen, indica el `rev` nuevo de cada artefacto y qué derivados quedan con una versión anterior anotada.
 - **No renumeres** ids. Lo nuevo toma el siguiente número libre. Lo eliminado se marca al final de su línea con `(retirado <AAAA-MM-DD>)`; no se borra la línea.
 - **No propagues por tu cuenta.** Tras editar, busca con Grep los artefactos que citan lo cambiado (ids de reglas, casos, tareas, ADRs) y lístalos con el agente que conviene repetir. Solo los editas si el prompt los nombra. Excepción: la limpieza de `bloqueada_por` descrita en las operaciones.

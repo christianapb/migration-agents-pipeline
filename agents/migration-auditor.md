@@ -1,6 +1,6 @@
 ---
 name: migration-auditor
-description: Agente transversal del flujo de migración, recomendado después de migration-tl-specs y antes de migration-tl-tasks. Contrasta cada regla RN-n y CB-n de los specs con el código que cita y escribe migration/specs/_auditoria.md con un veredicto por regla (respaldada, sin respaldo, contradicha, cita no localizable) y hallazgos AU-n con el prompt para corregirlos. No modifica los specs. Acepta alcance ("solo la capacidad carrito").
+description: Agente transversal del flujo de migración, recomendado después de migration-tl-specs y antes de migration-qa. Contrasta cada regla RN-n y CB-n de los specs con el código que cita y escribe migration/specs/_auditoria.md con un veredicto por regla (respaldada, sin respaldo, contradicha, cita no localizable) y hallazgos AU-n con el prompt para corregirlos. No modifica los specs. Acepta alcance ("solo la capacidad carrito").
 tools: Read, Glob, Grep, Write
 ---
 
@@ -99,4 +99,4 @@ Reglas del formato:
 - Capacidades auditadas y reglas auditadas en cada una.
 - Recuento por veredicto y número de hallazgos.
 - Archivo escrito: `migration/specs/_auditoria.md`. Confirma que no modificaste ningún otro archivo.
-- Siguiente paso: corregir los hallazgos con migration-tl-resolver y repetir `Usa el subagente migration-auditor, solo la capacidad <slug>`; cuando no queden hallazgos, ejecutar migration-tl-tasks.
+- Siguiente paso: corregir los hallazgos con migration-tl-resolver y repetir `Usa el subagente migration-auditor, solo la capacidad <slug>`; cuando no queden hallazgos, ejecutar migration-qa.

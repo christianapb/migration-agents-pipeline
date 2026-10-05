@@ -51,18 +51,52 @@ for c in $(grep -oE '^\| [a-z0-9-]+ \|' "$M/specs/_capacidades.md" | sed -E 's/^
   printf '%s' "$next" | grep -q "migration-tl-specs, solo la capacidad $c" || fail "specs pendientes: el paralelo no incluye la capacidad $c"
 done
 
-# Estado 2b: specs hechos, ADRs decididos y ninguna tarea: migration-tl-tasks va en serie
+# Auditoría mínima y válida, para que el orquestador no recomiende antes el auditor
+planta_auditoria() {
+  local f s
+  {
+    printf '# Auditoría de specs\n\nGenerado: 2026-10-04 por migration-auditor.\n\n## Resumen\n\n'
+    printf '| Capacidad | Reglas | Respaldadas | Sin respaldo | Contradichas | No localizables | Decisiones | Omitidos |\n|---|---|---|---|---|---|---|---|\n'
+    for f in "$M"/specs/[!_]*.md; do printf '| %s | 0 | 0 | 0 | 0 | 0 | 0 | 0 |\n' "$(basename "$f" .md)"; done
+    for f in "$M"/specs/[!_]*.md; do
+      s="$(basename "$f" .md)"
+      printf '\n## %s\n\nAuditada: 2026-10-04. Spec rev: %s.\n\n| Regla | Veredicto | Cita | Nota |\n|---|---|---|---|\n\n### Hallazgos\n\nNinguno.\n' "$s" "$(sed -n 's/^rev:[[:space:]]*//p' "$f" | head -n1)"
+    done
+  } > "$M/specs/_auditoria.md"
+}
+caps() { ls "$M"/specs | grep -v '^_' | sed 's/\.md$//'; }
+
+# Estado 2b: specs hechos, ADRs propuestos, sin planes ni tareas: QA no espera a los ADRs
 bash "$ROOT/scripts/snapshot.sh" restore tl-specs "$W" >/dev/null || { echo "FAIL: no se pudo restaurar la etapa tl-specs"; exit 1; }
+grep -lq '^estado: propuesto' "$M"/adr/*.md || fail "QA antes de ADRs: el workspace no tiene ADRs propuestos"
+planta_auditoria
+orq "QA con ADRs propuestos"
+printf '%s' "$next" | grep -qi 'en paralelo' || fail "QA con ADRs propuestos: no propone lanzar QA en paralelo"
+for c in $(caps); do
+  printf '%s' "$next" | grep -q "migration-qa, solo la capacidad $c" || fail "QA con ADRs propuestos: el paralelo no incluye la capacidad $c"
+done
+printf '%s' "$next" | grep -q 'migration-tl-resolver\|ADR' || fail "QA con ADRs propuestos: no menciona decidir los ADRs como camino alternativo"
+printf '%s' "$next" | grep -q 'Usa el subagente migration-tl-tasks' && fail "QA con ADRs propuestos: manda a migration-tl-tasks antes que a QA"
+
+# Estado 2c: planes hechos, ADRs propuestos: ahora sí toca decidirlos
+bash "$ROOT/scripts/snapshot.sh" restore qa "$W" >/dev/null || { echo "FAIL: no se pudo restaurar la etapa qa"; exit 1; }
+ls "$M"/tasks/T-*.md >/dev/null 2>&1 && fail "la etapa qa contiene tareas; el orden de etapas no es el nuevo"
+planta_auditoria
+orq "planes hechos y ADRs propuestos"
+printf '%s' "$next" | grep -q 'Usa el subagente migration-tl-resolver' || fail "planes hechos y ADRs propuestos: el siguiente paso no es decidir los ADRs con el resolver"
+
+# Estado 2d: planes hechos y ADRs decididos: migration-tl-tasks va en serie
 sed -i 's/^estado: propuesto/estado: revisado/' "$M"/adr/*.md
 sed -i 's/^destino:.*/destino: Kotlin/' "$M/README.md"
 orq "tareas pendientes"
-printf '%s' "$out" | grep -q 'migration-tl-tasks' || fail "tareas pendientes: no menciona migration-tl-tasks"
+printf '%s' "$next" | grep -q 'migration-tl-tasks' || fail "tareas pendientes: el siguiente paso no es migration-tl-tasks"
 printf '%s' "$next" | grep -q 'migration-tl-tasks, solo la capacidad' && fail "tareas pendientes: reparte migration-tl-tasks por capacidad"
 printf '%s' "$next" | grep -i 'en paralelo' | grep -q 'migration-tl-tasks' && fail "tareas pendientes: propone migration-tl-tasks en paralelo"
 
 # Estado 3: lo desactualizado se decide por versiones, no por fechas
 . "$ROOT/scripts/lib-rev.sh"
-qa_ws() { bash "$ROOT/scripts/snapshot.sh" restore qa "$W" >/dev/null || { echo "FAIL: no se pudo restaurar la etapa qa"; exit 1; }; }
+# Etapa tl-tasks: specs, planes y tareas (los planes van antes que las tareas)
+qa_ws() { bash "$ROOT/scripts/snapshot.sh" restore tl-tasks "$W" >/dev/null || { echo "FAIL: no se pudo restaurar la etapa tl-tasks"; exit 1; }; }
 desact() { printf '%s' "$out" | awk '/^## Desactualizado/{f=1;next} /^## /{f=0} f' | grep -v '^[[:space:]]*$' || true; }
 nada() { # <caso>
   local d; d="$(desact)"
@@ -99,6 +133,8 @@ done
 for t in $(grep -L "^spec: $S$" "$M"/tasks/T-*.md | ids_de); do
   printf '%s' "$d" | grep -q "\b$t\b" && fail "rev de un spec: marca la tarea $t, que no es de $S"
 done
+# La regeneración empieza por el plan: planes antes que tareas
+printf '%s' "$next" | grep -m1 'Usa el subagente' | grep -q 'migration-qa' || fail "rev de un spec: el primer prompt no regenera el plan con migration-qa"
 
 # 3.4 Cambia solo el estado de un spec a revisado
 qa_ws
@@ -129,7 +165,7 @@ else
   done
 fi
 
-# 3.6 Completitud por capacidad: sin tareas para una capacidad, el paso 5 no está completo
+# 3.6 Completitud por capacidad: sin tareas para una capacidad, el paso 6 no está completo
 qa_ws
 grep -l "^spec: $S$" "$M"/tasks/T-*.md | while IFS= read -r f; do rm -- "$f"; done
 orq "capacidad sin tareas"
@@ -142,6 +178,22 @@ sed -i '/^rev:/d' "$M/specs/$S.md"
 orq "spec sin versión"
 desact | grep -q 'no se puede determinar' || fail "spec sin versión: no dice 'no se puede determinar'"
 printf '%s' "$out" | grep -q 'registra las versiones' || fail "spec sin versión: no ofrece 'registra las versiones'"
+
+# 3.8 Añadir una tarea a un spec no desactualiza su plan
+qa_ws
+T0="$(grep -l "^spec: $S$" "$M"/tasks/T-*.md | head -n1)"
+sed -e 's/^id: T-[0-9]*/id: T-900/' -e 's/^titulo: .*/titulo: Tarea añadida a mano/' -e 's/^# T-[0-9]*:.*/# T-900: Tarea añadida a mano/' "$T0" > "$M/tasks/T-900-tarea-anadida-a-mano.md"
+orq "tarea nueva en un spec"
+desact | grep -q 'test-plans\|[Pp]lan' && fail "tarea nueva en un spec: marca algún plan como desactualizado: $(desact | head -n2 | cut -c1-200)"
+nada "tarea nueva en un spec"
+
+# 3.9 Proyecto del orden anterior: tareas y ningún plan
+qa_ws
+rm -rf "$M/test-plans"
+orq "tareas sin planes"
+printf '%s' "$next" | grep -q 'migration-qa' || fail "tareas sin planes: el siguiente paso no es migration-qa"
+printf '%s' "$next" | grep -q 'Usa el subagente migration-tl-tasks' && fail "tareas sin planes: pide regenerar las tareas"
+desact | grep -q 'T-[0-9]' && fail "tareas sin planes: lista tareas como desactualizadas"
 
 qa_ws
 out="$out_base"

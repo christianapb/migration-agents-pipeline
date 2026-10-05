@@ -35,7 +35,6 @@ EOF
 | gamma | Tres | bff | bff/c.ts |
 EOF
   for c in alfa beta gamma; do
-    local tareas="[]"; [ "$c" = alfa ] && tareas="[T-002]"
     cat > "$W/migration/specs/$c.md" <<EOF
 ---
 capacidad: $c
@@ -77,7 +76,6 @@ EOF
 capacidad: $c
 spec: $c
 spec_rev: 1
-tareas: $tareas
 estado: generado
 ---
 # Plan de pruebas: $c
@@ -94,7 +92,6 @@ x
 - Prioridad: alta
 - Nivel sugerido: unitario
 - Cubre: RN-1
-- Tareas: T-002
 - Dado a
 - Cuando b
 - Entonces c
@@ -102,7 +99,6 @@ x
 - Prioridad: alta
 - Nivel sugerido: unitario
 - Cubre: RN-10
-- Tareas: T-002
 - Dado a
 - Cuando b
 - Entonces c
@@ -111,7 +107,6 @@ x
 - Prioridad: alta
 - Nivel sugerido: unitario
 - Cubre: CB-1
-- Tareas: T-002
 - Dado a
 - Cuando b
 - Entonces c
@@ -448,8 +443,9 @@ W11="$TMP/v8"; make_ws "$W11"; sed -i 's/^spec_rev: 1$/spec_rev:/' "$W11/$T2"
 expect_fail tl-tasks "$W11" "verify-tl-tasks acepta una tarea de capacidad sin spec_rev"
 W11="$TMP/v9"; make_ws "$W11"; sed -i 's/^spec_rev: 1$/spec_rev: 2/' "$W11/$PLN"
 expect_fail qa "$W11" "verify-qa acepta un spec_rev mayor que el rev del spec"
-W11="$TMP/v10"; make_ws "$W11"; sed -i 's/^tareas: \[T-002\]/tareas: [T-099]/' "$W11/$PLN"
-expect_fail qa "$W11" "verify-qa acepta en tareas un id que no existe"
+# Un plan del orden anterior, con tareas: y líneas "- Tareas:", sigue siendo válido
+W11="$TMP/v10"; make_ws "$W11"; sed -i 's/^spec_rev: 1$/spec_rev: 1\ntareas: [T-002, T-099]/; s/^- Cubre: RN-1$/- Cubre: RN-1\n- Tareas: T-002/' "$W11/$PLN"
+ok_ws qa "$W11" "verify-qa rechaza un plan antiguo con tareas: y líneas Tareas"
 W11="$TMP/v11"; make_ws "$W11"; sed -i '/^spec_rev:/d' "$W11/$PLN"
 expect_fail qa "$W11" "verify-qa acepta un plan sin spec_rev"
 W11="$TMP/v12"; make_ws "$W11"; sed -i 's/^| 2 | T-002 | 1 |/| 2 | T-002 | 2 |/' "$W11/$BL"

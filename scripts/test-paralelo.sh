@@ -41,16 +41,18 @@ for s in "${CAPS[@]}"; do [ -f "$M/specs/$s.md" ] || fail "specs: falta specs/$s
 bash "$ROOT/scripts/verify-tl-specs.sh" || fail "specs: verify-tl-specs falla tras el paralelo"
 
 # --- 2. Planes en paralelo y cobertura consolidada
-bash "$ROOT/scripts/snapshot.sh" restore tl-tasks "$W" >/dev/null || { echo "FAIL: no se pudo restaurar la etapa tl-tasks"; exit 1; }
+# Etapa tl-specs: specs sin planes ni tareas. QA no necesita tareas.
+bash "$ROOT/scripts/snapshot.sh" restore tl-specs "$W" >/dev/null || { echo "FAIL: no se pudo restaurar la etapa tl-specs"; exit 1; }
 rm -rf "$M/test-plans"
 mapfile -t CAPS < <(ls "$M"/specs | grep -v '^_' | sed 's/\.md$//')
-h_specs="$(hash_dir "$M/specs")"; h_tasks="$(hash_dir "$M/tasks")"
+h_specs="$(hash_dir "$M/specs")"
 echo "--- lanzando migration-qa a la vez para: ${CAPS[*]}"
 paralelo migration-qa "${CAPS[@]}"
 for s in "${CAPS[@]}"; do [ -f "$M/test-plans/$s.md" ] || fail "qa: falta test-plans/$s.md"; done
 [ -f "$M/test-plans/_cobertura.md" ] && fail "qa: una corrida con alcance escribió _cobertura.md"
 [ "$(hash_dir "$M/specs")" = "$h_specs" ] || fail "qa: alguna corrida modificó los specs"
-[ "$(hash_dir "$M/tasks")" = "$h_tasks" ] || fail "qa: alguna corrida modificó las tareas"
+ls "$M"/tasks/T-*.md >/dev/null 2>&1 && fail "qa: alguna corrida escribió tareas"
+grep -lE '^tareas:|^- Tareas:' "$M"/test-plans/[!_]*.md >/dev/null 2>&1 && fail "qa: algún plan cita tareas"
 rm -f "$M/test-plans/_cobertura.md"
 h_planes="$(hash_dir "$M/test-plans")"
 bash "$ROOT/scripts/run-agent.sh" migration-qa "Solo la cobertura." >/dev/null

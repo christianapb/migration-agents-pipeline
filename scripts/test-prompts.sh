@@ -117,7 +117,7 @@ has migration-orchestrator.md 'el mapa no cubre algún repositorio detectado'
 has migration-orchestrator.md 'No añadas destino al prompt cuando el README ya lo tiene'
 
 # Versiones de artefactos (docs/specs/2026-10-01-versiones-de-artefactos-design.md)
-for k in 'rev: <entero>' 'spec_rev: <n>' 'adrs_rev: {0003: 1, 0011: 2}' 'tareas: [T-011, T-012]' 'Spec rev: <n>.' 'columna `Rev`' 'registra las versiones' 'nunca se supone un valor' 'las fechas de modificación de los archivos no significan nada'; do
+for k in 'rev: <entero>' 'spec_rev: <n>' 'adrs_rev: {0003: 1, 0011: 2}' 'Spec rev: <n>.' 'columna `Rev`' 'registra las versiones' 'nunca se supone un valor' 'las fechas de modificación de los archivos no significan nada'; do
   printf '%s' "$block" | grep -qF -- "$k" || fail "bloque de CLAUDE.md sin '$k'"
 done
 for a in migration-tl-adrs.md migration-tl-specs.md migration-tl-tasks.md; do
@@ -127,11 +127,11 @@ done
 has migration-tl-tasks.md 'adrs_rev: {0003: 1, 0011: 2}'
 has migration-tl-tasks.md 'spec_rev'
 has migration-qa.md 'spec_rev'
-has migration-qa.md 'tareas: [T-011, T-012]'
 has migration-auditor.md 'Spec rev: <n>.'
 has migration-pm.md 'columna `Rev`'
 has migration-pm.md 'no cambia `rev`'
 has migration-tl-resolver.md '**Registrar versiones**'
+has migration-tl-resolver.md 'migration-qa no podría regenerarlo'
 has migration-tl-resolver.md 'Sube `rev` en 1'
 has migration-tl-resolver.md 'No subas `rev`'
 has migration-orchestrator.md 'no se puede determinar, no tiene versión registrada'
@@ -168,6 +168,26 @@ has migration-orchestrator.md 'solo la cobertura'
 has migration-orchestrator.md 'Cuando terminen:'
 has migration-orchestrator.md 'van siempre en serie'
 has migration-orchestrator.md 'como máximo 5'
+
+# Planes de prueba antes que tareas (docs/specs/2026-10-04-qa-antes-de-tareas-design.md)
+printf '%s' "$block" | grep -qF -- '| 5 | migration-qa |' || fail "bloque de CLAUDE.md: migration-qa no es el paso 5"
+printf '%s' "$block" | grep -qF -- '| 6 | migration-tl-tasks |' || fail "bloque de CLAUDE.md: migration-tl-tasks no es el paso 6"
+printf '%s' "$block" | grep -qF -- 'tareas: [T-011, T-012]' && fail "bloque de CLAUDE.md conserva la anotación tareas de los planes"
+has migration-qa.md 'description: Paso 5 del flujo de migración'
+has migration-tl-tasks.md 'description: Paso 6 del flujo de migración'
+has migration-qa.md 'No leas `migration/tasks/`'
+has migration-qa.md 'aunque la plantilla del proyecto los traiga'
+has migration-tl-tasks.md '## Pruebas'
+has migration-tl-tasks.md 'Plan de pruebas: `migration/test-plans/<slug>.md`'
+has migration-orchestrator.md '| 5 | migration-qa |'
+has migration-orchestrator.md '| 6 | migration-tl-tasks |'
+has migration-orchestrator.md 'planes antes que tareas, tareas antes que backlog'
+has migration-orchestrator.md 'Los ADRs propuestos no frenan a migration-qa'
+has migration-auditor.md 'antes de migration-qa'
+for f in migration-qa.md migration-indexer.md migration-tl-resolver.md; do
+  grep -qE '^- Tareas:|tareas: \[\]|`tareas:`|y `tareas` en los planes' "$A/$f" && fail "$f todavía describe la referencia de los planes a las tareas"
+done
+grep -rnE 'tareas antes que planes|antes de migration-tl-tasks|antes del paso 5' "$A" "$ROOT/docs/tutorial.md" "$ROOT/README.md" >/dev/null && fail "queda texto que describe el orden anterior"
 
 [ "$fails" -eq 0 ] && { echo "OK: prompts"; exit 0; }
 exit 1

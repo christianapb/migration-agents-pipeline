@@ -27,14 +27,14 @@ declare -A MAP=(
   [migration-analyst]="stage:analyst test-analyst"
   [migration-tl-adrs]="stage:tl-adrs test-destino test-versiones"
   [migration-tl-specs]="stage:tl-specs test-tl-specs test-versiones test-paralelo"
-  [migration-tl-tasks]="stage:tl-tasks test-tl-tasks test-destino test-versiones"
-  [migration-qa]="stage:qa test-versiones test-paralelo"
+  [migration-tl-tasks]="stage:tl-tasks test-tl-tasks test-destino test-versiones test-hallazgo"
+  [migration-qa]="stage:qa test-versiones test-paralelo test-hallazgo"
   [migration-pm]="stage:pm test-versiones"
-  [migration-tl-resolver]="test-resolver"
+  [migration-tl-resolver]="test-resolver test-hallazgo"
   [migration-orchestrator]="test-orchestrator"
   [migration-auditor]="test-auditor"
 )
-ORDER=(migration-indexer migration-analyst migration-tl-adrs migration-tl-specs migration-tl-tasks migration-qa migration-pm migration-tl-resolver migration-orchestrator migration-auditor)
+ORDER=(migration-indexer migration-analyst migration-tl-adrs migration-tl-specs migration-qa migration-tl-tasks migration-pm migration-tl-resolver migration-orchestrator migration-auditor)
 
 agents=("$@")
 [ "${#agents[@]}" -gt 0 ] || agents=("${ORDER[@]}")

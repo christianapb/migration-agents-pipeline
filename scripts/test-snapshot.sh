@@ -38,12 +38,12 @@ bash "$ROOT/scripts/snapshot.sh" build pm >/dev/null || fail "build pm falló"
 bash "$ROOT/scripts/snapshot.sh" build pm >/dev/null || fail "rebuild falló"
 [ "$(calls)" -eq 0 ] || fail "rebuild sin cambios hizo $(calls) llamadas"
 
-# 3. Cambiar el prompt de tl-specs: se rehacen tl-specs, tl-tasks, qa y pm
+# 3. Cambiar el prompt de tl-specs: se rehacen tl-specs, qa, tl-tasks y pm
 : > "$FAKE_CALLS"
 echo "cambio" >> "$AGENTS_DIR/migration-tl-specs.md"
 bash "$ROOT/scripts/snapshot.sh" build pm >/dev/null || fail "rebuild tras cambio falló"
 got="$(paste -sd, "$FAKE_CALLS")"
-[ "$got" = "migration-tl-specs,migration-tl-tasks,migration-qa,migration-pm" ] || fail "invalidación parcial incorrecta: $got"
+[ "$got" = "migration-tl-specs,migration-qa,migration-tl-tasks,migration-pm" ] || fail "invalidación parcial incorrecta: $got"
 
 # 4. Cambiar un agente fuera de la cadena (resolver): nada que rehacer
 : > "$FAKE_CALLS"
@@ -56,6 +56,7 @@ D="$TMP/con espacio/ws"
 bash "$ROOT/scripts/snapshot.sh" restore qa "$D" >/dev/null || fail "restore qa falló"
 [ -f "$D/hecho-migration-qa" ] || fail "restore qa: falta la marca de qa"
 [ -f "$D/hecho-migration-pm" ] && fail "restore qa: contiene la etapa pm"
+[ -f "$D/hecho-migration-tl-tasks" ] && fail "restore qa: contiene la etapa tl-tasks, que ahora va después"
 [ -d "$D/bff/.git" ] || fail "restore qa: el repo bff no conserva .git"
 cmp -s "$AGENTS_DIR/migration-tl-resolver.md" "$D/.claude/agents/migration-tl-resolver.md" || fail "restore: no copió los agentes actuales"
 

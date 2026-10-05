@@ -7,7 +7,7 @@
 #   scripts/snapshot.sh restore <etapa> [destino] deja en destino el workspace de la etapa
 #   scripts/snapshot.sh list                     etapas disponibles
 #
-# Etapas, en orden: fixture indexer analyst tl-adrs tl-specs tl-tasks qa pm.
+# Etapas, en orden: fixture indexer analyst tl-adrs tl-specs qa tl-tasks pm.
 # Cada etapa guarda una huella del fixture, de los prompts de los agentes que
 # la produjeron y de los prompts usados. Si la huella cambia, la etapa y las
 # posteriores se rehacen; las anteriores se reutilizan.
@@ -19,7 +19,7 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 SNAPS="${SNAPSHOT_DIR:-$ROOT/.work/snapshots}"
 AGENTS="${AGENTS_DIR:-$ROOT/agents}"
 
-STAGES=(fixture indexer analyst tl-adrs tl-specs tl-tasks qa pm)
+STAGES=(fixture indexer analyst tl-adrs tl-specs qa tl-tasks pm)
 declare -A PROMPT=(
   [indexer]=""
   [analyst]=""
