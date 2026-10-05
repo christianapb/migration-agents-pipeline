@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 # Caso 9 del spec v2 y Review Focus 4. Prepara sus propios estados.
 set -uo pipefail
+# Activa las comprobaciones de los verificadores propias del fixture
+export FIXTURE="${FIXTURE:-1}"
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 W="${WORKDIR:-$ROOT/.work/sample-workspace}"
 export WORKDIR="$W"

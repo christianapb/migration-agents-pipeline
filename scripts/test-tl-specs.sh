@@ -2,6 +2,8 @@
 # Review Focus 5: alcance sobre una capacidad excluida o inexistente.
 # Requiere un workspace con specs (tras Task 5, paso 4).
 set -uo pipefail
+# Activa las comprobaciones de los verificadores propias del fixture
+export FIXTURE="${FIXTURE:-1}"
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 W="${WORKDIR:-$ROOT/.work/sample-workspace}"
 export WORKDIR="$W"

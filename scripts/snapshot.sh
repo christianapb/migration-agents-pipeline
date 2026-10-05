@@ -30,6 +30,9 @@ declare -A PROMPT=(
   [pm]=""
 )
 
+# shellcheck source=scripts/lib-dist.sh
+. "$ROOT/scripts/lib-dist.sh"
+
 die() { echo "ERROR: $*" >&2; exit 1; }
 
 stage_index() {
@@ -62,14 +65,19 @@ key_for() {
     for ((j=1; j<=i; j++)); do
       s="${STAGES[$j]}"
       sha256sum < "$AGENTS/migration-$s.md"
+      # migration-pm copia el resultado de backlog.sh: su salida depende de él
+      [ "$s" = pm ] && sha256sum < "$ROOT/scripts/backlog.sh"
       printf '%s\n' "${PROMPT[$s]}"
     done
   } | sha256sum | cut -d' ' -f1
 }
 
+# Deja en el workspace lo mismo que la instalación en un proyecto: los agentes
+# y los scripts del flujo en .claude/migration/.
 copy_agents() {
   mkdir -p "$1/.claude/agents"
   cp "$AGENTS"/*.md "$1/.claude/agents/"
+  copiar_scripts "$ROOT/scripts" "$1"
 }
 
 build_fixture() {

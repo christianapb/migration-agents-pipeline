@@ -3,6 +3,8 @@
 # 1. migration-tl-specs para las tres capacidades del fixture.
 # 2. migration-qa para las tres capacidades y, después, solo la cobertura.
 set -uo pipefail
+# Activa las comprobaciones de los verificadores propias del fixture
+export FIXTURE="${FIXTURE:-1}"
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 W="${WORKDIR:-$ROOT/.work/sample-workspace}"
 export WORKDIR="$W"

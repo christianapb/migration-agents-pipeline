@@ -12,17 +12,41 @@ Tres agentes te acompañan en todo momento:
 
 ## 1. Instalación
 
-Copia los subagentes de la carpeta `agents/` de este repositorio dentro de `.claude/agents/` en la raíz del proyecto, es decir, en la carpeta padre que contiene los repositorios (sección 2):
+El flujo tiene dos partes, y las dos van dentro de `.claude/` en la raíz del proyecto, es decir, en la carpeta padre que contiene los repositorios (sección 2):
+
+- Los subagentes: copia la carpeta `agents/` de este repositorio dentro de `.claude/agents/`.
+- Los scripts del flujo: copia a `.claude/migration/` los archivos `backlog.sh`, `verificar.sh`, `lib-rev.sh`, `lib-destino.sh` y todos los `verify-*.sh` de la carpeta `scripts/`, salvo `verify-idempotency.sh`.
+
+Desde una copia de este repositorio, un comando hace las dos cosas:
+
+```
+bash scripts/install.sh /ruta/a/mi-proyecto
+```
 
 ```
 mi-proyecto/
 ├── .claude/
-│   └── agents/
-│       ├── migration-orchestrator.md
+│   ├── agents/
+│   │   ├── migration-orchestrator.md
+│   │   └── ...
+│   └── migration/
+│       ├── backlog.sh
+│       ├── verificar.sh
 │       └── ...
 ├── frontend/
 └── bff/
 ```
+
+Los scripts necesitan bash 4 y utilidades GNU, incluido `gawk` (en Windows, Git Bash las trae). Sirven para dos cosas:
+
+- `backlog.sh` calcula el orden del backlog. Lo ejecuta `migration-pm`; sin él, el paso 7 se detiene.
+- `verificar.sh` comprueba la estructura de todo lo que hay en `migration/`. Lo ejecutas tú, cuando quieras, desde la carpeta del proyecto:
+
+  ```
+  bash .claude/migration/verificar.sh
+  ```
+
+  Revisa los campos de cada artefacto, el formato de los identificadores, las citas, las versiones y las secciones, solo de lo que ya exista, y termina con una línea por tipo de artefacto. Comprueba que algo está bien formado, no que sea correcto: para eso están tu revisión y el auditor.
 
 Son 10 subagentes:
 
@@ -386,11 +410,18 @@ Usa el subagente migration-tl-resolver: la tarea T-016 también depende de T-004
 
 ### Paso 7: backlog
 
-**Qué es:** ordena las tareas para que el equipo pueda empezar a implementar. Comprueba que las dependencias no tengan ciclos ni referencias rotas, prioriza con un criterio fijo y agrupa las tareas en hitos, de modo que cada hito termine con al menos una capacidad completa. Escribe `migration/backlog.md` con los hitos, los bloqueos y los riesgos, y rellena `fase` y `prioridad` en cada tarea.
+**Qué es:** ordena las tareas para que el equipo pueda empezar a implementar. El orden no lo decide el modelo: lo calcula el script `backlog.sh`, que comprueba que las dependencias no tengan ciclos ni referencias rotas y asigna fases y prioridades con reglas fijas, siempre las mismas para las mismas tareas. El agente lo ejecuta, copia sus tablas y escribe el resumen y los riesgos. Escribe `migration/backlog.md` con los hitos, los bloqueos y los riesgos, y rellena `fase` y `prioridad` en cada tarea.
 
 ```
 Usa el subagente migration-pm
 ```
+
+Las reglas del script:
+
+- El hito 0 son las tareas fundacionales (sin spec).
+- Las capacidades van en orden de dependencia: una capacidad depende de otra cuando alguna de sus tareas depende de una tarea de la otra. Primero las que más capacidades tienen detrás.
+- Las capacidades se juntan en una fase mientras no pasen de 12 puntos (S = 1, M = 2, L = 4). Una capacidad entra siempre completa; si sola supera 12, ocupa una fase propia.
+- La prioridad es un número único. Dentro de cada fase van primero las tareas de las que más tareas dependen, y nunca una tarea antes que otra de la que depende. Es la columna Orden del backlog.
 
 Escribe hitos, bloqueos y riesgos. En los riesgos verás una línea con cuántas mejoras quedan sin decidir por capacidad: es informativa, el backlog se planifica asumiendo paridad. Si hay un ciclo o una dependencia rota, no escribe nada y te dice qué corregir (con el resolver). Para cambiar el orden:
 
@@ -398,7 +429,7 @@ Escribe hitos, bloqueos y riesgos. En los riesgos verás una línea con cuántas
 Usa el subagente migration-tl-resolver: adelanta T-013 al hito 1 con prioridad 3
 ```
 
-y repite el PM.
+y repite el PM. El resolver deja esa tarea `revisado`, y el script respeta la fase y la prioridad de las tareas `revisado`: las demás se reordenan alrededor. Si lo que fijaste choca con una dependencia, el backlog lo lista entre los riesgos como conflicto.
 
 ### Resultado
 
@@ -491,6 +522,9 @@ El orquestador también informa de la completitud por capacidad: en la línea `F
 | Indexaste con `solo el repo X` y los demás agentes dicen que falta el bloque de `CLAUDE.md` | Las corridas con alcance solo escriben el índice de su repositorio. Consolida con `Usa el subagente migration-indexer`. |
 | Volviste a correr el indexador y un índice no cambió | El repositorio sigue en el mismo commit. Haz commit de los cambios o fuerza con `migration-indexer, solo el repo X`. |
 | `_cobertura.md` no refleja un plan que acabas de regenerar | QA con alcance no lo actualiza. `Usa el subagente migration-qa, solo la cobertura`. |
+| `migration-pm` dice que faltan los scripts del flujo | No existe `.claude/migration/backlog.sh` en el proyecto. Instálalos (sección 1) y repite. El PM no calcula el backlog a mano. |
+| `migration-pm` se detiene por un ciclo o una dependencia que no existe | Nombra las tareas. Corrige sus `depende_de` con el resolver y repite; mientras tanto no escribe nada. |
+| `verificar.sh` marca un tipo de artefacto con FALLA | Cada línea nombra el archivo y qué le falta. Corrígelo con el resolver o repite el agente que lo genera. En un proyecto empezado con una versión anterior de los agentes, lee antes la sección 4. |
 | No sé a qué lenguaje se migra | Fija el destino con el resolver. |
 | El mapa de destino no cubre el repositorio X | Falta la entrada de ese repositorio: `fija el destino de X en <lenguaje>` o `conserva el repositorio X`. |
 | El agente se detiene porque el destino del prompt y el del README difieren | El README manda. Quita el destino del prompt o corrige el README con el resolver. |

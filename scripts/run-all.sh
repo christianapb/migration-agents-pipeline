@@ -3,9 +3,12 @@
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
+export WORKDIR="$ROOT/.work/sample-workspace" FIXTURE=1
+. scripts/lib-dist.sh
 M=.work/sample-workspace/migration
 bash scripts/check-agent.sh
 bash scripts/fixture-reset.sh
+copiar_scripts "$ROOT/scripts" "$WORKDIR"
 bash scripts/run-agent.sh migration-indexer;   bash scripts/verify-indexer.sh
 bash scripts/run-agent.sh migration-analyst;   bash scripts/verify-analyst.sh
 bash scripts/run-agent.sh migration-tl-adrs "Ejecútalo con destino Kotlin."; bash scripts/verify-tl-adrs.sh

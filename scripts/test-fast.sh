@@ -4,7 +4,7 @@ set -uo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 TMP="$(mktemp -d)"
 trap 'rm -rf "$TMP"' EXIT
-TESTS=(test-check-agent test-install test-verifiers test-prompts test-snapshot test-runner test-fixture)
+TESTS=(test-check-agent test-install test-verifiers test-backlog test-prompts test-snapshot test-runner test-fixture)
 
 start=$(date +%s)
 for t in "${TESTS[@]}"; do
