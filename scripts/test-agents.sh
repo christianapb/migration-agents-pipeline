@@ -30,7 +30,7 @@ declare -A MAP=(
   [migration-tl-tasks]="stage:tl-tasks test-tl-tasks test-destino test-versiones test-hallazgo"
   [migration-qa]="stage:qa test-versiones test-paralelo test-hallazgo"
   [migration-pm]="stage:pm test-versiones"
-  [migration-tl-resolver]="test-resolver"
+  [migration-tl-resolver]="test-resolver test-hallazgo"
   [migration-orchestrator]="test-orchestrator"
   [migration-auditor]="test-auditor"
 )

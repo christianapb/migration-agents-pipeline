@@ -32,6 +32,7 @@ if [ -n "$C" ]; then
   antes="$(ids "$M/specs/$C.md")"; v0="$(rev_de "$M/specs/$C.md")"
   run migration-tl-resolver "Resuelve el hallazgo $H del plan $C: se mantiene el comportamiento que hoy tiene el código; regístralo en el spec como un caso borde nuevo." >/dev/null
   echo "--- resuelto $H del plan $C"
+  grep -q '^estado: revisado' "$M/test-plans/$C.md" && fail "resolver un hallazgo dejó el plan $C en revisado: migration-qa no podrá regenerarlo"
 else
   C="$(ls "$M"/specs | grep -v '^_' | head -n1 | sed 's/\.md$//')"
   antes="$(ids "$M/specs/$C.md")"; v0="$(rev_de "$M/specs/$C.md")"
