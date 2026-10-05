@@ -13,7 +13,7 @@ hecho | A2 | auth|autentic|sesi|login|acceso | \b5\b && \b423\b|BLOQUEADA|bloque
 hecho | A3 | auth|autentic|sesi|login|acceso | \b423\b | la cuenta bloqueada responde 423 (sesion.py:19)
 hecho | A4 | auth|autentic|sesi|login|acceso | 20 ?min|veinte min|\b1200\b | la sesión dura 20 minutos (config.py:8)
 hecho | A5 | auth|autentic|sesi|login|acceso | activo|desactivad|inactiv | un usuario desactivado se trata como inexistente (usuarios.py:6)
-hecho | A6 | auth|autentic|sesi|login|acceso | /login && next | sin sesión, las rutas protegidas redirigen a /login con el parámetro next (comun.py:10)
+hecho | A6 | auth|autentic|sesi|login|acceso | next && redirig|302 && /login|formulario|entrada|inicio de sesi | sin sesión, las rutas protegidas redirigen a /login con el parámetro next (comun.py:10)
 hecho | A7 | auth|autentic|sesi|login|acceso | next && //|dos barras|doble barra | el destino tras entrar debe empezar por "/" y no por "//" (auth.py:25)
 hecho | A8 | auth|autentic|sesi|login|acceso | min.+scul|lower | el correo se compara sin espacios y en minúsculas (sesion.py:15)
 hecho | A9 | auth|autentic|sesi|login|acceso | /logout | cerrar sesión es un POST a /logout (auth.py:30)
