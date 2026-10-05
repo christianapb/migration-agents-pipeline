@@ -298,8 +298,8 @@ if quiere plan-revisado-atrasado; then
   contiene desactualizado "plan:$S"
   es agente migration-tl-resolver
   motivo_tiene revisado
-  printf '%s' "$next" | grep -q 'reabre el plan' || fail "no ofrece reabrir el plan"
-  printf '%s' "$next" | grep -q 'registra las versiones' || fail "no ofrece registrar las versiones del plan"
+  printf '%s' "$next" | grep "migration-tl-resolver: reabre " | grep -q "$S" || fail "no ofrece reabrir el plan de $S"
+  printf '%s' "$next" | grep "migration-tl-resolver: registra las versiones de " | grep -q "$S" || fail "no ofrece registrar las versiones del plan de $S"
 fi
 
 if quiere tarea-nueva-en-un-spec; then
