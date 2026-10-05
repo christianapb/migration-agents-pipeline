@@ -34,7 +34,7 @@ Copia los diez agentes a `~/.claude/agents/`, retira `migration-techlead` y no s
 Abre Claude Code en la carpeta padre de los repositorios y pide `Usa el subagente migration-indexer`. Desde ahí:
 
 - Para saber qué sigue: `Usa el subagente migration-orchestrator`. Te da el prompt exacto.
-- Para decidir o cambiar algo: `Usa el subagente migration-tl-resolver: <cambio>`. Por ejemplo `en el ADR 0011 elijo Ktor`, `en el spec carrito, respuesta a la pregunta 2: ...`, `resuelve el hallazgo H-1 del plan carrito: ...`, `excluye la capacidad pagos`.
+- Para decidir o cambiar algo: `Usa el subagente migration-tl-resolver: <cambio>`. Por ejemplo `en el ADR 0011 elijo Ktor`, `en el spec carrito, respuesta a la pregunta 2: ...`, `resuelve el hallazgo H-1 del plan carrito: ...`, `excluye la capacidad pagos`, `reabre el spec carrito` (un artefacto `revisado` vuelve a poder regenerarse; el resolver avisa de qué se conserva y qué se pierde).
 
 Revisa entre cada paso. Las tareas se generan una sola vez, después de decidir los ADRs.
 
@@ -94,6 +94,7 @@ Pruebas individuales, todas aceptan `WORKDIR`:
 | `test-paralelo.sh` | tres `migration-tl-specs` y tres `migration-qa` a la vez en el mismo workspace, y `solo la cobertura` |
 | `test-hallazgo.sh` | resolver un hallazgo de QA antes de generar tareas solo obliga a repetir el plan; después nada queda desactualizado |
 | `test-reservas.sh` | la cadena completa sobre el segundo fixture, con destino Go: verificadores de etapa, hechos, trampas, auditor e informe de qué hizo el flujo con la base de datos y el proceso programado. No entra en la corrida por defecto: `bash scripts/test-agents.sh fixture-reservas` |
+| `test-reabrir.sh` | el recorrido de reabrir: un spec con una mejora aplicada se reabre, se regenera con alcance y conserva lo que nació de una decisión |
 | `test-pm.sh` | con un ciclo o una dependencia rota el PM no escribe nada; sin `backlog.sh` se detiene y lo dice |
 | `test-versiones.sh` | cada generador sube `rev` al reescribir y anota sus insumos; `migration-pm` no sube el `rev` de las tareas |
 | `test-destino.sh` | con `{bff: Kotlin, frontend: conservar}` no hay ADRs propuestos ni tareas para el frontend, y un mapa incompleto detiene a tl-tasks |

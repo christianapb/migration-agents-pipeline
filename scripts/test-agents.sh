@@ -28,11 +28,11 @@ declare -A MAP=(
   [migration-indexer]="test-indexer-claude test-indexer-escala"
   [migration-analyst]="stage:analyst test-analyst"
   [migration-tl-adrs]="stage:tl-adrs test-destino test-versiones"
-  [migration-tl-specs]="stage:tl-specs test-tl-specs test-versiones test-paralelo"
+  [migration-tl-specs]="stage:tl-specs test-tl-specs test-versiones test-paralelo test-reabrir"
   [migration-tl-tasks]="stage:tl-tasks test-tl-tasks test-destino test-versiones test-hallazgo"
   [migration-qa]="stage:qa test-versiones test-paralelo test-hallazgo"
   [migration-pm]="stage:pm test-versiones test-pm"
-  [migration-tl-resolver]="test-resolver test-hallazgo"
+  [migration-tl-resolver]="test-resolver test-hallazgo test-reabrir"
   [migration-orchestrator]="test-orchestrator"
   [migration-auditor]="test-auditor"
   # Segundo fixture: solo cuando se pide por nombre (no entra en la corrida por defecto)
