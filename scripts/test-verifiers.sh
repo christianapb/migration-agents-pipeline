@@ -537,6 +537,11 @@ WORKDIR="$W16" bash "$ROOT/scripts/verify-hechos.sh" >/dev/null 2>&1 || fail "ve
 # Una regla retirada no cuenta ni como hecho ni como trampa
 W16="$TMP/h5"; make_ws "$W16"; sed -i 's/^## 9\. Dependencias externas$/CB-2: un cupón caducado responde 410. (retirado 2026-10-05) [bff\/a.ts:2]\n&/' "$W16/migration/specs/beta.md"
 WORKDIR="$W16" bash "$ROOT/scripts/verify-hechos.sh" >/dev/null 2>&1 || fail "verify-hechos cuenta una regla retirada como trampa"
+# Patrón negado: una regla que dice la verdad sobre la trampa no la dispara
+W16="$TMP/h6"; make_ws "$W16"; sed -i 's/^## 9\. Dependencias externas$/CB-2: el cupón no tiene código propio: nunca se responde 410. [bff\/a.ts:2]\n&/' "$W16/migration/specs/beta.md"
+printf 'trampa | N1 | . | cup.*n && \\b410\\b && !nunca | con negación\n' > "$TMP/hechos-neg.txt"
+WORKDIR="$W16" bash "$ROOT/scripts/verify-hechos.sh" "$TMP/hechos-neg.txt" >/dev/null 2>&1 || fail "verify-hechos dispara una trampa con una regla que cumple el patrón negado"
+WORKDIR="$TMP/h3" bash "$ROOT/scripts/verify-hechos.sh" "$TMP/hechos-neg.txt" >/dev/null 2>&1 && fail "verify-hechos con patrón negado deja pasar una regla que afirma lo falso"
 # Fallo conocido: se informa y no hace fallar
 out="$(CONOCIDOS="S4" WORKDIR="$TMP/h3" bash "$ROOT/scripts/verify-hechos.sh" 2>&1)" || fail "CONOCIDOS no evita el fallo de un id declarado como conocido"
 printf '%s' "$out" | grep -q '^CONOCIDO: trampa S4 ' || fail "un fallo conocido no se informa"

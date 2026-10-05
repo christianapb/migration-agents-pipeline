@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% block titulo %}Entrar{% endblock %}
+{% block contenido %}
+<form method="post">
+  <label>Correo <input name="email" type="email" required></label>
+  <label>Contraseña <input name="password" type="password" required></label>
+  {% if error %}<p role="alert">{{ error }}</p>{% endif %}
+  <button>Entrar</button>
+</form>
+{% endblock %}

@@ -26,10 +26,12 @@ for f in "$M"/specs/[!_]*.md; do [ -f "$f" ] && specs+=("$f"); done
 gawk -v IGNORECASE=1 -v hechos="$H" -v conocidos="${CONOCIDOS:-}" '
 function trim(s) { gsub(/^[ \t\r]+|[ \t\r]+$/, "", s); return s }
 # ¿Cumple la línea todos los patrones (separados por " && ")?
-function cumple(linea, patrones,   n, i, p) {
+function cumple(linea, patrones,   n, i, p, q) {
   gsub(/\\b/, "\\y", patrones)   # \b de las expresiones habituales es \y en gawk
   n = split(patrones, p, / +&& +/)
-  for (i = 1; i <= n; i++) if (trim(p[i]) != "" && linea !~ trim(p[i])) return 0
+  for (i = 1; i <= n; i++) { q = trim(p[i]); if (q == "") continue
+    if (substr(q, 1, 1) == "!") { if (linea ~ substr(q, 2)) return 0 }   # "!patrón": la línea no debe cumplirlo
+    else if (linea !~ q) return 0 }
   return 1
 }
 # Primera línea de la clase dada (R reglas, M mejoras, P preguntas), en specs cuya

@@ -12,11 +12,22 @@
 # la produjeron y de los prompts usados. Si la huella cambia, la etapa y las
 # posteriores se rehacen; las anteriores se reutilizan.
 #
+# Fixture: FIXTURE_NAME elige la carpeta de fixtures/ (por defecto
+# sample-workspace). Cada fixture tiene sus instantáneas (las del fixture por
+# defecto en .work/snapshots; las de otro en .work/snapshots-<nombre>) y puede
+# cambiar los textos de prompt por etapa en fixtures/hechos/<nombre>.prompts.sh.
+#
+#   scripts/snapshot.sh status                   etapas vigentes y obsoletas, sin construir
+#
 # Variables: SNAPSHOT_DIR (por defecto .work/snapshots), AGENTS_DIR (por
 # defecto agents/), WORKDIR (destino por defecto de restore).
 set -uo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-SNAPS="${SNAPSHOT_DIR:-$ROOT/.work/snapshots}"
+FIXTURE_NAME="${FIXTURE_NAME:-sample-workspace}"
+FIXTURE_SRC="$ROOT/fixtures/$FIXTURE_NAME"
+[ -d "$FIXTURE_SRC" ] || { echo "ERROR: no existe el fixture $FIXTURE_SRC" >&2; exit 1; }
+if [ "$FIXTURE_NAME" = sample-workspace ]; then SNAPS_DEF="$ROOT/.work/snapshots"; else SNAPS_DEF="$ROOT/.work/snapshots-$FIXTURE_NAME"; fi
+SNAPS="${SNAPSHOT_DIR:-$SNAPS_DEF}"
 AGENTS="${AGENTS_DIR:-$ROOT/agents}"
 
 STAGES=(fixture indexer analyst tl-adrs tl-specs qa tl-tasks pm)
@@ -29,6 +40,9 @@ declare -A PROMPT=(
   [qa]=""
   [pm]=""
 )
+# Textos de prompt propios del fixture (por ejemplo, otro destino)
+# shellcheck disable=SC1090
+[ -f "$ROOT/fixtures/hechos/$FIXTURE_NAME.prompts.sh" ] && . "$ROOT/fixtures/hechos/$FIXTURE_NAME.prompts.sh"
 
 # shellcheck source=scripts/lib-dist.sh
 . "$ROOT/scripts/lib-dist.sh"
@@ -53,7 +67,7 @@ empty_dir() {
 # caro en Git Bash sobre Windows).
 FIXTURE_KEY=""
 fixture_key() {
-  [ -n "$FIXTURE_KEY" ] || FIXTURE_KEY="$(cd "$ROOT/fixtures/sample-workspace" && find . -type f -print0 | sort -z | xargs -0 sha256sum | sha256sum | cut -d' ' -f1)"
+  [ -n "$FIXTURE_KEY" ] || FIXTURE_KEY="$(cd "$FIXTURE_SRC" && find . -type f -print0 | sort -z | xargs -0 sha256sum | sha256sum | cut -d' ' -f1)"
   echo "$FIXTURE_KEY"
 }
 
@@ -83,7 +97,7 @@ copy_agents() {
 build_fixture() {
   local d="$1" repo
   empty_dir "$d"
-  cp -r "$ROOT/fixtures/sample-workspace/." "$d/"
+  cp -r "$FIXTURE_SRC/." "$d/"
   for repo in "$d"/*/; do
     (
       cd "$repo" || exit 1
@@ -135,9 +149,22 @@ restore() {
   echo "restaurada: $s en $dest"
 }
 
+# Etapas vigentes y obsoletas según la huella actual, sin construir nada
+status() {
+  local i s key
+  FIXTURE_KEY="$(fixture_key)"
+  for i in "${!STAGES[@]}"; do
+    s="${STAGES[$i]}"; key="$(key_for "$i")"
+    if [ -f "$SNAPS/$s/.snapshot-key" ] && [ "$(cat "$SNAPS/$s/.snapshot-key")" = "$key" ]; then echo "vigente: $s"
+    elif [ -d "$SNAPS/$s" ]; then echo "obsoleta: $s"
+    else echo "ausente: $s"; fi
+  done
+}
+
 case "${1:-}" in
+  status)  status ;;
   build)   [ $# -ge 2 ] || die "uso: snapshot.sh build <etapa>"; build "$2" ;;
   restore) [ $# -ge 2 ] || die "uso: snapshot.sh restore <etapa> [destino]"; restore "$2" "${3:-}" ;;
   list)    printf '%s\n' "${STAGES[@]}" ;;
-  *)       die "uso: snapshot.sh build|restore|list" ;;
+  *)       die "uso: snapshot.sh build|restore|list|status" ;;
 esac

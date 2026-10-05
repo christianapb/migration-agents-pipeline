@@ -22,5 +22,27 @@ git -C "$ROOT" ls-files --error-unmatch fixtures/sample-workspace/bff/dist/serve
 grep -q 'status(200).end()' "$W/bff/src/routes/products.ts" || fail "falta la ambigüedad 200 vacío"
 grep -q 'getPriceCents' "$W/bff/src/routes/cart.ts" || fail "falta dependencia cruzada carrito→catálogo"
 
+# Segundo fixture: monolito Flask con base de datos, proceso programado, ruido y trampas
+R="$ROOT/fixtures/reservas-workspace/reservas"
+for f in pyproject.toml app.py schema.sql migrations/001_inicial.sql scripts/caducar_reservas.py crontab.txt poetry.lock static/logo.png build/lib/app.py; do
+  [ -f "$R/$f" ] || fail "reservas: falta $f"
+done
+git -C "$ROOT" ls-files --error-unmatch fixtures/reservas-workspace/reservas/build/lib/app.py >/dev/null 2>&1 || fail "reservas: build/lib/app.py no está versionado en spec-agent (usar git add -f)"
+grep -q '^build/' "$R/.gitignore" || fail "reservas: build/ debe estar en su .gitignore"
+n="$(find "$R" -type f \( -name '*.py' -o -name '*.sql' -o -name '*.html' -o -name '*.css' \) ! -path '*/build/*' ! -name '__init__.py' | wc -l)"
+[ "$n" -ge 20 ] && [ "$n" -le 30 ] || fail "reservas: $n archivos de código, se esperaban entre 20 y 30"
+# Las trampas siguen plantadas
+grep -q 'Máximo 8 horas' "$R/services/reservas.py" && grep -q '^MAX_HORAS = 4$' "$R/services/reservas.py" || fail "reservas: falta la trampa del comentario que contradice al código"
+grep -q 'def recargo_fin_de_semana' "$R/utils/fechas.py" || fail "reservas: falta la función sin uso"
+[ "$(grep -rl 'recargo_fin_de_semana' "$R" --include='*.py' | wc -l)" -eq 1 ] || fail "reservas: recargo_fin_de_semana debería no usarse en ningún otro archivo"
+grep -q '\.ics' "$R/README.md" && ! grep -rq 'ics' "$R" --include='*.py' || fail "reservas: falta la trampa del README que describe una función inexistente"
+grep -q 'MAX_RESERVAS_DIA' "$R/config.py" && [ "$(grep -rl 'MAX_RESERVAS_DIA' "$R" --include='*.py' | wc -l)" -eq 1 ] || fail "reservas: MAX_RESERVAS_DIA debe declararse y no leerse"
+grep -q 'url_prefix="/admin"' "$R/routes/admin.py" && ! grep -q 'admin' "$R/app.py" || fail "reservas: el blueprint de admin debe existir y no registrarse"
+# Los hechos de cada fixture viven fuera de la carpeta que se copia como workspace
+for fx in sample-workspace reservas-workspace; do
+  [ -f "$ROOT/fixtures/hechos/$fx.txt" ] || fail "falta fixtures/hechos/$fx.txt"
+  find "$ROOT/fixtures/$fx" -name '*hechos*' | grep -q . && fail "$fx: hay un archivo de hechos dentro del workspace"
+done
+
 [ "$fails" -eq 0 ] && { echo "OK: fixture"; exit 0; }
 exit 1
