@@ -82,9 +82,13 @@ for s in "${specs[@]}"; do
   # Cada uno es una CB-n que empieza por la frase fija, o una pregunta abierta
   # que empieza igual si no se pudo determinar.
   contratos="$(section "$s" 5)"
-  if printf '%s' "$contratos" | grep -Eq '\b(GET|POST|PUT|PATCH|DELETE)\b'; then
+  # Solo cuentan los endpoints que el spec declara (un método seguido de una
+  # ruta, como título, viñeta o fila de tabla), no los que menciona de pasada:
+  # una página puede describir un formulario que se envía a otra capacidad.
+  declarados="$(printf '%s\n' "$contratos" | grep -E '^[#*` -]*(GET|POST|PUT|PATCH|DELETE)[ `]+/|^\|[ `]*(GET|POST|PUT|PATCH|DELETE)[ `]*\|' || true)"
+  if [ -n "$declarados" ]; then
     frases=("Ruta no definida" "Método no permitido")
-    if printf '%s' "$contratos" | grep -Eq '\b(POST|PUT|PATCH)\b'; then
+    if printf '%s' "$declarados" | grep -Eq '\b(POST|PUT|PATCH)\b'; then
       frases+=("Cuerpo ausente" "Cuerpo mal formado")
     fi
     for frase in "${frases[@]}"; do

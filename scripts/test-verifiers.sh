@@ -401,6 +401,9 @@ WORKDIR="$W9" bash "$ROOT/scripts/verify-tl-specs.sh" >/dev/null 2>&1 || fail "v
 W9="$TMP/d4"; make_ws "$W9"; con_endpoint "$W9"; por_defecto "$W9" "Ruta no definida|Método no permitido|Cuerpo ausente"
 sed -i 's/^- ¿Qué responde el servicio de identidad.*/&\n- Cuerpo mal formado: ¿qué responde el servicio cuando el cuerpo no es JSON válido?/' "$W9/$SP"
 WORKDIR="$W9" bash "$ROOT/scripts/verify-tl-specs.sh" >/dev/null 2>&1 || fail "verify-tl-specs rechaza un comportamiento por defecto planteado como pregunta abierta"
+# Mencionar un POST de otra capacidad no obliga a los casos de cuerpo: solo los endpoints declarados
+W9="$TMP/d6"; make_ws "$W9"; sed -i 's/^## 5\. Contratos de API$/&\n### GET \/alfa\n- Salida: página con un formulario que se envía por POST a \/beta./' "$W9/$SP"; por_defecto "$W9" "Ruta no definida|Método no permitido"
+WORKDIR="$W9" bash "$ROOT/scripts/verify-tl-specs.sh" >/dev/null 2>&1 || fail "verify-tl-specs exige los casos de cuerpo a un spec que solo declara un GET y menciona un POST ajeno"
 # Un spec sin endpoints no está obligado
 W9="$TMP/d5"; make_ws "$W9"
 WORKDIR="$W9" bash "$ROOT/scripts/verify-tl-specs.sh" >/dev/null 2>&1 || fail "verify-tl-specs exige comportamientos por defecto a un spec sin endpoints"
