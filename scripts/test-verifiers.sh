@@ -9,6 +9,15 @@ fails=0
 fail() { echo "FAIL: $*"; fails=$((fails+1)); }
 # Las comprobaciones propias del fixture están apagadas por defecto; aquí se prueban
 export FIXTURE=1
+# Hechos y trampas del workspace sintético (el de verdad está en fixtures/hechos/)
+export HECHOS="$TMP/hechos-sinteticos.txt"
+cat > "$HECHOS" <<'EOF'
+# tipo | id | capacidad | patrones | descripción
+hecho | S1 | alfa|beta|gamma | ocult && \b200\b | un producto oculto responde 200
+mejora | S2 | . | ocult | el producto oculto figura como mejora
+no-pregunta | S3 | . | ocult | el producto oculto no es una pregunta abierta
+trampa | S4 | . | cup.*n && \b410\b | ningún código responde 410 por un cupón caducado
+EOF
 
 # --- Workspace sintético mínimo que pasa verify-techlead, verify-qa y verify-pm
 make_ws() {
@@ -505,9 +514,77 @@ bash "$ROOT/scripts/verificar.sh" "$TMP/no-existe" >/dev/null 2>&1 && fail "veri
 # Fuera del repo: los scripts copiados a otra carpeta funcionan solos
 PROY="$TMP/proyecto de usuario"; make_ws "$PROY"; copiar_scripts "$ROOT/scripts" "$PROY" || fail "copiar_scripts falló"
 for s in "${DIST_SCRIPTS[@]}"; do [ -f "$PROY/.claude/migration/$s" ] || fail "no se instaló $s"; done
-grep -l 'sample-workspace\|\$ROOT' "$PROY"/.claude/migration/*.sh 2>/dev/null | grep -q . && fail "algún script instalado depende de la raíz del repo: $(grep -l 'sample-workspace\|\$ROOT' "$PROY"/.claude/migration/*.sh | xargs -n1 basename | paste -sd' ' -)"
+grep -l '\.work/\|\$ROOT' "$PROY"/.claude/migration/*.sh 2>/dev/null | grep -q . && fail "algún script instalado depende de la raíz del repo: $(grep -l '\.work/\|\$ROOT' "$PROY"/.claude/migration/*.sh | xargs -n1 basename | paste -sd' ' -)"
+[ -f "$PROY/.claude/migration/verify-hechos.sh" ] && fail "se entregó verify-hechos.sh, que es solo para las pruebas de este repo"
 out="$(cd "$PROY" && env -u WORKDIR -u FIXTURE bash .claude/migration/verificar.sh 2>&1)" || fail "verificar.sh instalado en un proyecto falla: $(printf '%s' "$out" | grep -m3 -- '- ' | tr '\n' ' ')"
 (cd "$PROY" && env -u WORKDIR bash .claude/migration/backlog.sh validar >/dev/null 2>&1) || fail "backlog.sh instalado en un proyecto falla"
+
+# 16. Hechos y trampas: un spec que cumple, uno al que le falta un hecho y uno que cae en una trampa
+W16="$TMP/h1"; make_ws "$W16"
+out="$(WORKDIR="$W16" bash "$ROOT/scripts/verify-hechos.sh" 2>&1)" || fail "verify-hechos falla sobre specs que cumplen: $(printf '%s' "$out" | head -n2 | tr '\n' ' ')"
+printf '%s' "$out" | grep -q 'hechos 1/1, trampas evitadas 1/1, mejoras 1/1, no-preguntas 1/1' || fail "verify-hechos no resume lo comprobado: $(printf '%s' "$out" | grep '^---')"
+W16="$TMP/h2"; make_ws "$W16"; for c in alfa beta gamma; do sed -i 's/^CB-1: un producto oculto responde 200 sin cuerpo/CB-1: un producto oculto responde 404/' "$W16/migration/specs/$c.md"; done
+out="$(WORKDIR="$W16" bash "$ROOT/scripts/verify-hechos.sh" 2>&1)" && fail "verify-hechos acepta specs a los que les falta un hecho"
+printf '%s' "$out" | grep -q '^FAIL: hecho S1 ' || fail "verify-hechos no nombra el hecho que falta"
+expect_fail tl-specs "$W16" "verify-tl-specs con FIXTURE=1 acepta specs a los que les falta un hecho"
+FIXTURE=0 WORKDIR="$W16" bash "$ROOT/scripts/verify-tl-specs.sh" >/dev/null 2>&1 || fail "sin FIXTURE, verify-tl-specs comprueba los hechos del fixture"
+W16="$TMP/h3"; make_ws "$W16"; sed -i 's/^## 9\. Dependencias externas$/CB-2: un cupón caducado responde 410 con el código COUPON_EXPIRED. [bff\/a.ts:2]\n&/' "$W16/migration/specs/beta.md"
+out="$(WORKDIR="$W16" bash "$ROOT/scripts/verify-hechos.sh" 2>&1)" && fail "verify-hechos acepta un spec que cae en una trampa"
+printf '%s' "$out" | grep '^FAIL: trampa S4 ' | grep -q 'beta' || fail "verify-hechos no dice qué spec afirma lo falso"
+# La trampa como pregunta abierta o como mejora es correcta
+W16="$TMP/h4"; make_ws "$W16"; sed -i 's/^- ¿Qué responde el servicio de identidad.*/&\n- ¿Existe un código 410 para un cupón caducado?/' "$W16/migration/specs/beta.md"
+WORKDIR="$W16" bash "$ROOT/scripts/verify-hechos.sh" >/dev/null 2>&1 || fail "verify-hechos rechaza una trampa planteada como pregunta abierta"
+# Una regla retirada no cuenta ni como hecho ni como trampa
+W16="$TMP/h5"; make_ws "$W16"; sed -i 's/^## 9\. Dependencias externas$/CB-2: un cupón caducado responde 410. (retirado 2026-10-05) [bff\/a.ts:2]\n&/' "$W16/migration/specs/beta.md"
+WORKDIR="$W16" bash "$ROOT/scripts/verify-hechos.sh" >/dev/null 2>&1 || fail "verify-hechos cuenta una regla retirada como trampa"
+# Fallo conocido: se informa y no hace fallar
+out="$(CONOCIDOS="S4" WORKDIR="$TMP/h3" bash "$ROOT/scripts/verify-hechos.sh" 2>&1)" || fail "CONOCIDOS no evita el fallo de un id declarado como conocido"
+printf '%s' "$out" | grep -q '^CONOCIDO: trampa S4 ' || fail "un fallo conocido no se informa"
+# Los hechos del fixture real están bien formados
+bad="$(grep -v '^[[:space:]]*\(#\|$\)' "$ROOT"/fixtures/hechos/*.txt | awk -F' \\| ' 'NF < 5 || $1 !~ /(^|:)(hecho|trampa|mejora|no-pregunta|indice|no-indice)$/' | head -n3)"
+[ -z "$bad" ] || fail "línea mal formada en fixtures/hechos: $bad"
+
+# 17. Sin código del lenguaje origen: JavaScript, Python y familia de Java; la prosa pasa
+codigo() { sed -i "s|^## 4\\. Flujos de comportamiento\$|&\\n$1|" "$2/$SP"; }
+n=0
+while IFS= read -r muestra; do
+  n=$((n+1)); W17="$TMP/cod$n"; make_ws "$W17"
+  MUESTRA="$muestra" awk '{print} /^## 4\. Flujos de comportamiento$/ {print ENVIRON["MUESTRA"]}' "$W17/$SP" > "$W17/$SP.tmp" && mv "$W17/$SP.tmp" "$W17/$SP"
+  expect_fail tl-specs "$W17" "verify-tl-specs no reconoce como código: $muestra"
+done <<'EOF'
+const tope = 10;
+import express from "express";
+def crear_reserva(sala_id, inicio, fin):
+    return jsonify(error="solapada"), 409
+from flask import Flask, request
+class Reserva(db.Model):
+@app.route("/salas", methods=["GET"])
+    if reserva.estado == "pendiente":
+public class ReservaService {
+private final int MAX_HORAS = 4;
+    public Reserva crear(Sala sala) {
+fun crear(sala: Sala): Reserva {
+val tope = 10
+package com.acme.reservas;
+    if (horas > MAX_HORAS) {
+EOF
+n=0
+while IFS= read -r muestra; do
+  n=$((n+1)); W17="$TMP/pro$n"; make_ws "$W17"
+  MUESTRA="$muestra" awk '{print} /^## 4\. Flujos de comportamiento$/ {print ENVIRON["MUESTRA"]}' "$W17/$SP" > "$W17/$SP.tmp" && mv "$W17/$SP.tmp" "$W17/$SP"
+  ok_ws tl-specs "$W17" "verify-tl-specs toma por código una frase normal: $muestra"
+done <<'EOF'
+Importa que la sala esté libre en todo el intervalo.
+La clase de sala determina el aforo máximo.
+1. El usuario elige la sala y el intervalo; si la sala está libre:
+El valor de retorno del proceso es el número de reservas caducadas.
+- privado: solo quien creó la reserva puede cancelarla.
+Para cada reserva pendiente con más de 30 minutos, el proceso la marca como caducada.
+El campo `class` del formulario no se envía; `def` tampoco.
+Si la consulta no devuelve filas, responde 404.
+Variable de entorno `MAX_HORAS`: valor por defecto 4.
+- from: fecha de inicio (texto, opcional).
+EOF
 
 [ "$fails" -eq 0 ] && { echo "OK: verificadores"; exit 0; }
 exit 1

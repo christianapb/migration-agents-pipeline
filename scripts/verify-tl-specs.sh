@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Verifica los specs.
 # Variables: MAX_PREGUNTAS (tope de preguntas abiertas por spec, por defecto 5),
-# REQUIRE_AMBIGUEDAD (propia del fixture; activa solo con FIXTURE=1: exige que el producto oculto
+# REQUIRE_HECHOS (propia del fixture; activa solo con FIXTURE=1: comprueba hechos y trampas con verify-hechos.sh;
 # esté como hecho y como mejora, y no como pregunta abierta).
 set -uo pipefail
 HERE="$(cd "$(dirname "$0")" && pwd)"
@@ -12,6 +12,17 @@ fails=0
 fail() { echo "FAIL: $*"; fails=$((fails+1)); }
 # shellcheck source=lib-rev.sh
 . "$HERE/lib-rev.sh"
+
+# Líneas que son código y no prosa. Solo al inicio de línea: el código citado
+# dentro de una frase, entre comillas invertidas, no cuenta. Cubre JavaScript y
+# TypeScript, Python, y la familia de Java (Java, Kotlin, C#).
+CODIGO_RE='^[[:space:]]*('
+CODIGO_RE+='import |export |const |let |function |=> |app\.use|router\.(get|post)'
+CODIGO_RE+='|def [A-Za-z_][A-Za-z0-9_]*\(|class [A-Z][A-Za-z0-9_]*[(:{ ]|from [A-Za-z0-9_.]+ import |@[A-Za-z_][A-Za-z0-9_.]*\('
+CODIGO_RE+='|return [^ ]*[(;]|return [^ ].*;$|(if|elif|for|while|try|except|else|with)[ A-Za-z0-9_.,()=<>!"]*:$'
+CODIGO_RE+='|(public|private|protected|internal) (static |final |abstract |class |interface |void |fun |val |var |[A-Za-z<>]+ [A-Za-z_]+ ?[(=;])'
+CODIGO_RE+='|fun [A-Za-z_][A-Za-z0-9_]*\(|(val|var) [A-Za-z_][A-Za-z0-9_]* ?[:=]|package [a-z0-9_.]+;?$|(if|for|while) ?\(.*\) ?\{$'
+CODIGO_RE+=')'
 
 # Contenido de una sección numerada, hasta el siguiente encabezado de nivel 2.
 section() { awk -v n="$2" '$0 ~ "^## " n "\\. " {f=1; next} /^## /{f=0} f' "$1"; }
@@ -30,9 +41,8 @@ for s in "${specs[@]}"; do
   grep -q '^estado: ' "$s" || fail "$n: sin estado"
   grep -Eq '^(- )?RN-1:' "$s" || fail "$n: sin reglas RN-n: al inicio de línea"
   grep -Eq '^(- )?CB-1:' "$s" || fail "$n: sin casos borde CB-n: al inicio de línea"
-  if grep -Eq '^\s*(import |export |const |let |function |=> |app\.use|router\.(get|post))' "$s"; then
-    fail "$n: contiene código del lenguaje origen"
-  fi
+  cod="$(grep -nE "$CODIGO_RE" "$s" | head -n1)"
+  [ -z "$cod" ] || fail "$n: contiene código del lenguaje origen (línea ${cod%%:*}: $(printf '%s' "${cod#*:}" | cut -c1-60))"
   grep -q '```' "$s" && fail "$n: contiene bloques de código"
 
   grep -q '^commits: ' "$s" || fail "$n: sin commits en el frontmatter"
@@ -109,11 +119,17 @@ for s in "${specs[@]}"; do
   todos_hechos+="$(grep -E '^(- )?(RN|CB)-[0-9]+:' "$s")"$'\n'
 done
 
-if [ "${REQUIRE_AMBIGUEDAD:-${FIXTURE:-0}}" = 1 ]; then
-  # El producto oculto (200 sin cuerpo) lo determina el código: hecho + mejora, no pregunta.
-  printf '%s' "$todos_hechos" | grep -Eiq 'ocult|hidden' || fail "ninguna RN/CB recoge el comportamiento del producto oculto"
-  printf '%s' "$todas_mejoras" | grep -Eiq 'ocult|hidden' || fail "ninguna mejora MJ-n menciona el producto oculto (200 vacío frente a 404)"
-  printf '%s' "$todas_preguntas" | grep -Eiq 'ocult|hidden' && fail "el producto oculto aparece como pregunta abierta; el código lo determina, es una mejora"
+# Fidelidad, propia de cada fixture (solo con FIXTURE=1): los specs recogen los
+# hechos del código y no afirman sus trampas. Los datos están en
+# fixtures/hechos/<fixture>.txt; el comprobador no se entrega a los usuarios.
+if [ "${REQUIRE_HECHOS:-${FIXTURE:-0}}" = 1 ] && [ -f "$HERE/verify-hechos.sh" ]; then
+  salida="$(WORKDIR="$W" bash "$HERE/verify-hechos.sh" 2>&1)"; hrc=$?
+  printf '%s\n' "$salida" | grep -E '^(CONOCIDO|---)' || true
+  if [ "$hrc" -ne 0 ]; then
+    printf '%s\n' "$salida" | grep '^FAIL' || true
+    fails=$((fails + $(printf '%s\n' "$salida" | grep -c '^FAIL' || true)))
+    [ "$fails" -gt 0 ] || fails=1
+  fi
 fi
 
 [ "$fails" -eq 0 ] && { echo "OK: tl-specs"; exit 0; }
