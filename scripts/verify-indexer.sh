@@ -84,7 +84,8 @@ done
 grep -q '^spec_rev:' "$W/migration/templates/task.md" || fail "task.md sin spec_rev"
 grep -q '^adrs_rev: {}' "$W/migration/templates/task.md" || fail "task.md sin adrs_rev"
 grep -q '^spec_rev:' "$W/migration/templates/test-plan.md" || fail "test-plan.md sin spec_rev"
-grep -q '^tareas: \[\]' "$W/migration/templates/test-plan.md" || fail "test-plan.md sin tareas"
+grep -qE '^tareas:|^- Tareas:' "$W/migration/templates/test-plan.md" && fail "test-plan.md conserva la referencia a tareas"
+grep -q '^## Pruebas' "$W/migration/templates/task.md" || fail "task.md sin sección Pruebas"
 grep -q '| Tarea | Rev |' "$W/migration/templates/backlog.md" || fail "backlog.md sin columna Rev"
 
 [ "$fails" -eq 0 ] && { echo "OK: indexer"; exit 0; }

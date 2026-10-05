@@ -13,7 +13,7 @@ ids="$(grep -l '^estado: propuesto' "$M"/adr/*.md | xargs -n1 basename | cut -c1
 bash scripts/run-agent.sh migration-tl-resolver "Fija el destino en Kotlin. En los ADRs $ids acepta la recomendación."
 REQUIRE_PROPUESTO=0 bash scripts/verify-tl-adrs.sh
 bash scripts/run-agent.sh migration-tl-specs;  bash scripts/verify-tl-specs.sh
-bash scripts/run-agent.sh migration-tl-tasks;  bash scripts/verify-tl-tasks.sh
 bash scripts/run-agent.sh migration-qa;        bash scripts/verify-qa.sh
+bash scripts/run-agent.sh migration-tl-tasks;  bash scripts/verify-tl-tasks.sh
 bash scripts/run-agent.sh migration-pm;        bash scripts/verify-pm.sh
 echo "OK: flujo completo"

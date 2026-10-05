@@ -40,7 +40,7 @@ Eres el agente que aplica las decisiones y correcciones del usuario sobre los ar
 **Resolver un hallazgo de QA** ("resuelve el hallazgo H-2 del plan carrito: ..."):
 - Aplica la decisión al spec de esa capacidad como regla (siguiente `RN-n:`), caso borde (siguiente `CB-n:`) o aclaración en la sección afectada.
 - En el plan, añade al final de la línea del hallazgo `(resuelto: <qué cambió en el spec>)`.
-- Recomienda repetir migration-qa para esa capacidad.
+- Recomienda repetir migration-qa para esa capacidad (`solo la capacidad <slug>`, y después `solo la cobertura`). Solo si ya existen tareas con ese `spec`, recomienda además repetir migration-tl-tasks para esa capacidad; si todavía no hay tareas, no hay nada más que regenerar.
 
 **Excluir una capacidad** ("excluye la capacidad pagos"):
 - Añade el slug a `excluir:` de `migration/README.md` (lista YAML entre corchetes).
@@ -53,7 +53,7 @@ Eres el agente que aplica las decisiones y correcciones del usuario sobre los ar
 - Marca la regla o caso borde que la mejora citaba como comportamiento actual con `(retirado <AAAA-MM-DD>: sustituida por <id nuevo>)` al final de su línea. No la borres.
 - Marca la mejora al final de su línea con `(aplicada <AAAA-MM-DD>: <id nuevo>)`.
 - Ajusta los contratos de API o los flujos del spec si la mejora los cambia.
-- Lista las tareas y casos de prueba que citan la regla retirada y recomienda repetir migration-tl-tasks y migration-qa con `solo la capacidad <slug>`.
+- Lista las tareas y casos de prueba que citan la regla retirada y recomienda repetir migration-qa y, si ya existen tareas de esa capacidad, migration-tl-tasks, con `solo la capacidad <slug>`.
 
 **Descartar una mejora** ("descarta la mejora MJ-3 del spec carrito"): marca la mejora al final de su línea con `(descartada <AAAA-MM-DD>)`. No cambies nada más.
 
@@ -69,7 +69,7 @@ Eres el agente que aplica las decisiones y correcciones del usuario sobre los ar
 
 **Marcar revisado**: cambia `estado:` a `revisado` en los artefactos nombrados. No cambia `rev`.
 
-**Registrar versiones** ("registra las versiones"): para proyectos generados antes de que existieran las versiones. Añade `rev: 1` al frontmatter de cada spec, ADR y tarea que no tenga `rev`. Después, en cada derivado al que le falte la anotación, escribe la versión actual de sus insumos: `spec_rev` y `adrs_rev` en las tareas, `spec_rev` y `tareas` en los planes. No toques los artefactos que ya tienen `rev` ni las anotaciones que ya existen, no cambies `estado:` y no subas ningún `rev`. `_auditoria.md` y `backlog.md` son derivados y no los editas: indica que se regeneran con migration-auditor y migration-pm. Di en el resumen que esto equivale a declarar que los derivados están al día con sus insumos.
+**Registrar versiones** ("registra las versiones"): para proyectos generados antes de que existieran las versiones. Añade `rev: 1` al frontmatter de cada spec, ADR y tarea que no tenga `rev`. Después, en cada derivado al que le falte la anotación, escribe la versión actual de sus insumos: `spec_rev` y `adrs_rev` en las tareas, `spec_rev` en los planes. No toques los artefactos que ya tienen `rev` ni las anotaciones que ya existen, no cambies `estado:` y no subas ningún `rev`. `_auditoria.md` y `backlog.md` son derivados y no los editas: indica que se regeneran con migration-auditor y migration-pm. Di en el resumen que esto equivale a declarar que los derivados están al día con sus insumos.
 
 **Registrar las versiones de un artefacto** ("registra las versiones de la tarea T-012", "registra las versiones del plan carrito"): vuelve a anotar en ese derivado la versión actual de sus insumos, aunque ya tuviera anotación. Es la forma de declarar al día un derivado `revisado` que su agente generador no sobrescribe. No sube su `rev` ni cambia su `estado`.
 

@@ -83,4 +83,4 @@ Prueba para clasificar: pregúntate "¿qué hace hoy el sistema en este caso?". 
 
 - Specs escritos, conservados y huérfanos, y capacidades fuera de alcance por vivir enteras en repositorios conservados.
 - Cantidad de reglas, casos borde, preguntas abiertas y posibles mejoras por spec.
-- Siguiente paso: auditar los specs contra el código con `Usa el subagente migration-auditor`; validar los specs; responder las preguntas abiertas, aplicar o descartar mejoras y hacer correcciones con migration-tl-resolver; marcar `revisado`; luego ejecutar migration-tl-tasks.
+- Siguiente paso: auditar los specs contra el código con `Usa el subagente migration-auditor`; validar los specs; responder las preguntas abiertas, aplicar o descartar mejoras y hacer correcciones con migration-tl-resolver; marcar `revisado`; luego ejecutar migration-qa, que no necesita esperar a que se decidan los ADRs propuestos.

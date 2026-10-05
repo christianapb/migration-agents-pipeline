@@ -20,7 +20,8 @@ for s in "${specs[@]}"; do
   [ -f "$p" ] || { fail "falta test-plans/$slug.md"; continue; }
   grep -q "^spec: $slug" "$p" || fail "$slug: frontmatter spec no apunta al spec"
   grep -q '^estado: ' "$p" || fail "$slug: sin estado"
-  # Versión del spec y tareas de las que se generó el plan
+  # Versión del spec del que se generó el plan. Un plan antiguo puede traer
+  # `tareas:` y líneas `- Tareas:`: no se exigen ni se rechazan.
   prev="$(campo "$p" spec_rev)"
   if ! es_rev "$prev"; then
     fail "$slug: spec_rev ausente o no numérico ('$prev')"
@@ -28,14 +29,10 @@ for s in "${specs[@]}"; do
     actual="$(rev_de "$s")"
     [ -z "$actual" ] || [ "$prev" -le "$actual" ] || fail "$slug: spec_rev $prev es mayor que el rev $actual del spec"
   fi
-  grep -q '^tareas: \[' "$p" || fail "$slug: sin tareas en el frontmatter"
   # La cobertura consolidada tiene una fila por plan, con el spec_rev del plan
   crev="$(sed -nE "s/^\| *$slug *\| *([0-9]+) *\|.*/\1/p" "$M/test-plans/_cobertura.md" 2>/dev/null | head -n1)"
   [ -n "$crev" ] || fail "$slug: _cobertura.md no tiene fila con Spec rev para este plan"
   [ -z "$crev" ] || [ "$crev" = "$prev" ] || fail "$slug: _cobertura.md registra Spec rev $crev y el plan tiene spec_rev '$prev'"
-  for tid in $(lista "$(campo "$p" tareas)"); do
-    ls "$M"/tasks/"$tid"-*.md >/dev/null 2>&1 || fail "$slug: tareas nombra $tid, que no existe"
-  done
   for sec in "## Alcance y supuestos" "## Matriz de cobertura" "## Casos: camino feliz" "## Casos: errores" "## Casos pendientes de definición" "## Hallazgos para el tech lead"; do
     grep -q "^$sec" "$p" || fail "$slug: falta sección '$sec'"
   done

@@ -16,7 +16,7 @@ adrfile() { ls "$M"/adr/"$1"-*.md 2>/dev/null | head -n1; }
 revs_tareas() { grep -H '^rev:' "$M"/tasks/*.md 2>/dev/null | sort; }
 
 if [ "${SKIP_SETUP:-0}" != 1 ]; then
-  bash "$ROOT/scripts/snapshot.sh" restore qa "$W" >/dev/null || { echo "FAIL: no se pudo restaurar la etapa qa"; exit 1; }
+  bash "$ROOT/scripts/snapshot.sh" restore tl-tasks "$W" >/dev/null || { echo "FAIL: no se pudo restaurar la etapa tl-tasks"; exit 1; }
 fi
 
 # Caso 4: decidir un ADR propuesto aceptando la recomendación

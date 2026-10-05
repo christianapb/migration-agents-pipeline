@@ -21,8 +21,8 @@ Copia los diez agentes a `~/.claude/agents/`, retira `migration-techlead` y no s
 | 2 | `migration-analyst` | `migration/specs/_capacidades.md` |
 | 3 | `migration-tl-adrs` | ADRs observados y propuestos |
 | 4 | `migration-tl-specs` | un spec por capacidad |
-| 5 | `migration-tl-tasks` | tareas; se detiene si quedan ADRs propuestos |
-| 6 | `migration-qa` | planes de prueba, `_cobertura.md`, hallazgos `H-n` |
+| 5 | `migration-qa` | planes de prueba, `_cobertura.md`, hallazgos `H-n`; no necesita tareas ni ADRs decididos |
+| 6 | `migration-tl-tasks` | tareas; se detiene si quedan ADRs propuestos |
 | 7 | `migration-pm` | `backlog.md`, `fase` y `prioridad` por tarea |
 | — | `migration-tl-resolver` | aplica decisiones y cambios que describes |
 | — | `migration-orchestrator` | diagnóstico y prompt del siguiente paso (solo lectura) |
@@ -43,9 +43,11 @@ Viven en el bloque de `CLAUDE.md` que escribe el indexador: estados (`generado`,
 
 **Destino.** `destino:` es un valor simple, que aplica a todos los repositorios (`destino: Kotlin`), o un mapa en una línea por repositorio (`destino: {bff: Kotlin, frontend: conservar}`). `conservar` deja ese repositorio sin migrar: no recibe ADRs propuestos, tareas de implementación ni casos de prueba, y los specs siguen describiendo su comportamiento como contrato. Un mapa al que le falta un repositorio detiene a los agentes. El README manda sobre el prompt. Diseño: [`docs/specs/2026-10-01-destino-por-repo-design.md`](docs/specs/2026-10-01-destino-por-repo-design.md).
 
-**Versiones.** Specs, ADRs y tareas llevan `rev:` (entero desde 1), que sube cuando cambia el contenido y no cuando solo cambia el estado. Los derivados anotan la versión de sus insumos: tareas `spec_rev:` y `adrs_rev: {0003: 1, 0011: 2}`; planes `spec_rev:` y `tareas: [T-011, T-012]`; auditoría `Spec rev: <n>.`; backlog, columna `Rev`. El orquestador decide lo desactualizado comparando esos números, nunca fechas de modificación, e informa de la completitud por capacidad. Diseño: [`docs/specs/2026-10-01-versiones-de-artefactos-design.md`](docs/specs/2026-10-01-versiones-de-artefactos-design.md).
+**Versiones.** Specs, ADRs y tareas llevan `rev:` (entero desde 1), que sube cuando cambia el contenido y no cuando solo cambia el estado. Los derivados anotan la versión de sus insumos: tareas `spec_rev:` y `adrs_rev: {0003: 1, 0011: 2}`; planes `spec_rev:` (no citan tareas: se escriben antes que ellas); auditoría `Spec rev: <n>.`; backlog, columna `Rev`. El orquestador decide lo desactualizado comparando esos números, nunca fechas de modificación, e informa de la completitud por capacidad. Diseño: [`docs/specs/2026-10-01-versiones-de-artefactos-design.md`](docs/specs/2026-10-01-versiones-de-artefactos-design.md).
 
 **Escala y paralelo.** El indexador escribe primero `migration/` y el bloque de `CLAUDE.md`, y después los índices. Un índice que termina en `> Índice incompleto: falta desde <carpeta>` se continúa en la corrida siguiente. `solo el repo <nombre>` acota a un repositorio y solo escribe su índice; una corrida sin alcance consolida y no reindexa los repositorios cuyo `Commit:` no cambió. Admiten varias corridas a la vez `migration-indexer`, `migration-tl-specs` y `migration-qa`, siempre con alcance; `migration-qa, solo la cobertura` consolida `_cobertura.md`. `migration-tl-tasks` y `migration-auditor` van en serie. El orquestador entrega el bloque de paralelo. Probado solo con el fixture y con el corte plantado: no demuestra el comportamiento con miles de archivos. Diseño: [`docs/specs/2026-10-01-escala-indexador-y-paralelo-design.md`](docs/specs/2026-10-01-escala-indexador-y-paralelo-design.md).
+
+**Planes antes que tareas.** `migration-qa` es el paso 5 y `migration-tl-tasks` el 6. Los planes no leen ni citan tareas; la trazabilidad entre una tarea y sus casos sale de las `RN-n` y `CB-n` que ambos citan, y cada tarea apunta a su plan en la sección `## Pruebas`. Un plan solo queda desactualizado cuando cambia su spec. Diseño: [`docs/specs/2026-10-04-qa-antes-de-tareas-design.md`](docs/specs/2026-10-04-qa-antes-de-tareas-design.md).
 
 **Política de paridad.** `politica: paridad` es la única política: el destino reproduce el comportamiento observado salvo decisión explícita. En cada spec, `## 12. Preguntas abiertas` contiene solo lo que el código no permite determinar, y `## 13. Posibles mejoras` lista como `MJ-n` lo que el código determina pero parece mejorable. Las mejoras no bloquean tareas ni generan casos pendientes; se aplican o descartan con `migration-tl-resolver`. Diseño: [`docs/specs/2026-10-01-politica-paridad-design.md`](docs/specs/2026-10-01-politica-paridad-design.md).
 
@@ -66,7 +68,7 @@ bash scripts/run-all.sh                            # cadena completa con una ron
 Cómo se acelera:
 
 - `run-agent.sh` arranca la sesión directamente como el agente (`claude -p --agent <nombre>`), sin una sesión intermedia que delegue. Mismo modelo y esfuerzo que en uso real.
-- `snapshot.sh` guarda el workspace tras cada etapa de la cadena (`fixture`, `indexer`, `analyst`, `tl-adrs`, `tl-specs`, `tl-tasks`, `qa`, `pm`) con una huella del fixture y de los prompts. Las pruebas restauran la etapa que necesitan. Si cambias un prompt, solo se rehacen esa etapa y las posteriores; cambiar el resolver o el orquestador no rehace nada.
+- `snapshot.sh` guarda el workspace tras cada etapa de la cadena (`fixture`, `indexer`, `analyst`, `tl-adrs`, `tl-specs`, `qa`, `tl-tasks`, `pm`) con una huella del fixture y de los prompts. Las pruebas restauran la etapa que necesitan. Si cambias un prompt, solo se rehacen esa etapa y las posteriores; cambiar el resolver o el orquestador no rehace nada.
 - `test-agents.sh` corre las pruebas en paralelo (`JOBS=3` por defecto), cada una en su propio workspace bajo `.work/ws/`, con un log por prueba en `.work/logs/`.
 
 Pruebas individuales, todas aceptan `WORKDIR`:
@@ -81,6 +83,7 @@ Pruebas individuales, todas aceptan `WORKDIR`:
 | `test-orchestrator.sh` | diagnóstico en varios estados |
 | `test-indexer-escala.sh` | reanuda un índice con el corte plantado sin reescribir lo hecho; `solo el repo bff` no escribe lo compartido; consolidar no reindexa |
 | `test-paralelo.sh` | tres `migration-tl-specs` y tres `migration-qa` a la vez en el mismo workspace, y `solo la cobertura` |
+| `test-hallazgo.sh` | resolver un hallazgo de QA antes de generar tareas solo obliga a repetir el plan; después nada queda desactualizado |
 | `test-versiones.sh` | cada generador sube `rev` al reescribir y anota sus insumos; `migration-pm` no sube el `rev` de las tareas |
 | `test-destino.sh` | con `{bff: Kotlin, frontend: conservar}` no hay ADRs propuestos ni tareas para el frontend, y un mapa incompleto detiene a tl-tasks |
 | `test-auditor.sh` | el auditor no inventa contradicciones y detecta tres errores plantados sin modificar specs |

@@ -33,8 +33,8 @@ Son 10 subagentes:
 - `migration-analyst`: paso 2, mapa de capacidades.
 - `migration-tl-adrs`: paso 3, ADRs.
 - `migration-tl-specs`: paso 4, specs por capacidad.
-- `migration-tl-tasks`: paso 5, tareas de implementación.
-- `migration-qa`: paso 6, planes de prueba.
+- `migration-qa`: paso 5, planes de prueba.
+- `migration-tl-tasks`: paso 6, tareas de implementación.
 - `migration-pm`: paso 7, backlog.
 
 Después abre una sesión nueva de Claude Code en esa carpeta, porque los subagentes se cargan al iniciar.
@@ -293,7 +293,7 @@ Tres cosas a tener en cuenta al revisar:
 - **Aplicar una mejora cambia el alcance.** El destino dejará de ser equivalente al origen en ese punto, y habrá que regenerar tareas y pruebas de esa capacidad (sección 4).
 - **Si una pregunta abierta es en realidad una mejora**, o al revés, corrígelo con el resolver. Una pregunta abierta bloquea tareas y deja casos de prueba pendientes; una mejora no.
 
-### Auditar los specs (recomendado antes del paso 5)
+### Auditar los specs (recomendado antes de los planes de prueba)
 
 **Qué es:** una comprobación automática de fidelidad. El auditor recorre cada regla de cada spec, abre el código que cita, decide qué hace ese código y solo entonces lo compara con lo que afirma la regla. No es un paso obligatorio ni numerado: puedes correrlo cuando quieras y tantas veces como haga falta.
 
@@ -346,25 +346,11 @@ Qué hacer:
 - Corrige con el resolver, usando el prompt que trae cada hallazgo, y repite el auditor para esa capacidad. Un hallazgo corregido desaparece en la siguiente auditoría; no hay que marcarlo.
 - El auditor no modifica specs y no ejecuta código ni tests. Tampoco sustituye tu revisión: comprueba que cada regla tiene respaldo, no que el spec esté completo.
 
-### Paso 5: tareas
+### Paso 5: planes de prueba
 
-**Qué es:** convierte los specs y las decisiones de los ADRs en tareas de implementación para el lenguaje destino, una por archivo en `migration/tasks/`. Primero las fundacionales (estructura del proyecto, build, integración continua) y luego las de cada capacidad. Cada tarea indica de qué otras depende, su tamaño, criterios de aceptación que citan las reglas del spec y, si queda algo sin decidir, qué la bloquea.
+**Qué es:** escribe un plan de pruebas por capacidad en `migration/test-plans/`, con casos en formato Dado/Cuando/Entonces que cubren el camino feliz, los casos borde, los errores y los contratos de API. Cada caso dice qué regla o caso borde cubre. Los planes se escriben antes que las tareas y no las citan: QA es la última revisión del spec, y conviene hacerla antes de derivar nada de él. Lo que el spec no define queda como caso pendiente, y las ambigüedades que encuentra quedan como hallazgos `H-n`. `_cobertura.md` resume qué quedó sin cubrir. Estos planes sirven luego para validar la implementación en el destino.
 
-```
-Usa el subagente migration-tl-tasks
-```
-
-Si quedan ADRs propuestos, se detiene y te da el prompt para decidirlos. Así las tareas se generan una sola vez, con el framework nombrado. Los criterios de aceptación afirman el comportamiento actual que describen las reglas, sin condicionales. Las mejoras sin aplicar no aparecen en las tareas, y solo una pregunta abierta real cuya respuesta cambie qué se construye puede bloquear una tarea. Conviene llegar aquí con los specs auditados: una regla equivocada se convierte en un criterio de aceptación equivocado. Corrige con el resolver:
-
-```
-Usa el subagente migration-tl-resolver: la tarea T-016 también depende de T-004 y es tamaño L
-```
-
-### Paso 6: planes de prueba
-
-**Qué es:** escribe un plan de pruebas por capacidad en `migration/test-plans/`, con casos en formato Dado/Cuando/Entonces que cubren el camino feliz, los casos borde, los errores y los contratos de API. Cada caso dice qué regla o caso borde cubre y qué tareas lo implementan. Lo que el spec no define queda como caso pendiente, y las ambigüedades que encuentra quedan como hallazgos `H-n`. `_cobertura.md` resume qué quedó sin cubrir. Estos planes sirven luego para validar la implementación en el destino.
-
-Antes de correr QA conviene tener los specs validados y las preguntas abiertas respondidas: QA convierte el spec en casos afirmados con seguridad, y cada pregunta abierta sin responder queda como caso pendiente. Los casos prueban el comportamiento actual, incluido el que una mejora propone cambiar: las mejoras sin aplicar no generan casos ni pendientes.
+No hace falta haber decidido los ADRs propuestos: QA no depende de ellos, así que puedes lanzarlo mientras los decides. Antes de correr QA conviene tener los specs validados y las preguntas abiertas respondidas: QA convierte el spec en casos afirmados con seguridad, y cada pregunta abierta sin responder queda como caso pendiente. Los casos prueban el comportamiento actual, incluido el que una mejora propone cambiar: las mejoras sin aplicar no generan casos ni pendientes.
 
 ```
 Usa el subagente migration-qa
@@ -382,7 +368,21 @@ Revisa los hallazgos `H-n` al final de cada plan. Decide y aplica al spec:
 Usa el subagente migration-tl-resolver: resuelve el hallazgo H-1 del plan carrito: el esquema Bearer no distingue mayúsculas
 ```
 
-Luego repite QA para esa capacidad (`Usa el subagente migration-qa, solo la capacidad carrito`) y consolida la cobertura (`Usa el subagente migration-qa, solo la cobertura`). Si falta un caso cuyo comportamiento no está en el spec, el resolver te pedirá añadirlo primero al spec.
+Luego repite QA para esa capacidad (`Usa el subagente migration-qa, solo la capacidad carrito`) y consolida la cobertura (`Usa el subagente migration-qa, solo la cobertura`). Como las tareas todavía no existen, no hay nada más que regenerar: por eso los planes van antes. Si falta un caso cuyo comportamiento no está en el spec, el resolver te pedirá añadirlo primero al spec.
+
+### Paso 6: tareas
+
+**Qué es:** convierte los specs y las decisiones de los ADRs en tareas de implementación para el lenguaje destino, una por archivo en `migration/tasks/`. Primero las fundacionales (estructura del proyecto, build, integración continua) y luego las de cada capacidad. Cada tarea indica de qué otras depende, su tamaño, criterios de aceptación que citan las reglas del spec y, si queda algo sin decidir, qué la bloquea.
+
+```
+Usa el subagente migration-tl-tasks
+```
+
+Si quedan ADRs propuestos, se detiene y te da el prompt para decidirlos. Así las tareas se generan una sola vez, con el framework nombrado. Los criterios de aceptación afirman el comportamiento actual que describen las reglas, sin condicionales. Las mejoras sin aplicar no aparecen en las tareas, y solo una pregunta abierta real cuya respuesta cambie qué se construye puede bloquear una tarea. Conviene llegar aquí con los specs auditados y los hallazgos de QA resueltos: una regla equivocada se convierte en un criterio de aceptación equivocado, y cada cambio posterior en el spec obliga a regenerar sus tareas. Cada tarea de capacidad trae una sección `## Pruebas` con la ruta de su plan; los casos que la validan son los que cubren las reglas de sus criterios. Si falta el plan de alguna capacidad, las tareas se generan igual y el resumen lo avisa. Corrige con el resolver:
+
+```
+Usa el subagente migration-tl-resolver: la tarea T-016 también depende de T-004 y es tamaño L
+```
 
 ### Paso 7: backlog
 
@@ -406,25 +406,26 @@ y repite el PM.
 
 ## 4. Qué repetir después de un cambio
 
-Los agentes forman una cadena: specs → tareas → planes de prueba → backlog. Cuando cambias algo, hay que regenerar lo que viene **después** en la cadena, en ese orden, y acotado a la capacidad afectada cuando se pueda. Nada se regenera solo.
+Los agentes forman una cadena: specs → planes de prueba → tareas → backlog. Los planes y las tareas dependen del spec y no entre sí: cambiar tareas no obliga a repetir QA. Cuando cambias algo, hay que regenerar lo que viene **después** en la cadena, en ese orden, y acotado a la capacidad afectada cuando se pueda. Nada se regenera solo.
 
 | Cambiaste | Repite, en este orden |
 |---|---|
 | Corregiste un spec por un hallazgo `AU-n` del auditor | `migration-auditor, solo la capacidad X` para confirmar que el hallazgo desapareció; después, como cualquier cambio de spec. |
-| El código de un repo | `migration-indexer`; `migration-analyst` si pudieron cambiar las capacidades; `migration-tl-specs, solo la capacidad X` para las afectadas (actualiza las citas y los commits); `migration-auditor` sobre ellas; luego `migration-tl-tasks`, `migration-qa` y `migration-pm` para esas capacidades. |
-| Agrupaste o dividiste capacidades | `migration-analyst` con la indicación; `migration-tl-specs` para las capacidades nuevas; `migration-tl-tasks`, `migration-qa`, `migration-pm`. |
-| Excluiste una capacidad | Si el resolver lista tareas con `depende_de` roto o specs que la mencionan, corrígelos con el resolver. Luego `migration-qa` (para que `_cobertura.md` deje de contarla) y `migration-pm` (para que salga del backlog). |
-| Decidiste un ADR propuesto después de generar tareas | `migration-tl-tasks` (para que las notas nombren la tecnología elegida); `migration-qa` si las tareas cambiaron; `migration-pm`. |
+| El código de un repo | `migration-indexer`; `migration-analyst` si pudieron cambiar las capacidades; `migration-tl-specs, solo la capacidad X` para las afectadas (actualiza las citas y los commits); `migration-auditor` sobre ellas; luego `migration-qa`, `migration-tl-tasks` y `migration-pm` para esas capacidades. |
+| Agrupaste o dividiste capacidades | `migration-analyst` con la indicación; `migration-tl-specs` para las capacidades nuevas; `migration-qa`, `migration-tl-tasks`, `migration-pm`. |
+| Excluiste una capacidad | Si el resolver lista tareas con `depende_de` roto o specs que la mencionan, corrígelos con el resolver. Luego `migration-qa, solo la cobertura` (para que `_cobertura.md` deje de contarla) y `migration-pm` (para que salga del backlog). |
+| Decidiste un ADR propuesto después de generar tareas | `migration-tl-tasks` (para que las notas nombren la tecnología elegida) y `migration-pm`. Los planes no cambian. |
 | Corregiste un ADR observado | Si cambia el comportamiento, llévalo al spec con el resolver y sigue la fila siguiente. Si solo cambia cómo se implementa, `migration-tl-tasks` y `migration-pm`. |
-| Un spec: regla, contrato o caso borde | `migration-tl-tasks, solo la capacidad X`; `migration-qa, solo la capacidad X`; `migration-pm`. |
-| El destino de un repositorio, o pasaste uno a `conservar` | `migration-tl-adrs` (retira o añade las decisiones de ese repositorio); `migration-tl-tasks`; `migration-qa`; `migration-pm`. El resolver te lista los ADRs y tareas afectados y no borra nada. Los specs solo cambian en la nota de alcance. |
-| Aplicaste una mejora `MJ-n` | Igual que un cambio de spec: `migration-tl-tasks`, `migration-qa` y `migration-pm`, con `solo la capacidad X`. Descartarla no requiere repetir nada. |
+| Un spec: regla, contrato o caso borde | `migration-qa, solo la capacidad X` y `migration-qa, solo la cobertura`; si ya hay tareas, `migration-tl-tasks, solo la capacidad X` y `migration-pm`. |
+| El destino de un repositorio, o pasaste uno a `conservar` | `migration-tl-adrs` (retira o añade las decisiones de ese repositorio); `migration-qa`; `migration-tl-tasks`; `migration-pm`. El resolver te lista los ADRs y tareas afectados y no borra nada. Los specs solo cambian en la nota de alcance. |
+| Aplicaste una mejora `MJ-n` | Igual que un cambio de spec: `migration-qa` y, si ya hay tareas, `migration-tl-tasks` y `migration-pm`, con `solo la capacidad X`. Descartarla no requiere repetir nada. |
 | Reclasificaste una pregunta como mejora | `migration-qa, solo la capacidad X` para que desaparezca el caso pendiente. Si esa pregunta bloqueaba tareas, el resolver ya quitó el bloqueo; `migration-pm` para actualizar el backlog. |
 | Actualizaste los agentes a la versión con citas y auditor en un proyecto ya empezado | `migration-indexer` (añade el commit de cada repo y el bloque nuevo); `migration-tl-specs` para que los specs `generado` reciban citas y `commits:`; `migration-auditor`. Los specs `revisado` no se regeneran: el auditor los revisa igual y reporta cada regla sin cita con la línea que encontró, para que la añadas con el resolver. |
-| Actualizaste los agentes a la versión con política de paridad en un proyecto ya empezado | `migration-indexer` (añade `politica: paridad` y el bloque nuevo); `migration-tl-specs` para reclasificar los specs `generado`; luego `migration-tl-tasks`, `migration-qa` y `migration-pm`. Los specs `revisado` no se regeneran: reclasifica sus preguntas con el resolver. |
+| Actualizaste los agentes a la versión con política de paridad en un proyecto ya empezado | `migration-indexer` (añade `politica: paridad` y el bloque nuevo); `migration-tl-specs` para reclasificar los specs `generado`; luego `migration-qa`, `migration-tl-tasks` y `migration-pm`. Los specs `revisado` no se regeneran: reclasifica sus preguntas con el resolver. |
 | Respondiste una pregunta abierta | Si la convertiste en regla o cambia qué se construye, igual que la fila anterior. Si solo confirma el comportamiento actual, `migration-qa, solo la capacidad X` para que el caso pendiente pase a ser un caso normal. |
-| Resolviste un hallazgo `H-n` de QA | Igual que un cambio de spec: `migration-tl-tasks` si cambia qué se construye, luego `migration-qa` y `migration-pm`, todo con `solo la capacidad X`. |
-| Una tarea: dependencias, tamaño, fase o prioridad | `migration-pm`. |
+| Resolviste un hallazgo `H-n` de QA | `migration-qa, solo la capacidad X` y `migration-qa, solo la cobertura`. Si todavía no generaste tareas, nada más. Si ya las hay y cambia qué se construye, `migration-tl-tasks, solo la capacidad X` y `migration-pm`. |
+| Una tarea: dependencias, tamaño, fase o prioridad | `migration-pm`. Los planes no cambian. |
+| Actualizaste los agentes a la versión con los planes antes que las tareas en un proyecto ya empezado | Nada obligatorio. Los planes antiguos que traen `tareas:` y líneas `- Tareas:` siguen siendo válidos y se limpian cuando se regeneren. Si tienes tareas y ningún plan, el orquestador te propone `migration-qa` y después `migration-pm`, sin regenerar las tareas. |
 | Un plan de prueba | Nada; queda `revisado`. |
 | Una plantilla de `migration/templates/` | El agente que genera ese tipo de artefacto, y lo que venga después. |
 
@@ -435,23 +436,20 @@ Generaste tareas forzando ADRs propuestos y luego los decides:
 ```
 Usa el subagente migration-tl-resolver: en los ADRs 0011, 0012 y 0013 acepta la recomendación
 Usa el subagente migration-tl-tasks
-Usa el subagente migration-qa
 Usa el subagente migration-pm
 ```
 
-El resolver ya quita esos ADRs de `bloqueada_por`, pero las notas de las tareas se escribieron sin conocer la tecnología: por eso se regeneran. QA solo hace falta si las tareas cambiaron, porque sus casos citan ids de tareas.
+El resolver ya quita esos ADRs de `bloqueada_por`, pero las notas de las tareas se escribieron sin conocer la tecnología: por eso se regeneran. Los planes de prueba no se tocan: no dependen de las tareas ni de los ADRs.
 
 QA encontró hallazgos en el plan de carrito:
 
 ```
 Usa el subagente migration-tl-resolver: resuelve el hallazgo H-1 del plan carrito: DELETE /cart/items/ sin id responde 404 sin cuerpo
-Usa el subagente migration-tl-tasks, solo la capacidad carrito
 Usa el subagente migration-qa, solo la capacidad carrito
 Usa el subagente migration-qa, solo la cobertura
-Usa el subagente migration-pm
 ```
 
-El segundo paso solo hace falta si la decisión cambia qué se construye, por ejemplo una regla nueva que alguna tarea debe cubrir. Si solo aclara un detalle ya cubierto, pasa directo a QA.
+Eso es todo si aún no generaste las tareas, que es lo normal: QA va antes precisamente para que resolver sus hallazgos no obligue a rehacer nada más. Si las tareas ya existían y la decisión cambia qué se construye, añade `Usa el subagente migration-tl-tasks, solo la capacidad carrito` y `Usa el subagente migration-pm`.
 
 **Lo `revisado` no se regenera.** Si marcaste `revisado` un spec, una tarea o un plan, el agente correspondiente lo conserva tal cual, incluidos los que editó el resolver, porque él marca `revisado` lo que toca. Si quieres que se regenere, cambia a mano su línea `estado: revisado` por `estado: generado` y repite el agente. Es la única edición manual que el flujo espera de ti.
 
@@ -462,7 +460,7 @@ El segundo paso solo hace falta si la decisión cambia qué se construye, por ej
 | Artefacto | Anota | Queda desactualizado si |
 |---|---|---|
 | Tarea | `spec_rev: 2` y `adrs_rev: {0003: 1, 0011: 2}` | el spec o alguno de esos ADRs tiene ahora un `rev` mayor |
-| Plan de pruebas | `spec_rev: 2` y `tareas: [T-011, T-012]` | el spec tiene un `rev` mayor, o las tareas de ese spec ya no son esas |
+| Plan de pruebas | `spec_rev: 2` | el spec tiene un `rev` mayor. Añadir, quitar o regenerar tareas no lo desactualiza |
 | Sección de auditoría | `Spec rev: 2.` en su línea `Auditada:` | el spec tiene un `rev` mayor |
 | Backlog | columna `Rev` junto a cada tarea | alguna tarea tiene otro `rev`, falta o sobra alguna, o lista un bloqueo que la tarea ya no tiene |
 

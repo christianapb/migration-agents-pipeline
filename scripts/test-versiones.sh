@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Versiones de artefactos: cada generador sube `rev` al reescribir un artefacto
 # existente y anota la versión de sus insumos; migration-pm no sube el `rev` de
-# las tareas. Parte de la instantánea qa y repite la cadena sobre ella.
+# las tareas. Parte de la instantánea tl-tasks (planes y tareas) y repite la cadena sobre ella.
 set -uo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 W="${WORKDIR:-$ROOT/.work/sample-workspace}"
@@ -14,7 +14,7 @@ fail() { echo "FAIL: $*"; fails=$((fails+1)); }
 run() { bash "$ROOT/scripts/run-agent.sh" "$@"; rc=$?; [ $rc -eq 2 ] && { echo "ERROR: límite de uso, repetir"; exit 2; }; return $rc; }
 . "$ROOT/scripts/lib-rev.sh"
 
-bash "$ROOT/scripts/snapshot.sh" restore qa "$W" >/dev/null || { echo "FAIL: no se pudo restaurar la etapa qa"; exit 1; }
+bash "$ROOT/scripts/snapshot.sh" restore tl-tasks "$W" >/dev/null || { echo "FAIL: no se pudo restaurar la etapa tl-tasks"; exit 1; }
 
 # Guarda "archivo md5 rev" de cada archivo de una carpeta.
 foto() { # <carpeta> <salida>
@@ -76,13 +76,11 @@ for t in $(grep -l "^spec: $S$" "$M"/tasks/T-*.md); do
 done
 bash "$ROOT/scripts/verify-tl-tasks.sh" >/dev/null || fail "tl-tasks: las tareas no pasan el verificador tras la segunda corrida"
 
-# 4. migration-qa anota el spec y las tareas en el plan
+# 4. migration-qa anota la versión del spec en el plan, y no cita tareas
 run migration-qa "Solo la capacidad $S." >/dev/null
 p="$M/test-plans/$S.md"
 [ "$(campo "$p" spec_rev)" = "$srev" ] || fail "qa: el plan $S anota spec_rev '$(campo "$p" spec_rev)' y el spec tiene rev $srev"
-esperadas="$(grep -l "^spec: $S$" "$M"/tasks/T-*.md | xargs -r -n1 basename | grep -oE '^T-[0-9]+' | sort | paste -sd' ' -)"
-anotadas="$(lista "$(campo "$p" tareas)" | sort | paste -sd' ' -)"
-[ "$esperadas" = "$anotadas" ] || fail "qa: el plan $S anota tareas '$anotadas' y las del spec son '$esperadas'"
+grep -qE '^tareas:|^- Tareas:' "$p" && fail "qa: el plan $S cita tareas"
 # Con alcance QA no escribe _cobertura.md: se consolida aparte
 run migration-qa "Solo la cobertura." >/dev/null
 bash "$ROOT/scripts/verify-qa.sh" >/dev/null || fail "qa: los planes no pasan el verificador"
