@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block contenido %}
+<form method="get">
+  <label>Aforo mínimo <input name="aforo" type="number" min="1" value="{{ aforo }}"></label>
+  <button>Filtrar</button>
+</form>
+{% if salas %}
+<ul>
+  {% for s in salas %}
+  <li><a href="{{ url_for('salas.detalle', sala_id=s.id) }}">{{ s.nombre }}</a> ({{ s.aforo }} personas)</li>
+  {% endfor %}
+</ul>
+{% else %}
+<p>No hay salas disponibles con ese aforo.</p>
+{% endif %}
+{% endblock %}

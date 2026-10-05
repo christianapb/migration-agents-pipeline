@@ -56,6 +56,8 @@ Viven en el bloque de `CLAUDE.md` que escribe el indexador: estados (`generado`,
 
 **Diagnóstico del orquestador.** El siguiente paso sale de un procedimiento fijo: indexar, registrar versiones, el agente del punto más temprano de la cadena con algo que falte o esté desactualizado, y tres puertas que resuelve el resolver (destino, ADRs propuestos y hallazgos `H-n` antes de las tareas). La respuesta termina con una sección `## Datos` en forma fija. Diseño: [`docs/specs/2026-10-05-orquestador-estable-design.md`](docs/specs/2026-10-05-orquestador-estable-design.md).
 
+**Fidelidad.** Con `FIXTURE=1`, `verify-tl-specs.sh` comprueba además, con `scripts/verify-hechos.sh`, que las reglas `RN-n` y `CB-n` recogen los hechos del código del fixture y no afirman sus trampas. Los datos están en `fixtures/hechos/<fixture>.txt`; `FIXTURE_NAME` elige el fixture (por defecto `sample-workspace`) y `CONOCIDOS="id ..."` declara fallos conocidos. La comprobación de "sin código del lenguaje origen" reconoce JavaScript, Python y la familia de Java. Diseño: [`docs/specs/2026-10-05-fidelidad-y-segundo-fixture-design.md`](docs/specs/2026-10-05-fidelidad-y-segundo-fixture-design.md).
+
 **Política de paridad.** `politica: paridad` es la única política: el destino reproduce el comportamiento observado salvo decisión explícita. En cada spec, `## 12. Preguntas abiertas` contiene solo lo que el código no permite determinar, y `## 13. Posibles mejoras` lista como `MJ-n` lo que el código determina pero parece mejorable. Las mejoras no bloquean tareas ni generan casos pendientes; se aplican o descartan con `migration-tl-resolver`. Diseño: [`docs/specs/2026-10-01-politica-paridad-design.md`](docs/specs/2026-10-01-politica-paridad-design.md).
 
 ## Pruebas
@@ -75,7 +77,7 @@ bash scripts/run-all.sh                            # cadena completa con una ron
 Cómo se acelera:
 
 - `run-agent.sh` arranca la sesión directamente como el agente (`claude -p --agent <nombre>`), sin una sesión intermedia que delegue. Mismo modelo y esfuerzo que en uso real.
-- `snapshot.sh` guarda el workspace tras cada etapa de la cadena (`fixture`, `indexer`, `analyst`, `tl-adrs`, `tl-specs`, `qa`, `tl-tasks`, `pm`) con una huella del fixture y de los prompts. Las pruebas restauran la etapa que necesitan. Si cambias un prompt, solo se rehacen esa etapa y las posteriores; cambiar el resolver o el orquestador no rehace nada.
+- `snapshot.sh` guarda el workspace tras cada etapa de la cadena (`fixture`, `indexer`, `analyst`, `tl-adrs`, `tl-specs`, `qa`, `tl-tasks`, `pm`) con una huella del fixture y de los prompts. `FIXTURE_NAME=<nombre>` cambia de fixture (instantáneas en `.work/snapshots-<nombre>`) y `snapshot.sh status` dice qué etapas siguen vigentes sin construir nada. Las pruebas restauran la etapa que necesitan. Si cambias un prompt, solo se rehacen esa etapa y las posteriores; cambiar el resolver o el orquestador no rehace nada.
 - `test-agents.sh` corre las pruebas en paralelo (`JOBS=3` por defecto), cada una en su propio workspace bajo `.work/ws/`, con un log por prueba en `.work/logs/`.
 
 Pruebas individuales, todas aceptan `WORKDIR`:
@@ -91,6 +93,7 @@ Pruebas individuales, todas aceptan `WORKDIR`:
 | `test-indexer-escala.sh` | reanuda un índice con el corte plantado sin reescribir lo hecho; `solo el repo bff` no escribe lo compartido; consolidar no reindexa |
 | `test-paralelo.sh` | tres `migration-tl-specs` y tres `migration-qa` a la vez en el mismo workspace, y `solo la cobertura` |
 | `test-hallazgo.sh` | resolver un hallazgo de QA antes de generar tareas solo obliga a repetir el plan; después nada queda desactualizado |
+| `test-reservas.sh` | la cadena completa sobre el segundo fixture, con destino Go: verificadores de etapa, hechos, trampas, auditor e informe de qué hizo el flujo con la base de datos y el proceso programado. No entra en la corrida por defecto: `bash scripts/test-agents.sh fixture-reservas` |
 | `test-pm.sh` | con un ciclo o una dependencia rota el PM no escribe nada; sin `backlog.sh` se detiene y lo dice |
 | `test-versiones.sh` | cada generador sube `rev` al reescribir y anota sus insumos; `migration-pm` no sube el `rev` de las tareas |
 | `test-destino.sh` | con `{bff: Kotlin, frontend: conservar}` no hay ADRs propuestos ni tareas para el frontend, y un mapa incompleto detiene a tl-tasks |
@@ -102,7 +105,9 @@ Las corridas de agentes usan `claude -p` con permisos desactivados: solo sobre w
 ## Estructura
 
 - `agents/`: los diez subagentes.
-- `fixtures/sample-workspace/`: frontend y BFF mínimos para probar.
+- `fixtures/sample-workspace/`: frontend React y BFF Express mínimos; el fixture por defecto de las pruebas.
+- `fixtures/reservas-workspace/`: segundo fixture, un monolito Flask con SQLite, páginas en servidor, un proceso programado y cinco trampas plantadas.
+- `fixtures/hechos/`: por cada fixture, los hechos que sus specs deben recoger, las trampas que no deben afirmar y qué debe indexarse. Fuera de la carpeta que se copia como workspace, para que el indexador no los vea.
 - `scripts/`: instalación, corrida y verificación.
 - `docs/`: tutorial, diseños y planes.
 

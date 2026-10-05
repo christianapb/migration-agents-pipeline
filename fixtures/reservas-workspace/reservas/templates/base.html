@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <title>{% block titulo %}Reservas{% endblock %}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='estilo.css') }}">
+</head>
+<body>
+  <header>
+    <img src="{{ url_for('static', filename='logo.png') }}" alt="">
+    {% if session.usuario_id %}
+    <nav>
+      <a href="{{ url_for('salas.listado') }}">Salas</a>
+      <a href="{{ url_for('reservas.mias') }}">Mis reservas</a>
+      <form method="post" action="{{ url_for('auth.salir') }}"><button>Salir</button></form>
+    </nav>
+    {% endif %}
+  </header>
+  <main>{% block contenido %}{% endblock %}</main>
+</body>
+</html>

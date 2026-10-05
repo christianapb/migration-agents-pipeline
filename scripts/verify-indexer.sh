@@ -2,8 +2,8 @@
 # Verifica los artefactos del indexador: índice de cada repositorio, índice
 # general, migration/README.md, plantillas y bloque de CLAUDE.md.
 # Carpeta: WORKDIR o, por defecto, la actual.
-# FIXTURE=1 añade las comprobaciones propias del fixture de este repo (qué
-# archivos deben y no deben aparecer en los índices de frontend y bff, y los
+# FIXTURE=1 añade las comprobaciones propias del fixture (qué archivos deben y
+# no deben aparecer en cada índice, según fixtures/hechos/<fixture>.txt, y los
 # campos de las plantillas de la versión actual de los agentes).
 set -uo pipefail
 W="${WORKDIR:-$PWD}"
@@ -22,9 +22,6 @@ for d in "$W"/*/; do
   done
 done
 [ "${#repos[@]}" -gt 0 ] || fail "no se detectó ningún repositorio en $W"
-if [ "$FX" = 1 ]; then
-  for r in frontend bff; do printf '%s\n' "${repos[@]}" | grep -qx "$r" || fail "fixture: no se detectó el repositorio $r"; done
-fi
 
 for r in "${repos[@]}"; do
   f="$W/$r/index.md"
@@ -37,20 +34,22 @@ for r in "${repos[@]}"; do
   grep -q 'Índice incompleto' "$f" && fail "$r/index.md marcado incompleto"
 done
 
-if [ "$FX" = 1 ] && [ -f "$W/bff/index.md" ] && [ -f "$W/frontend/index.md" ]; then
-  # Exclusiones fijas (los archivos están trackeados en git, así que solo la lista fija los saca)
-  grep -q 'package-lock.json' "$W/bff/index.md" && fail "bff: lockfile indexado"
-  grep -q 'package-lock.json' "$W/frontend/index.md" && fail "frontend: lockfile indexado"
-  grep -q '\.snap' "$W/bff/index.md" && fail "bff: snapshot indexado"
-  grep -q 'logo.png' "$W/frontend/index.md" && fail "frontend: imagen indexada"
-  grep -q '`server.js`' "$W/bff/index.md" && fail "bff: dist/server.js indexado"
-  # Inclusiones: todo archivo de código y de configuración relevante
-  for f in server.ts errors.ts auth.ts products.ts cart.ts identity.ts catalog.ts cart.test.ts package.json tsconfig.json .env.example; do
-    grep -q "\`$f\`" "$W/bff/index.md" || fail "bff: falta $f en el índice"
-  done
-  for f in main.tsx client.ts session.ts Login.tsx Products.tsx Cart.tsx package.json vite.config.ts index.html; do
-    grep -q "\`$f\`" "$W/frontend/index.md" || fail "frontend: falta $f en el índice"
-  done
+# Qué debe y qué no debe aparecer en cada índice: propio de cada fixture, en
+# las líneas indice y no-indice de fixtures/hechos/<fixture>.txt
+HECHOS_F="${HECHOS:-$(cd "$(dirname "$0")" && pwd)/../fixtures/hechos/${FIXTURE_NAME:-sample-workspace}.txt}"
+if [ "$FX" = 1 ] && [ -f "$HECHOS_F" ]; then
+  while IFS= read -r l; do
+    tipo="$(printf '%s' "$l" | awk -F' \\| ' '{print $1}')"
+    case "$tipo" in indice|no-indice) ;; *) continue ;; esac
+    r="$(printf '%s' "$l" | awk -F' \\| ' '{print $3}')"; arch="$(printf '%s' "$l" | awk -F' \\| ' '{print $4}')"
+    [ -f "$W/$r/index.md" ] || continue
+    case "$arch" in '`'*) pat="$arch" ;; *) pat="\`$arch\`" ;; esac
+    if [ "$tipo" = indice ]; then
+      grep -qF -- "$pat" "$W/$r/index.md" || fail "$r: falta $arch en el índice"
+    else
+      grep -qF -- "$pat" "$W/$r/index.md" && fail "$r: $arch está en el índice y no debería"
+    fi
+  done < <(tr -d '\r' < "$HECHOS_F" | grep -E '^(indice|no-indice) ')
 fi
 
 # Bootstrap de migration/

@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block contenido %}
+<h1>Mis reservas</h1>
+<table>
+  <tr><th>Sala</th><th>Inicio</th><th>Fin</th><th>Estado</th><th></th></tr>
+  {% for r in reservas %}
+  <tr>
+    <td>{{ r.sala }}</td><td>{{ r.inicio }}</td><td>{{ r.fin }}</td><td>{{ r.estado }}</td>
+    <td>
+      {% if r.estado == 'pendiente' %}
+      <form method="post" action="{{ url_for('reservas.confirmar', reserva_id=r.id) }}"><button>Confirmar</button></form>
+      {% endif %}
+      {% if r.estado in ('pendiente', 'confirmada') %}
+      <form method="post" action="{{ url_for('reservas.cancelar', reserva_id=r.id) }}"><button>Cancelar</button></form>
+      {% endif %}
+    </td>
+  </tr>
+  {% endfor %}
+</table>
+{% endblock %}

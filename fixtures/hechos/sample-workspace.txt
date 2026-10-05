@@ -1,0 +1,78 @@
+# Hechos del fixture sample-workspace (frontend React + BFF Express).
+#
+# Escritos leyendo el código, antes de mirar ningún spec generado. Cada línea:
+#   tipo | id | capacidad | patrones | descripción y dónde está en el código
+#
+# tipo:
+#   hecho        alguna RN-n o CB-n no retirada de los specs de esa capacidad
+#                cumple todos los patrones a la vez
+#   trampa       ninguna RN-n o CB-n de esos specs cumple todos los patrones
+#   mejora       alguna MJ-n de la sección 13 cumple todos los patrones
+#   no-pregunta  ninguna pregunta abierta de la sección 12 cumple todos los patrones
+#   indice       el índice del repositorio (campo capacidad) lista ese archivo
+#   no-indice    el índice del repositorio no lista ese archivo
+#
+# capacidad: expresión regular sobre el slug del spec (el analista elige los slugs).
+# patrones: expresiones regulares separadas por " && ", sin distinguir mayúsculas.
+# Se apoyan en números, códigos y rutas, no en frases.
+
+# --- Autenticación (bff/src/routes/auth.ts, bff/src/middleware/auth.ts, bff/src/services/identity.ts, frontend/src/store/session.ts)
+hecho | A1 | auth|autentic|sesi|login | 15 ?m|quince min | el token de acceso caduca a los 15 minutos (auth.ts:17)
+hecho | A2 | auth|autentic|sesi|login | 7 ?d|siete d | el token de refresco caduca a los 7 días (auth.ts:18)
+hecho | A3 | auth|autentic|sesi|login | 400 && VALIDATION | credenciales con formato inválido responden 400 VALIDATION (auth.ts:14)
+hecho | A4 | auth|autentic|sesi|login | 401 && BAD_CREDENTIALS | credenciales incorrectas responden 401 BAD_CREDENTIALS (auth.ts:16)
+hecho | A5 | auth|autentic|sesi|login | \b8\b && contraseñ|password | la contraseña exige al menos 8 caracteres (auth.ts:8)
+hecho | A6 | auth|autentic|sesi|login | 401 && TOKEN_EXPIRED | token inválido o caducado responde 401 TOKEN_EXPIRED (auth.ts:30, middleware/auth.ts:20)
+hecho | A7 | auth|autentic|sesi|login | 401 && UNAUTHENTICATED | sin token Bearer responde 401 UNAUTHENTICATED (middleware/auth.ts:14)
+hecho | A8 | auth|autentic|sesi|login | dev-secret | el secreto de firma tiene valor por defecto "dev-secret" (auth.ts:7)
+hecho | A9 | auth|autentic|sesi|login | \b200\b && identidad|identity | solo un 200 del servicio de identidad da por válidas las credenciales (identity.ts:12)
+hecho | A10 | auth|autentic|sesi|login | shop\.session|localStorage|almacenamiento local | el frontend guarda la sesión en el almacenamiento local, clave shop.session (session.ts:1)
+
+# --- Catálogo (bff/src/routes/products.ts, bff/src/services/catalog.ts, frontend/src/pages/Products.tsx)
+hecho | C1 | product|catalog|listado | ocult|hidden && list|items | el listado excluye los productos ocultos (catalog.ts:15)
+hecho | C2 | product|catalog|listado | ocult|hidden && \b200\b | el detalle de un producto oculto responde 200 sin cuerpo (products.ts:13)
+hecho | C3 | product|catalog|listado | \b404\b | el detalle de un producto inexistente responde 404 (products.ts:12)
+hecho | C4 | product|catalog|listado | 4990 | el catálogo fijo incluye un producto de 4990 céntimos (catalog.ts:9)
+hecho | C5 | product|catalog|listado | 1990 | el catálogo fijo incluye un producto de 1990 céntimos (catalog.ts:10)
+hecho | C6 | product|catalog|listado | \b100\b && decimal | la pantalla muestra el precio dividido entre 100 con dos decimales (Products.tsx:25)
+mejora | C7 | product|catalog|listado | ocult|hidden | el 200 vacío del producto oculto, frente al 404, figura como posible mejora
+no-pregunta | C8 | product|catalog|listado | ocult|hidden | el producto oculto no es una pregunta abierta: el código lo determina
+
+# --- Carrito (bff/src/routes/cart.ts)
+hecho | K1 | carr|cart | \b1\b && \b10\b && qty|cantidad | la cantidad al agregar es un entero entre 1 y 10 (cart.ts:13)
+hecho | K2 | carr|cart | 400 && VALIDATION | una cantidad fuera de rango o un cuerpo inválido responde 400 VALIDATION (cart.ts:27)
+hecho | K3 | carr|cart | \b10\b && sum|acumul|existente | al acumular sobre una línea existente el tope es 10 (cart.ts:32)
+hecho | K4 | carr|cart | \b201\b | agregar responde 201 (cart.ts:35)
+hecho | K5 | carr|cart | 404 && PRODUCT_NOT_FOUND | un producto inexistente responde 404 PRODUCT_NOT_FOUND (cart.ts:29)
+hecho | K6 | carr|cart | ocult|hidden && PRODUCT_NOT_FOUND|\b404\b | un producto oculto tampoco se puede agregar (cart.ts:29)
+hecho | K7 | carr|cart | \b204\b | quitar una línea responde 204 (cart.ts:41)
+hecho | K8 | carr|cart | \b500\b && INTERNAL | un cuerpo JSON mal formado responde 500 INTERNAL, no 400 (server.ts:8, errors.ts:14)
+hecho | K9 | carr|cart | vací && \b404\b | un productId vacío pasa la validación y responde 404 (cart.ts:13, cart.ts:29)
+hecho | K10 | carr|cart | memoria | los carritos viven en memoria del proceso (cart.ts:12)
+
+# --- Índices: qué debe y qué no debe indexarse
+indice | bff | bff | server.ts | código
+indice | bff | bff | errors.ts | código
+indice | bff | bff | auth.ts | código
+indice | bff | bff | products.ts | código
+indice | bff | bff | cart.ts | código
+indice | bff | bff | identity.ts | código
+indice | bff | bff | catalog.ts | código
+indice | bff | bff | cart.test.ts | tests
+indice | bff | bff | package.json | configuración relevante
+indice | bff | bff | tsconfig.json | configuración relevante
+indice | bff | bff | .env.example | configuración relevante
+no-indice | bff | bff | package-lock.json | lockfile
+no-indice | bff | bff | cart.test.ts.snap | snapshot de test
+no-indice | bff | bff | `server.js` | salida compilada en dist/
+indice | frontend | frontend | main.tsx | código
+indice | frontend | frontend | client.ts | código
+indice | frontend | frontend | session.ts | código
+indice | frontend | frontend | Login.tsx | código
+indice | frontend | frontend | Products.tsx | código
+indice | frontend | frontend | Cart.tsx | código
+indice | frontend | frontend | package.json | configuración relevante
+indice | frontend | frontend | vite.config.ts | configuración relevante
+indice | frontend | frontend | index.html | entrada
+no-indice | frontend | frontend | package-lock.json | lockfile
+no-indice | frontend | frontend | logo.png | imagen

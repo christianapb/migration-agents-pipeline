@@ -35,6 +35,8 @@ declare -A MAP=(
   [migration-tl-resolver]="test-resolver test-hallazgo"
   [migration-orchestrator]="test-orchestrator"
   [migration-auditor]="test-auditor"
+  # Segundo fixture: solo cuando se pide por nombre (no entra en la corrida por defecto)
+  [fixture-reservas]="test-reservas"
 )
 ORDER=(migration-indexer migration-analyst migration-tl-adrs migration-tl-specs migration-qa migration-tl-tasks migration-pm migration-tl-resolver migration-orchestrator migration-auditor)
 
