@@ -6,6 +6,9 @@
 # tipo:
 #   hecho        alguna RN-n o CB-n no retirada de los specs de esa capacidad
 #                cumple todos los patrones a la vez
+#   dato         como hecho, pero vale también una línea de las secciones 4 a 8
+#                (flujos, contratos, modelos de datos): para valores que el spec
+#                puede recoger legítimamente en una tabla y no como regla
 #   trampa       ninguna RN-n o CB-n de esos specs cumple todos los patrones
 #   mejora       alguna MJ-n de la sección 13 cumple todos los patrones
 #   no-pregunta  ninguna pregunta abierta de la sección 12 cumple todos los patrones
@@ -32,8 +35,8 @@ hecho | A10 | auth|autentic|sesi|login | shop\.session|localStorage|almacenamien
 hecho | C1 | product|catalog|listado | ocult|hidden && list|items | el listado excluye los productos ocultos (catalog.ts:15)
 hecho | C2 | product|catalog|listado | ocult|hidden && \b200\b | el detalle de un producto oculto responde 200 sin cuerpo (products.ts:13)
 hecho | C3 | product|catalog|listado | \b404\b | el detalle de un producto inexistente responde 404 (products.ts:12)
-hecho | C4 | product|catalog|listado | 4990 | el catálogo fijo incluye un producto de 4990 céntimos (catalog.ts:9)
-hecho | C5 | product|catalog|listado | 1990 | el catálogo fijo incluye un producto de 1990 céntimos (catalog.ts:10)
+dato | C4 | product|catalog|listado | 4990 | el catálogo fijo incluye un producto de 4990 céntimos (catalog.ts:9)
+dato | C5 | product|catalog|listado | 1990 | el catálogo fijo incluye un producto de 1990 céntimos (catalog.ts:10)
 hecho | C6 | product|catalog|listado | \b100\b && decimal | la pantalla muestra el precio dividido entre 100 con dos decimales (Products.tsx:25)
 mejora | C7 | product|catalog|listado | ocult|hidden | el 200 vacío del producto oculto, frente al 404, figura como posible mejora
 no-pregunta | C8 | product|catalog|listado | ocult|hidden | el producto oculto no es una pregunta abierta: el código lo determina

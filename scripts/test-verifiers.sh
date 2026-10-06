@@ -545,11 +545,17 @@ W16="$TMP/h6"; make_ws "$W16"; sed -i 's/^## 9\. Dependencias externas$/CB-2: el
 printf 'trampa | N1 | . | cup.*n && \\b410\\b && !nunca | con negación\n' > "$TMP/hechos-neg.txt"
 WORKDIR="$W16" bash "$ROOT/scripts/verify-hechos.sh" "$TMP/hechos-neg.txt" >/dev/null 2>&1 || fail "verify-hechos dispara una trampa con una regla que cumple el patrón negado"
 WORKDIR="$TMP/h3" bash "$ROOT/scripts/verify-hechos.sh" "$TMP/hechos-neg.txt" >/dev/null 2>&1 && fail "verify-hechos con patrón negado deja pasar una regla que afirma lo falso"
+# Tipo dato: vale una fila de la tabla de modelos de datos, no solo una regla
+W16="$TMP/h7"; make_ws "$W16"; sed -i 's/^## 6\. Modelos de datos$/&\n| p1 | Teclado | 4990 | falso |/' "$W16/migration/specs/alfa.md"
+printf 'dato | D1 | alfa | 4990 | precio en la tabla de datos\nhecho | D2 | alfa | 4990 | el mismo valor exigido como regla\n' > "$TMP/hechos-dato.txt"
+out="$(WORKDIR="$W16" bash "$ROOT/scripts/verify-hechos.sh" "$TMP/hechos-dato.txt" 2>&1)"
+printf '%s' "$out" | grep -q '^FAIL: dato D1' && fail "verify-hechos no acepta un dato recogido en la tabla de modelos de datos"
+printf '%s' "$out" | grep -q '^FAIL: hecho D2' || fail "verify-hechos acepta como hecho un valor que solo está en una tabla"
 # Fallo conocido: se informa y no hace fallar
 out="$(CONOCIDOS="S4" WORKDIR="$TMP/h3" bash "$ROOT/scripts/verify-hechos.sh" 2>&1)" || fail "CONOCIDOS no evita el fallo de un id declarado como conocido"
 printf '%s' "$out" | grep -q '^CONOCIDO: trampa S4 ' || fail "un fallo conocido no se informa"
 # Los hechos del fixture real están bien formados
-bad="$(grep -v '^[[:space:]]*\(#\|$\)' "$ROOT"/fixtures/hechos/*.txt | awk -F' \\| ' 'NF < 5 || $1 !~ /(^|:)(hecho|trampa|mejora|no-pregunta|indice|no-indice)$/' | head -n3)"
+bad="$(grep -v '^[[:space:]]*\(#\|$\)' "$ROOT"/fixtures/hechos/*.txt | awk -F' \\| ' 'NF < 5 || $1 !~ /(^|:)(hecho|dato|trampa|mejora|no-pregunta|indice|no-indice)$/' | head -n3)"
 [ -z "$bad" ] || fail "línea mal formada en fixtures/hechos: $bad"
 
 # 17. Sin código del lenguaje origen: JavaScript, Python y familia de Java; la prosa pasa
