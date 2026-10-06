@@ -4,6 +4,7 @@
 # Las comprobaciones leen la sección "## Datos" de la respuesta (agente, motivo,
 # alcance, paralelo, faltan, desactualizado, sin-version), no su prosa: la
 # redacción cambia de una corrida a otra y los datos no deben hacerlo.
+# (Datos incluye además sin-numerar.)
 # Cada caso deja el workspace en un estado que no depende de lo que el modelo
 # generó en esa instantánea (preguntas abiertas, hallazgos, destino).
 #
@@ -40,7 +41,7 @@ orq() {
     printf '%s' "$out" | grep -q "^$s" || fail "falta la sección '$s'"
   done
   datos="$(printf '%s' "$out" | awk '/^## Datos/{f=1;next} /^## /{f=0} f' | tr -d '\r' | sed -E 's/^[[:space:]`*-]+//; s/[[:space:]`*]+$//')"
-  for k in agente motivo alcance paralelo faltan desactualizado sin-version; do
+  for k in agente motivo alcance paralelo faltan desactualizado sin-version sin-numerar; do
     printf '%s\n' "$datos" | grep -q "^$k:" || fail "la sección Datos no tiene la línea '$k:'"
   done
   next="$(printf '%s' "$out" | awk '/^## Siguiente paso/{f=1;next} /^## /{f=0} f')"
@@ -201,6 +202,7 @@ if quiere sin-cambios || quiere mejoras-no-pendientes; then
   orq "sin-cambios"
   lista_es desactualizado ""
   lista_es sin-version ""
+  lista_es sin-numerar ""
   lista_es faltan ""
   es agente migration-pm
   # Paridad: las mejoras MJ-n no son pendientes de revisión
@@ -300,6 +302,18 @@ if quiere plan-revisado-atrasado; then
   motivo_tiene revisado
   printf '%s' "$next" | grep "migration-tl-resolver: reabre " | grep -q "$S" || fail "no ofrece reabrir el plan de $S"
   printf '%s' "$next" | grep "migration-tl-resolver: registra las versiones de " | grep -q "$S" || fail "no ofrece registrar las versiones del plan de $S"
+fi
+
+if quiere specs-sin-numerar; then
+  # Un spec del formato anterior, con preguntas sin id: pendiente de numerar; no cambia el siguiente paso
+  completo_sin_backlog
+  S="$(caps | head -n1)"
+  awk '/^## 12\. /{print; print "- ¿Qué responde el proveedor externo si el pedido está duplicado?"; print "- ¿Qué zona horaria usa el sistema externo de facturación?"; print ""; s=1; next} /^## /{s=0} !s{print}' "$M/specs/$S.md" > "$M/specs/$S.md.tmp" && mv "$M/specs/$S.md.tmp" "$M/specs/$S.md"
+  orq "specs-sin-numerar"
+  lista_es sin-numerar "$S"
+  lista_es desactualizado ""
+  es agente migration-pm
+  printf '%s' "$out" | grep -q 'numera las preguntas' || fail "no ofrece 'numera las preguntas'"
 fi
 
 if quiere tarea-nueva-en-un-spec; then

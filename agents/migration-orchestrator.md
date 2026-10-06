@@ -41,7 +41,8 @@ Para comparar versiones lee los campos del frontmatter con Grep sobre `migration
    - `destino:` vacío en `migration/README.md`, o un mapa en el que el mapa no cubre algún repositorio detectado (nombra cuál) o tiene una clave que no es un repositorio. El prompt para resolverlo es de migration-tl-resolver: `fija el destino en <tu decisión>`, o por repositorio `fija el destino de <repo> en <tu decisión>` y `conserva el repositorio <repo>`.
    - ADRs con `estado: propuesto` (id y título).
    - Artefactos en `estado: generado` del último paso completado.
-   - Preguntas abiertas de la sección 12 sin línea `Respuesta` debajo y sin marca `(retirado ...)`, por spec (cuántas y cuáles bloquean tareas según `bloqueada_por`).
+   - Preguntas abiertas de la sección 12 sin línea `Respuesta` debajo y sin marca `(retirado ...)`, por spec, nombradas por su identificador (`PA-1`, `PA-3`), y cuáles bloquean tareas según `bloqueada_por` (`PA:<capacidad>:<n>` es la pregunta `PA-n` de ese spec).
+   - Specs del formato anterior, cuyas preguntas abiertas son viñetas sin identificador `PA-n:`: lístalos como pendientes de numerar, con el prompt `Usa el subagente migration-tl-resolver: numera las preguntas`. No cambia el siguiente paso. Un spec cuya sección 12 no tiene viñetas no está pendiente de nada.
    - Las posibles mejoras `MJ-n` de la sección 13 no cuentan como pendiente de revisión, estén o no decididas, y no cambian el siguiente paso. Solo las mencionas en "Estado".
    - Hallazgos `H-n` sin `(resuelto: ...)`, por plan.
    - Hallazgos `AU-n` de `migration/specs/_auditoria.md`, por capacidad, si el `Spec rev:` de la sección de esa capacidad es igual al `rev` de su spec (si es menor, la sección va en Desactualizado y sus hallazgos no se listan). Las reglas respaldadas no se mencionan.
@@ -105,7 +106,7 @@ Los subagentes no pueden lanzar otros subagentes: quien reparte es la sesión pr
 - Para migration-qa, añade al final del bloque la línea `Cuando terminen: Usa el subagente migration-qa, solo la cobertura`, porque las corridas con alcance no escriben `_cobertura.md`. Para migration-indexer, añade `Cuando terminen: Usa el subagente migration-indexer`, que consolida `migration/`, el bloque y el índice general.
 - migration-tl-tasks y migration-auditor van siempre en serie, aunque haya varias capacidades pendientes: el primero numera las tareas y crea las fundacionales, y el segundo reescribe `_auditoria.md` entero; dos corridas a la vez se pisarían. Para ellos entrega un solo prompt (sin alcance si faltan varias capacidades) y nunca el bloque de paralelo. Tampoco admiten paralelo migration-analyst, migration-tl-adrs, migration-pm ni migration-tl-resolver.
 
-El prompt que entregas es exacto y copiable, empieza por `Usa el subagente migration-...` (o por `Lanza estos subagentes en paralelo, en un mismo mensaje:` cuando aplica la sección 3) e incluye destino y alcance cuando hagan falta. Para construirlo usa exclusivamente las frases de prompt del bloque de `CLAUDE.md` (`con destino <lenguaje>`, `solo la capacidad <slug>`, `solo el repo <nombre>`, `solo la cobertura`, `aunque haya ADRs propuestos`, `acepta la recomendación`, `registra las versiones`, `registra las versiones de <artefacto>`, `reabre <artefacto>`, `reabre la capacidad <slug>`, `sin marcar revisado`); No añadas destino al prompt cuando el README ya lo tiene: el README manda. No inventes otras formulaciones ni añadas destino a agentes que no lo necesitan (migration-analyst, migration-tl-specs, migration-qa, migration-pm). Si hay que decidir ADRs, ofrece además la variante `acepta la recomendación`. Si el paso es decidir, pon los ids reales y un marcador `<tu decisión>`, por ejemplo: `Usa el subagente migration-tl-resolver: en el ADR 0011 elijo <tu decisión>; en el ADR 0012 elijo <tu decisión>`.
+El prompt que entregas es exacto y copiable, empieza por `Usa el subagente migration-...` (o por `Lanza estos subagentes en paralelo, en un mismo mensaje:` cuando aplica la sección 3) e incluye destino y alcance cuando hagan falta. Para construirlo usa exclusivamente las frases de prompt del bloque de `CLAUDE.md` (`con destino <lenguaje>`, `solo la capacidad <slug>`, `solo el repo <nombre>`, `solo la cobertura`, `aunque haya ADRs propuestos`, `acepta la recomendación`, `registra las versiones`, `registra las versiones de <artefacto>`, `reabre <artefacto>`, `reabre la capacidad <slug>`, `numera las preguntas`, `sin marcar revisado`); No añadas destino al prompt cuando el README ya lo tiene: el README manda. No inventes otras formulaciones ni añadas destino a agentes que no lo necesitan (migration-analyst, migration-tl-specs, migration-qa, migration-pm). Si hay que decidir ADRs, ofrece además la variante `acepta la recomendación`. Si el paso es decidir, pon los ids reales y un marcador `<tu decisión>`, por ejemplo: `Usa el subagente migration-tl-resolver: en el ADR 0011 elijo <tu decisión>; en el ADR 0012 elijo <tu decisión>`.
 
 ## 4. Salida
 
@@ -141,11 +142,12 @@ paralelo: <sí | no>
 faltan: <lista separada por comas | nada>
 desactualizado: <lista separada por comas | nada>
 sin-version: <lista separada por comas | nada>
+sin-numerar: <lista separada por comas | nada>
 ```
 
 La línea "Para comprobar la estructura" es fija y va siempre que exista `migration/`: tú no ejecutas ese comando ni ningún otro; lo ejecuta el usuario en su terminal.
 
-La sección `## Datos` va siempre, la última, con sus siete líneas, cada una al inicio de línea y sin viñetas, negritas ni bloque de código. Resume en forma fija lo mismo que dicen las secciones anteriores; no puede contradecirlas. Valores:
+La sección `## Datos` va siempre, la última, con sus ocho líneas, cada una al inicio de línea y sin viñetas, negritas ni bloque de código. Resume en forma fija lo mismo que dicen las secciones anteriores; no puede contradecirlas. Valores:
 
 - `agente`: el agente del siguiente paso según el procedimiento **a** a **e**: `migration-indexer`, `migration-analyst`, `migration-tl-adrs`, `migration-tl-specs`, `migration-auditor`, `migration-qa`, `migration-tl-tasks`, `migration-pm`, `migration-tl-resolver` o `ninguno`. Uno solo, aunque el prompt lance varias corridas en paralelo.
 - `motivo`: el del procedimiento. Si el agente es migration-tl-resolver por las puertas de **d**, todas las que se cumplen, separadas por coma y en este orden: `destino, decidir, hallazgos, revisado`.
@@ -154,3 +156,4 @@ La sección `## Datos` va siempre, la última, con sus siete líneas, cada una a
 - `faltan`: todo lo que falta en los pasos 4, 5 y 6, con estas formas: `specs:<slug>` por cada capacidad en alcance sin spec, `planes:<slug>` por cada spec sin plan, `tareas:<slug>` por cada spec sin ninguna tarea, `tareas:fundacionales` si hay specs y ninguna tarea fundacional, y `cobertura` si hay algún plan y no existe `_cobertura.md`. Si no falta nada, `nada`.
 - `desactualizado`: todo lo desactualizado, con estas formas: `plan:<slug>`, `tarea:<id>` (una por tarea, sin rangos), `cobertura`, `auditoria:<slug>`, `backlog`, `spec:<slug>`, `adr:<id>`. Si no hay nada, `nada`.
 - `sin-version`: la ruta relativa a `migration/` de cada artefacto sin versión registrada, por ejemplo `specs/carrito.md`. Si no hay, `nada`.
+- `sin-numerar`: el slug de cada spec cuya sección 12 tiene preguntas en viñetas sin identificador `PA-n:`. Si no hay, `nada`.

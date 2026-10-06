@@ -9,7 +9,7 @@
 #   fixtures/hechos/${FIXTURE_NAME:-sample-workspace}.txt de este repo.
 #
 # Formato del archivo y tipos de línea: ver fixtures/hechos/sample-workspace.txt.
-# Aquí se tratan hecho, trampa, mejora y no-pregunta; indice y no-indice los
+# Aquí se tratan hecho, dato, trampa, mejora y no-pregunta; indice y no-indice los
 # trata verify-indexer.sh.
 # CONOCIDOS: ids separados por espacio que, si fallan, se listan como fallo
 # conocido y no cuentan para el código de salida.
@@ -44,6 +44,8 @@ BEGINFILE { slug = FILENAME; sub(/.*[\/\\]/, "", slug); sub(/\.md$/, "", slug); 
 { sub(/\r$/, "") }
 /^## [0-9]+\. / { sec = $2 + 0; next }
 /^(- )?(RN|CB)-[0-9]+:/ { if ($0 !~ /\(retirado/) { nl++; lclase[nl] = "R"; lslug[nl] = slug; t = $0; sub(/\[[^][]*\][ \t]*$/, "", t); ltexto[nl] = t }; next }
+# Datos: cualquier línea de las secciones 4 a 8 (flujos, contratos, modelos de datos), además de las reglas
+sec >= 4 && sec <= 8 && $0 !~ /^(- )?(RN|CB)-[0-9]+:/ && $0 !~ /^[ \t]*$/ { nl++; lclase[nl] = "D"; lslug[nl] = slug; ltexto[nl] = $0; next }
 sec == 13 && /^(- )?MJ-[0-9]+:/ { nl++; lclase[nl] = "M"; lslug[nl] = slug; ltexto[nl] = $0; next }
 sec == 12 && /^- / { if ($0 !~ /\(retirado/) { nl++; lclase[nl] = "P"; lslug[nl] = slug; ltexto[nl] = $0 }; next }
 END {
@@ -59,6 +61,7 @@ END {
     if (tipo == "hecho") { if (!hay) msg = "ningún spec corresponde a la capacidad /" capre "/"; else if (busca("R", capre, pat) == "") msg = "ninguna RN/CB lo recoge" }
     else if (tipo == "mejora") { if (busca("M", capre, pat) == "") msg = "ninguna mejora MJ-n lo recoge" }
     else if (tipo == "trampa") { r = busca("R", capre, pat); if (r != "") msg = "una regla afirma lo falso: " r }
+    else if (tipo == "dato") { if (!hay) msg = "ningún spec corresponde a la capacidad /" capre "/"; else if (busca("R", capre, pat) == "" && busca("D", capre, pat) == "") msg = "no aparece ni en las reglas ni en los flujos, contratos o modelos de datos" }
     else if (tipo == "no-pregunta") { r = busca("P", capre, pat); if (r != "") msg = "aparece como pregunta abierta: " r }
     else { print "FAIL: tipo desconocido \"" tipo "\" en el archivo de hechos"; malos++; continue }
     if (msg == "") { okn[tipo]++; continue }
@@ -66,7 +69,7 @@ END {
     else { print "FAIL: " tipo " " id " (" desc "): " msg; malos++ }
   }
   close(hechos)
-  printf "--- hechos %d/%d, trampas evitadas %d/%d, mejoras %d/%d, no-preguntas %d/%d%s\n", okn["hecho"], total["hecho"], okn["trampa"], total["trampa"], okn["mejora"], total["mejora"], okn["no-pregunta"], total["no-pregunta"], (conoc ? ", fallos conocidos " conoc : "")
+  printf "--- hechos %d/%d, trampas evitadas %d/%d, mejoras %d/%d, no-preguntas %d/%d%s\n", okn["hecho"], total["hecho"], okn["trampa"], total["trampa"], okn["mejora"], total["mejora"], okn["no-pregunta"], total["no-pregunta"], (total["dato"] ? ", datos " okn["dato"] "/" total["dato"] : "") (conoc ? ", fallos conocidos " conoc : "")
   if (malos > 0) exit 1
   print "OK: hechos"
 }' "${specs[@]}"

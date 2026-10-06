@@ -234,7 +234,7 @@ Qué se puede lanzar en paralelo y qué no:
 Es la revisión más importante: un error aquí llega a tareas y pruebas como requisito. Revisa primero los hechos (flujos, contratos, `RN-n`, `CB-n`): bajo paridad son lo que se va a construir, también los que describen un comportamiento raro del origen. Después responde las preguntas abiertas, que deberían ser pocas:
 
 ```
-Usa el subagente migration-tl-resolver: en el spec carrito, respuesta a la pregunta 1: el carrito debe persistir; conviértelo en regla
+Usa el subagente migration-tl-resolver: en el spec carrito, respuesta a la pregunta PA-1: el carrito debe persistir; conviértelo en regla
 Usa el subagente migration-tl-resolver: en el spec autenticacion, el token expira a los 30 minutos
 Usa el subagente migration-tl-resolver: marca revisado el spec catalogo-productos
 ```
@@ -249,8 +249,10 @@ No tienes que revisar las mejoras para avanzar. Cuando quieras adoptar o cerrar 
 ```
 Usa el subagente migration-tl-resolver: aplica la mejora MJ-2 del spec carrito
 Usa el subagente migration-tl-resolver: descarta la mejora MJ-3 del spec carrito
-Usa el subagente migration-tl-resolver: la pregunta 2 del spec carrito es una mejora
+Usa el subagente migration-tl-resolver: la pregunta PA-2 del spec carrito es una mejora
 ```
+
+Cada pregunta abierta lleva su identificador escrito, `PA-1`, `PA-2`, igual que las reglas llevan `RN-n`. Es lo que citas al responderla y lo que citan las tareas que bloquea (`PA:carrito:2` es la pregunta `PA-2` del spec carrito). El identificador no cambia aunque se añadan, se quiten o se muevan otras preguntas; una pregunta reclasificada o que deja de aplicar se marca como retirada y conserva su número.
 
 Aplicar una mejora añade la regla nueva, marca la anterior como retirada y la mejora como aplicada. Descartarla solo la marca. La tercera orden sirve para specs ya `revisado` cuyas preguntas en realidad eran mejoras.
 
@@ -261,7 +263,7 @@ Cómo se ve en el spec:
 CB-7: quitar una línea que no existe responde 204 y no cambia el carrito.
 
 ## 12. Preguntas abiertas
-Ninguna. Todo el comportamiento de esta capacidad está determinado por el código.
+- PA-1: ¿Qué responde el servicio de identidad cuando la cuenta está bloqueada? El adaptador solo distingue el 200 de todo lo demás.
 
 ## 13. Posibles mejoras
 MJ-1: responder 404 al quitar una línea que no existe. Comportamiento actual: CB-7.
@@ -456,6 +458,7 @@ Los agentes forman una cadena: specs → planes de prueba → tareas → backlog
 | Respondiste una pregunta abierta | Si la convertiste en regla o cambia qué se construye, igual que la fila anterior. Si solo confirma el comportamiento actual, `migration-qa, solo la capacidad X` para que el caso pendiente pase a ser un caso normal. |
 | Resolviste un hallazgo `H-n` de QA | `migration-qa, solo la capacidad X` y `migration-qa, solo la cobertura`. Si todavía no generaste tareas, nada más. Si ya las hay y cambia qué se construye, `migration-tl-tasks, solo la capacidad X` y `migration-pm`. |
 | Una tarea: dependencias, tamaño, fase o prioridad | `migration-pm`. Los planes no cambian. |
+| Actualizaste los agentes a la versión con identificador en las preguntas abiertas (`PA-n`) en un proyecto ya empezado | Nada obligatorio: los specs anteriores siguen funcionando y sus referencias se resuelven como antes. Para pasar al formato nuevo, `Usa el subagente migration-tl-resolver: numera las preguntas`: pone `PA-1`, `PA-2`... en el orden en que están, sin cambiar nada más y sin que haya que repetir ningún agente. El orquestador lista los specs que faltan por numerar. |
 | Actualizaste los agentes a la versión con los planes antes que las tareas en un proyecto ya empezado | Nada obligatorio. Los planes antiguos que traen `tareas:` y líneas `- Tareas:` siguen siendo válidos y se limpian cuando se regeneren. Si tienes tareas y ningún plan, el orquestador te propone `migration-qa` y después `migration-pm`, sin regenerar las tareas. |
 | Un plan de prueba | Nada; queda `revisado`. |
 | Una plantilla de `migration/templates/` | El agente que genera ese tipo de artefacto, y lo que venga después. |
@@ -555,6 +558,8 @@ El orquestador también informa de la completitud por capacidad: en la línea `F
 | `migration-pm` dice que faltan los scripts del flujo | No existe `.claude/migration/backlog.sh` en el proyecto. Instálalos (sección 1) y repite. El PM no calcula el backlog a mano. |
 | `migration-pm` se detiene por un ciclo o una dependencia que no existe | Nombra las tareas. Corrige sus `depende_de` con el resolver y repite; mientras tanto no escribe nada. |
 | `verificar.sh` marca un tipo de artefacto con FALLA | Cada línea nombra el archivo y qué le falta. Corrígelo con el resolver o repite el agente que lo genera. En un proyecto empezado con una versión anterior de los agentes, lee antes la sección 4. |
+| Un verificador dice que una tarea cita una pregunta que no existe | La tarea tiene en `bloqueada_por` un `PA:<capacidad>:<n>` y el spec no tiene `PA-n`. Si la pregunta se respondió o se retiró, quita el bloqueo con el resolver; si se borró a mano, repón la línea con su identificador. |
+| Un verificador dice que la sección 12 mezcla preguntas con y sin identificador | Alguien añadió una pregunta a mano sin su `PA-n`. `Usa el subagente migration-tl-resolver: numera las preguntas del spec X` le da el siguiente número. |
 | No sé a qué lenguaje se migra | Fija el destino con el resolver. |
 | El mapa de destino no cubre el repositorio X | Falta la entrada de ese repositorio: `fija el destino de X en <lenguaje>` o `conserva el repositorio X`. |
 | El agente se detiene porque el destino del prompt y el del README difieren | El README manda. Quita el destino del prompt o corrige el README con el resolver. |

@@ -63,8 +63,8 @@ for t in "${tasks[@]}"; do
       PA:*)
         s="$(printf '%s' "$x" | cut -d: -f2)"; k="$(printf '%s' "$x" | cut -d: -f3)"
         [ -f "$M/specs/$s.md" ] || { fail "$n: $x cita un spec inexistente"; continue; }
-        np="$(awk '/^## 12\. /{f=1;next} /^## /{f=0} f' "$M/specs/$s.md" | grep -c '^- ' || true)"
-        [ "$k" -le "$np" ] 2>/dev/null || fail "$n: $x cita una pregunta inexistente"
+        # Por id; un spec del formato anterior, sin ids, se resuelve por el lugar en la lista
+        [[ "$k" =~ ^[0-9]+$ ]] && [ -n "$(pa_linea "$M/specs/$s.md" "$k")" ] || fail "$n: $x cita una pregunta que no existe en el spec $s"
         ;;
       [0-9][0-9][0-9][0-9])
         a=("$M"/adr/"$x"-*.md)

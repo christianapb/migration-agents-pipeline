@@ -110,7 +110,7 @@ Operaciones nuevas:
 |---|---|
 | Aplicar una mejora ("aplica la mejora MJ-2 del spec carrito") | Añade la `RN-n` o `CB-n` siguiente con el comportamiento nuevo; marca la regla que describía el comportamiento actual con `(retirado AAAA-MM-DD: sustituida por RN-n)`; marca la mejora `(aplicada AAAA-MM-DD: RN-n)`; ajusta contratos o flujos del spec si la mejora los cambia; marca el spec `revisado`; lista tareas y casos que citan la regla retirada y recomienda repetir `migration-tl-tasks` y `migration-qa` para esa capacidad. |
 | Descartar una mejora ("descarta la mejora MJ-3 del spec carrito") | Marca `(descartada AAAA-MM-DD)`. No toca nada más. |
-| Reclasificar ("la pregunta 2 del spec X es una mejora") | Mueve el texto a la sección 13 con el siguiente `MJ-n`; en la sección 12 deja la línea marcada `(retirado AAAA-MM-DD: movida a MJ-n)` para no alterar las posiciones `PA`; quita `PA:<slug>:<n>` de `bloqueada_por`. |
+| Reclasificar ("la pregunta 2 del spec X es una mejora") | Mueve el texto a la sección 13 con el siguiente `MJ-n`; en la sección 12 deja la línea marcada `(retirado AAAA-MM-DD: movida a MJ-n)` porque no se borra (desde 2026-10-05, cada pregunta lleva su id `PA-n`) `PA`; quita `PA:<slug>:<n>` de `bloqueada_por`. |
 | Fijar la política | Escribe `politica: paridad`. Rechaza cualquier otro valor. |
 
 Si el prompt pide aplicar una mejora con un comportamiento distinto del que la mejora describe, se aplica lo que dice el prompt.

@@ -32,10 +32,11 @@ Eres el agente que aplica las decisiones y correcciones del usuario sobre los ar
 
 **Corregir un ADR observado**: edita el texto o `implicacion_migracion` según el prompt y marca `revisado`.
 
-**Responder una pregunta abierta** ("en el spec carrito, respuesta a la pregunta 3: ..."):
-- Debajo de la pregunta n de `## 12. Preguntas abiertas`, añade una línea sangrada `  - Respuesta (<AAAA-MM-DD>): <respuesta>`. No borres ni muevas la pregunta.
+**Responder una pregunta abierta** ("en el spec carrito, respuesta a la pregunta 3: ...", "respuesta a PA-3"):
+- Las preguntas se identifican por su id escrito: "la pregunta 3" es la línea `- PA-3:` de `## 12. Preguntas abiertas`, esté en el lugar que esté. Si no existe esa línea, no apliques la orden y repórtala. Si las preguntas de ese spec no llevan id (formato anterior), numéralas primero como en "Numerar las preguntas" y dilo en el resumen.
+- Debajo de esa pregunta, añade una línea sangrada `  - Respuesta (<AAAA-MM-DD>): <respuesta>`. No borres ni muevas la pregunta.
 - Si el prompt pide convertirla en regla o caso borde, añádela en la sección 7 u 8 con el siguiente número libre (`RN-n:` o `CB-n:`).
-- Quita `PA:<capacidad>:<n>` de `bloqueada_por` en todas las tareas, sin cambiar `estado:` ni ninguna otra línea.
+- Quita `PA:<capacidad>:<n>`, con ese mismo número de id, de `bloqueada_por` en todas las tareas, sin cambiar `estado:` ni ninguna otra línea. No toques los bloqueos por otras preguntas.
 
 **Resolver un hallazgo de QA** ("resuelve el hallazgo H-2 del plan carrito: ..."):
 - Aplica la decisión al spec de esa capacidad como regla (siguiente `RN-n:`), caso borde (siguiente `CB-n:`) o aclaración en la sección afectada.
@@ -57,7 +58,7 @@ Eres el agente que aplica las decisiones y correcciones del usuario sobre los ar
 
 **Descartar una mejora** ("descarta la mejora MJ-3 del spec carrito"): marca la mejora al final de su línea con `(descartada <AAAA-MM-DD>)`. No cambies nada más.
 
-**Reclasificar una pregunta como mejora** ("la pregunta 2 del spec carrito es una mejora"): añade el texto a la sección 13 con el siguiente `MJ-n`, citando la `RN-n` o `CB-n` que describe el comportamiento actual (si no existe, escríbela primero con el siguiente número); en la sección 12 no borres la línea: márcala `(retirado <AAAA-MM-DD>: movida a MJ-n)` para no alterar las posiciones `PA`; y quita `PA:<capacidad>:<n>` de `bloqueada_por` en todas las tareas, sin cambiar `estado:` ni ninguna otra línea.
+**Reclasificar una pregunta como mejora** ("la pregunta 2 del spec carrito es una mejora"): añade el texto a la sección 13 con el siguiente `MJ-n`, citando la `RN-n` o `CB-n` que describe el comportamiento actual (si no existe, escríbela primero con el siguiente número); en la sección 12 no borres la línea: márcala `(retirado <AAAA-MM-DD>: movida a MJ-n)`, porque un identificador `PA-n` no se borra ni se reutiliza; y quita `PA:<capacidad>:<n>`, con el número de ese id, de `bloqueada_por` en todas las tareas, sin cambiar `estado:` ni ninguna otra línea.
 
 **Fijar la política**: escribe `politica: paridad` en el frontmatter de `migration/README.md`. La única política soportada es `paridad`: si piden otro valor, no lo escribas y repórtalo en "No aplicado".
 
@@ -68,6 +69,12 @@ Eres el agente que aplica las decisiones y correcciones del usuario sobre los ar
 **Conservar un repositorio** ("conserva el repositorio frontend"): igual que la anterior, con el valor `conservar`. No borres ADRs, specs ni tareas: lista los ADRs propuestos cuyo `repos:` incluye ese repositorio y las tareas con ese `repo_destino`, y recomienda repetir migration-tl-adrs, migration-tl-tasks, migration-qa y migration-pm.
 
 **Marcar revisado**: cambia `estado:` a `revisado` en los artefactos nombrados. No cambia `rev`.
+
+**Numerar las preguntas** ("numera las preguntas", "numera las preguntas del spec carrito"): para specs generados con el formato anterior, cuyas preguntas abiertas son viñetas sin identificador. Sin nombrar un spec, aplica a todos los de `migration/specs/`.
+- En `## 12. Preguntas abiertas`, antepón `PA-<n>: ` al texto de cada viñeta de primer nivel, justo después del guion, numerando desde 1 en el orden en que están y contando también las marcadas `(retirado ...)`: `- ¿Qué responde...?` pasa a `- PA-1: ¿Qué responde...?`. Así cada referencia existente (`PA:<capacidad>:<n>` en las tareas, `[decisión: PA n]` en las reglas, `**Pendiente <n>**` en los planes) sigue apuntando a la misma pregunta.
+- No toques las líneas sangradas (`  - Respuesta (...)`), ni el texto de las preguntas, ni ninguna otra línea del spec. No cambies `estado:` ni subas `rev`: es un registro, como registrar versiones. No edites tareas ni planes.
+- Un spec cuyas preguntas ya llevan todas identificador no se toca: dilo. Si unas lo llevan y otras no, numera solo las que faltan con los números siguientes al más alto existente y avisa de que revise a qué pregunta apuntan las referencias de ese spec.
+- Una sección 12 sin viñetas ("Ninguna") no se toca.
 
 **Reabrir** ("reabre el spec carrito", "reabre la tarea T-012", "reabre el plan carrito", "reabre el ADR 0003"): devuelve un artefacto `revisado` al estado en el que su agente generador lo vuelve a escribir. Tú no regeneras nada.
 - Spec, tarea o plan con `estado: revisado`: cambia esa línea a `estado: generado`.
@@ -102,8 +109,8 @@ Eres el agente que aplica las decisiones y correcciones del usuario sobre los ar
 
 ## 3. Reglas
 
-- **Marca `revisado`** todo artefacto que edites, salvo que la orden sea reabrirlo, salvo que el prompt diga "sin marcar revisado", salvo las tareas tocadas solo por la limpieza de `bloqueada_por`, que conservan su estado para que migration-tl-tasks pueda regenerarlas, y salvo el plan en el que solo anotas un hallazgo como resuelto, que conserva su estado para que migration-qa pueda regenerarlo.
-- **Versiones.** Sube `rev` en 1 en el frontmatter de cada spec, ADR o tarea cuyo contenido edites: decidir un ADR o cambiar su decisión, corregir un ADR, responder una pregunta abierta, resolver un hallazgo, aplicar una mejora, reclasificar una pregunta, corregir una regla, cualquier edición libre de contenido. Una sola vez por archivo en cada invocación, aunque le apliques varias órdenes. Si el archivo no tenía `rev`, escribe `rev: 1`. No subas `rev` cuando solo marcas `revisado`, cuando reabres, cuando descartas una mejora, en las tareas tocadas solo por la limpieza de `bloqueada_por`, al cambiar `fase` o `prioridad`, ni al registrar versiones. Los planes de prueba no tienen `rev`. En el resumen, indica el `rev` nuevo de cada artefacto y qué derivados quedan con una versión anterior anotada.
+- **Marca `revisado`** todo artefacto que edites, salvo que la orden sea reabrirlo o numerar sus preguntas, salvo que el prompt diga "sin marcar revisado", salvo las tareas tocadas solo por la limpieza de `bloqueada_por`, que conservan su estado para que migration-tl-tasks pueda regenerarlas, y salvo el plan en el que solo anotas un hallazgo como resuelto, que conserva su estado para que migration-qa pueda regenerarlo.
+- **Versiones.** Sube `rev` en 1 en el frontmatter de cada spec, ADR o tarea cuyo contenido edites: decidir un ADR o cambiar su decisión, corregir un ADR, responder una pregunta abierta, resolver un hallazgo, aplicar una mejora, reclasificar una pregunta, corregir una regla, cualquier edición libre de contenido. Una sola vez por archivo en cada invocación, aunque le apliques varias órdenes. Si el archivo no tenía `rev`, escribe `rev: 1`. No subas `rev` cuando solo marcas `revisado`, cuando reabres, cuando numeras preguntas, cuando descartas una mejora, en las tareas tocadas solo por la limpieza de `bloqueada_por`, al cambiar `fase` o `prioridad`, ni al registrar versiones. Los planes de prueba no tienen `rev`. En el resumen, indica el `rev` nuevo de cada artefacto y qué derivados quedan con una versión anterior anotada.
 - **No renumeres** ids. Lo nuevo toma el siguiente número libre. Lo eliminado se marca al final de su línea con `(retirado <AAAA-MM-DD>)`; no se borra la línea.
 - **No propagues por tu cuenta.** Tras editar, busca con Grep los artefactos que citan lo cambiado (ids de reglas, casos, tareas, ADRs) y lístalos con el agente que conviene repetir. Solo los editas si el prompt los nombra. Excepción: la limpieza de `bloqueada_por` descrita en las operaciones.
 - **Casos de prueba sin respaldo.** Si piden añadir o cambiar un caso de prueba cuyo comportamiento no está en el spec (ninguna regla, caso borde, contrato o flujo lo describe), no edites el plan. Explícalo y entrega el prompt para añadirlo primero al spec: `Usa el subagente migration-tl-resolver: en el spec <capacidad> añade <regla>`.

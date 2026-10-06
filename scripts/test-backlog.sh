@@ -46,7 +46,7 @@ fixture_tasks() {
   mk "$ws" T-024 carrito T-002,T-014,T-019 M
   mk "$ws" T-025 carrito T-009,T-021,T-022,T-023 M
   printf -- '---\nid: 0011\ntitulo: Framework HTTP del BFF\nrev: 1\nrepos: [bff]\nestado: propuesto\nimplicacion_migracion:\n---\n# ADR 0011\n' > "$ws/migration/adr/0011-framework.md"
-  printf -- '---\ncapacidad: autenticacion\nestado: generado\nrev: 1\n---\n# Spec\n## 12. Preguntas abiertas\n- ¿Qué responde identidad con una cuenta bloqueada?\n## 13. Posibles mejoras\nNinguna\n' > "$ws/migration/specs/autenticacion.md"
+  printf -- '---\ncapacidad: autenticacion\nestado: generado\nrev: 1\n---\n# Spec\n## 12. Preguntas abiertas\n- PA-1: ¿Qué responde identidad con una cuenta bloqueada?\n## 13. Posibles mejoras\nNinguna\n' > "$ws/migration/specs/autenticacion.md"
   : > "$ws/migration/test-plans/autenticacion.md"
 }
 tsv() { bash "$B" calcular --tsv "$1"; }
@@ -117,6 +117,18 @@ printf '%s' "$md" | grep -qE '^\| 11 \| T-011 \| 1 \| Tarea T-011 \| L \| T-003,
 printf '%s' "$md" | grep -q '| T-017 |.*| — |$' || fail "fixture: T-017 no marca '—' cuando falta su plan de pruebas"
 printf '%s' "$md" | awk '/^## Bloqueos/{f=1} f' | grep -q 'T-011.*0011' || fail "fixture: Bloqueos no lista T-011 bloqueada por el ADR 0011"
 printf '%s' "$md" | awk '/^## Bloqueos/{f=1} f' | grep -q 'cuenta bloqueada' || fail "fixture: Bloqueos no cita la pregunta abierta PA:autenticacion:1"
+
+# 4b. La pregunta de un bloqueo se busca por su id, no por su lugar en la lista
+SPF="$W/migration/specs/autenticacion.md"
+sed -i 's/^- PA-1: ¿Qué responde identidad.*/- PA-7: ¿Una pregunta añadida arriba?\n&/' "$SPF"
+bash "$B" calcular "$W" | awk '/^## Bloqueos/{f=1} f' | grep 'PA:autenticacion:1' | grep -q 'cuenta bloqueada' || fail "backlog.sh cita la pregunta por su lugar y no por su id"
+bash "$B" calcular "$W" | awk '/^## Bloqueos/{f=1} f' | grep 'PA:autenticacion:1' | grep -q '^| T-011 | PA:autenticacion:1 | ¿Qué responde' || fail "backlog.sh no quita el id del texto de la pregunta citada"
+sed -i '/^- PA-1: /d' "$SPF"
+bash "$B" calcular "$W" | awk '/^## Bloqueos/{f=1} f' | grep 'PA:autenticacion:1' | grep -q 'pregunta no encontrada' || fail "backlog.sh cita otra pregunta cuando el id no existe"
+# Compatibilidad: un spec sin ids se resuelve por el lugar en la lista
+sed -i 's/^- PA-7: .*/- ¿Primera, sin id?\n- ¿Segunda, sin id?/' "$SPF"
+bash "$B" calcular "$W" | awk '/^## Bloqueos/{f=1} f' | grep 'PA:autenticacion:1' | grep -q '¿Primera, sin id?' || fail "backlog.sh no resuelve por lugar un spec del formato anterior"
+fixture_tasks "$W"
 
 # 5. Determinismo, también con los archivos en otro orden
 bash "$B" calcular "$W" > "$TMP/a.md"; bash "$B" calcular "$W" > "$TMP/b.md"

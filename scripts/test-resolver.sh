@@ -43,22 +43,25 @@ R "En el ADR $P cambio la decisión: elijo la primera opción de las alternativa
 grep -q '^estado: revisado' "$f" || fail "RF2: ADR $P dejó de estar revisado"
 grep -q 'Recomendación:' "$f" && fail "RF2: reapareció la recomendación"
 
-# Caso 5: responder una pregunta abierta sin renumerar
+# Caso 5: responder una pregunta abierta por su id, sin renumerar
+# Bajo paridad puede no haber preguntas abiertas: se siembran dos, con ids altos
+# y en un orden que no coincide con su número, y una tarea bloqueada por ambas.
 sec12() { awk '/^## 12\. /{f=1;next} /^## /{f=0} f' "$1"; }
-S="$(for s in "$M"/specs/[!_]*.md; do sec12 "$s" | grep -q '^- ' && { basename "$s" .md; break; }; done)"
-if [ -z "$S" ]; then
-  # Bajo paridad puede no haber preguntas abiertas: se siembra una para probar la operación.
-  S="$(ls "$M"/specs | grep -v '^_' | head -n1 | sed 's/\.md$//')"
-  sed -i 's/^## 12\. Preguntas abiertas.*/&\n- ¿Qué responde el sistema externo de pagos ante un cobro duplicado?/' "$M/specs/$S.md"
-fi
-q1="$(sec12 "$M/specs/$S.md" | grep '^- ' | head -n1)"
+S="$(ls "$M"/specs | grep -v '^_' | head -n1 | sed 's/\.md$//')"
+sed -i 's/^## 12\. Preguntas abiertas.*/&\n- PA-91: ¿Qué formato tiene el identificador que devuelve el sistema externo de facturación?\n- PA-90: ¿Qué responde el sistema externo de pagos ante un cobro duplicado?/' "$M/specs/$S.md"
+TB="$(grep -l "^spec: $S$" "$M"/tasks/T-*.md | head -n1)"
+sed -i -E "s/^bloqueada_por: \[(.*)\]/bloqueada_por: [\1, PA:$S:90, PA:$S:91]/; s/^bloqueada_por: \[, /bloqueada_por: [/" "$TB"
 ids_before="$(grep -oE '^(- )?(RN|CB)-[0-9]+:' "$M/specs/$S.md" | sort)"
 v_spec="$(rev_de "$M/specs/$S.md")"
-R "En el spec $S, respuesta a la pregunta abierta 1: se conserva el comportamiento actual." >/dev/null
-grep -qF -- "$q1" "$M/specs/$S.md" || fail "caso 5: se borró la pregunta abierta 1"
+R "En el spec $S, respuesta a la pregunta 90: se conserva el comportamiento actual." >/dev/null
+grep -q '^- PA-90: ¿Qué responde el sistema externo de pagos' "$M/specs/$S.md" || fail "caso 5: se borró o renumeró la pregunta PA-90"
+grep -q '^- PA-91: ¿Qué formato tiene el identificador' "$M/specs/$S.md" || fail "caso 5: se borró o renumeró la pregunta PA-91"
+sec12 "$M/specs/$S.md" | awk '/^- PA-90:/{f=1;next} f{print; exit}' | grep -qE '^[[:space:]]+- Respuesta \(' || fail "caso 5: la respuesta no quedó debajo de PA-90"
+sec12 "$M/specs/$S.md" | awk '/^- PA-91:/{f=1;next} f{print; exit}' | grep -qE '^[[:space:]]+- Respuesta \(' && fail "caso 5: respondió PA-91, la primera de la lista, en vez de PA-90"
 ids_after="$(grep -oE '^(- )?(RN|CB)-[0-9]+:' "$M/specs/$S.md" | sort)"
 [ -z "$(comm -23 <(printf '%s\n' "$ids_before") <(printf '%s\n' "$ids_after"))" ] || fail "caso 5: se perdieron o renumeraron RN/CB"
-grep -l "^bloqueada_por:.*PA:$S:1\b" "$M"/tasks/*.md >/dev/null 2>&1 && fail "caso 5: alguna tarea sigue bloqueada por PA:$S:1"
+grep -l "^bloqueada_por:.*PA:$S:90\b" "$M"/tasks/*.md >/dev/null 2>&1 && fail "caso 5: alguna tarea sigue bloqueada por PA:$S:90"
+grep -q "^bloqueada_por:.*PA:$S:91\b" "$TB" || fail "caso 5: se quitó el bloqueo por PA:$S:91, que sigue abierta"
 grep -qE '^[[:space:]]*- Respuesta \(' "$M/specs/$S.md" || fail "caso 5: no añadió la línea Respuesta"
 grep -q '^estado: revisado' "$M/specs/$S.md" || fail "caso 5: el spec no quedó revisado"
 [ "$(rev_de "$M/specs/$S.md")" = "$((v_spec+1))" ] || fail "caso 5: editar el contenido del spec no subió su rev en 1 ($v_spec → $(campo "$M/specs/$S.md" rev))"
@@ -178,7 +181,7 @@ SPX="$M/specs/$C1.md"
 MJX="$(awk '/^## 13\. /{f=1;next} /^## /{f=0} f' "$SPX" | grep -oE '^(- )?MJ-[0-9]+' | grep -oE 'MJ-[0-9]+' | head -n1)"
 if [ -z "$MJX" ]; then sed -i 's/^## 13\. Posibles mejoras.*/&\nMJ-90: avisar del recorte. Comportamiento actual: RN-1./' "$SPX"; MJX="MJ-90"; fi
 sed -i -E "s/^((- )?$MJX:.*)\$/\1 (aplicada 2026-10-05: RN-1)/" "$SPX"
-sed -i 's/^## 12\. Preguntas abiertas.*/&\n- ¿Qué responde el sistema externo de pagos ante un cobro duplicado?\n  - Respuesta (2026-10-05): se ignora el segundo cobro./' "$SPX"
+sed -i 's/^## 12\. Preguntas abiertas.*/&\n- PA-95: ¿Qué responde el sistema externo de pagos ante un cobro duplicado?\n  - Respuesta (2026-10-05): se ignora el segundo cobro./' "$SPX"
 sed -i 's/^estado: generado/estado: revisado/' "$SPX"
 v15="$(campo "$SPX" rev)"; h15="$(sin_estado "$SPX")"
 out="$(R "Reabre el spec $C1.")"
@@ -228,6 +231,23 @@ quedan="$(grep -l "^spec: $C3$" "$M"/tasks/T-*.md | xargs grep -L '^estado: gene
 [ "$quedan" -eq 0 ] || fail "caso 20: $quedan tareas de $C3 no quedaron en generado"
 grep -q '^estado: revisado' "$FUND" || fail "caso 20: reabrió una tarea fundacional"
 grep -q '^estado: revisado' "$AJENA" || fail "caso 20: reabrió una tarea de otra capacidad"
+
+# Caso 21: numerar las preguntas de un spec del formato anterior, con una retirada en medio
+SPN="$M/specs/$C2.md"
+awk '/^## 12\. /{print; print "- ¿Qué responde el proveedor externo si el pedido está duplicado?"; print "- ¿Debe avisarse del recorte? (retirado 2026-10-01: movida a MJ-9)"; print "- ¿Qué zona horaria usa el sistema externo de facturación?"; print "  - Respuesta (2026-10-02): UTC."; print ""; s=1; next} /^## /{s=0} !s{print}' "$SPN" > "$SPN.tmp" && mv "$SPN.tmp" "$SPN"
+TN="$(grep -l "^spec: $C2$" "$M"/tasks/T-*.md | head -n1)"
+sed -i -E "s/^bloqueada_por: \[(.*)\]/bloqueada_por: [\1, PA:$C2:3]/; s/^bloqueada_por: \[, /bloqueada_por: [/" "$TN"
+v21="$(campo "$SPN" rev)"; e21="$(campo "$SPN" estado)"; h21="$(md5sum < "$TN")"; fuera21="$(awk '/^## 12\. /{s=1} /^## 13\. /{s=0} !s' "$SPN" | md5sum)"
+R "Numera las preguntas del spec $C2." >/dev/null
+grep -q '^- PA-1: ¿Qué responde el proveedor externo' "$SPN" || fail "caso 21: la primera pregunta no quedó como PA-1"
+grep -q '^- PA-2: ¿Debe avisarse del recorte? (retirado 2026-10-01: movida a MJ-9)' "$SPN" || fail "caso 21: la retirada no quedó como PA-2 con su marca"
+grep -q '^- PA-3: ¿Qué zona horaria usa el sistema externo' "$SPN" || fail "caso 21: la tercera pregunta no quedó como PA-3"
+grep -q '^  - Respuesta (2026-10-02): UTC\.' "$SPN" || fail "caso 21: se alteró la línea Respuesta"
+[ "$(campo "$SPN" rev)" = "$v21" ] || fail "caso 21: numerar cambió el rev ($v21 → $(campo "$SPN" rev))"
+[ "$(campo "$SPN" estado)" = "$e21" ] || fail "caso 21: numerar cambió el estado ($e21 → $(campo "$SPN" estado))"
+[ "$(md5sum < "$TN")" = "$h21" ] || fail "caso 21: numerar cambió la tarea que cita la pregunta"
+[ "$(awk '/^## 12\. /{s=1} /^## 13\. /{s=0} !s' "$SPN" | md5sum)" = "$fuera21" ] || fail "caso 21: numerar cambió algo fuera de la sección 12"
+[ -n "$(pa_linea "$SPN" 3)" ] || fail "caso 21: PA:$C2:3 ya no resuelve a ninguna pregunta"
 
 [ "$fails" -eq 0 ] && { echo "OK: resolver"; exit 0; }
 exit 1
