@@ -82,7 +82,7 @@ if [ -f "$C" ]; then
   for a in migration-indexer migration-analyst migration-tl-adrs migration-tl-specs migration-tl-tasks migration-qa migration-pm migration-tl-resolver migration-orchestrator; do
     printf '%s' "$block" | grep -q "$a" || fail "bloque de CLAUDE.md no menciona $a"
   done
-  for k in 'revisado' 'excluir:' 'RN-n' 'MJ-n' 'politica:' 'aplica la mejora MJ-n' 'AU-n' '_auditoria.md' 'migration-auditor' '[ausente: ' 'conservar' 'con destino <repo>=<lenguaje>' 'rev: <entero>' 'spec_rev' 'adrs_rev' 'registra las versiones' 'solo el repo <nombre>' 'solo la cobertura' 'reabre <artefacto>' 'Usa el subagente migration-orchestrator' 'Usa el subagente migration-tl-resolver'; do
+  for k in 'revisado' 'excluir:' 'RN-n' 'MJ-n' 'politica:' 'aplica la mejora MJ-n' 'AU-n' '_auditoria.md' 'migration-auditor' '[ausente: ' 'conservar' 'con destino <repo>=<lenguaje>' 'rev: <entero>' 'spec_rev' 'adrs_rev' 'registra las versiones' 'solo el repo <nombre>' 'solo la cobertura' 'reabre <artefacto>' 'numera las preguntas' 'Usa el subagente migration-orchestrator' 'Usa el subagente migration-tl-resolver'; do
     printf '%s' "$block" | grep -qF "$k" || fail "bloque de CLAUDE.md sin '$k'"
   done
 else
@@ -99,6 +99,7 @@ done
 if [ "$FX" = 1 ]; then
   grep -q '^## 12\. Preguntas abiertas' "$T/spec.md" || fail "spec.md sin sección 12"
   grep -q '^## 13\. Posibles mejoras' "$T/spec.md" || fail "spec.md sin sección 13"
+  grep -q 'PA-1: <pregunta>' "$T/spec.md" || fail "spec.md no muestra el identificador de las preguntas abiertas"
   grep -q '^commits:' "$T/spec.md" || fail "spec.md sin commits en el frontmatter"
   grep -q '^bloqueada_por:' "$T/task.md" || fail "task.md sin bloqueada_por"
   grep -q '^implicacion_migracion:' "$T/adr.md" || fail "adr.md sin implicacion_migracion"

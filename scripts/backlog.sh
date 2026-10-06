@@ -263,11 +263,17 @@ END {
   if (nbp == 0) print "Ninguna"
   else { print "| Tarea | Pregunta | Texto de la pregunta |"; print "|---|---|---|"
     for (i = 1; i <= nbp; i++) { split(bpa[i], pr, SUBSEP); split(pr[2], pa, ":"); texto = "pregunta no encontrada en el spec"; sf = M "/specs/" pa[2] ".md"; en12 = 0; q = 0
+      # Por id: la línea "- PA-n:". Solo si el spec no tiene ningún id (formato
+      # anterior) se toma la viñeta número n, como vía de compatibilidad.
+      porid = ""; porlugar = ""; hayid = 0
       while ((getline l < sf) > 0) { sub(/\r$/, "", l)
         if (l ~ /^## 12\. /) { en12 = 1; continue }
         if (en12 && l ~ /^## /) break
-        if (en12 && l ~ /^- /) { q++; if (q == pa[3] + 0) { texto = substr(l, 3); break } } }
+        if (en12 && l ~ /^- /) { q++
+          if (l ~ /^- PA-[0-9]+:/) { hayid = 1; if (l ~ ("^- PA-" (pa[3] + 0) ":")) { porid = l; sub(/^- PA-[0-9]+: */, "", porid) } }
+          if (q == pa[3] + 0) porlugar = substr(l, 3) } }
       close(sf)
+      if (hayid) { if (porid != "") texto = porid } else if (porlugar != "") texto = porlugar
       print "| " pr[1] " | " pr[2] " | " texto " |" } }
 
   # Camino crítico

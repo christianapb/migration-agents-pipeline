@@ -78,7 +78,7 @@ x
 ## 11. Evidencia en el código original
 bff/a.ts
 ## 12. Preguntas abiertas
-- ¿Qué responde el servicio de identidad si la cuenta está bloqueada?
+- PA-1: ¿Qué responde el servicio de identidad si la cuenta está bloqueada?
 ## 13. Posibles mejoras
 MJ-1: responder 404 para un producto oculto. Comportamiento actual: CB-1.
 EOF
@@ -124,7 +124,7 @@ x
 ## Casos: errores
 ## Casos: contratos de API
 ## Casos pendientes de definición
-- **Pendiente 1**: ¿Qué responde el servicio de identidad si la cuenta está bloqueada?
+- **Pendiente PA-1**: ¿Qué responde el servicio de identidad si la cuenta está bloqueada?
 ## Hallazgos para el tech lead
 Ninguno.
 EOF
@@ -313,12 +313,12 @@ W6="$TMP/p1"; make_ws "$W6"; sed -i '/^## 13\. Posibles mejoras/,$d' "$W6/$SP"
 expect_fail tl-specs "$W6" "verify-tl-specs acepta un spec sin sección 13"
 W6="$TMP/p2"; make_ws "$W6"; sed -i 's/Comportamiento actual: CB-1\./Comportamiento actual: CB-99./' "$W6/$SP"
 expect_fail tl-specs "$W6" "verify-tl-specs acepta una MJ que cita una regla inexistente"
-W6="$TMP/p3"; make_ws "$W6"; sed -i 's/^- ¿Qué responde el servicio de identidad.*/- Al quitar una línea que no existe, ¿se mantiene 204 o debe responderse 404?/' "$W6/$SP"
+W6="$TMP/p3"; make_ws "$W6"; sed -i 's/^- PA-1: ¿Qué responde el servicio de identidad.*/- Al quitar una línea que no existe, ¿se mantiene 204 o debe responderse 404?/' "$W6/$SP"
 expect_fail tl-specs "$W6" "verify-tl-specs acepta una pregunta con fórmula de mejora"
-W6="$TMP/p4"; make_ws "$W6"; sed -i 's/^- ¿Qué responde el servicio de identidad.*/- ¿Uno?\n- ¿Dos?\n- ¿Tres?\n- ¿Cuatro?\n- ¿Cinco?\n- ¿Seis?/' "$W6/$SP"
+W6="$TMP/p4"; make_ws "$W6"; sed -i 's/^- PA-1: ¿Qué responde el servicio de identidad.*/- ¿Uno?\n- ¿Dos?\n- ¿Tres?\n- ¿Cuatro?\n- ¿Cinco?\n- ¿Seis?/' "$W6/$SP"
 expect_fail tl-specs "$W6" "verify-tl-specs acepta más preguntas que MAX_PREGUNTAS"
 MAX_PREGUNTAS=6 WORKDIR="$W6" bash "$ROOT/scripts/verify-tl-specs.sh" >/dev/null 2>&1 || fail "verify-tl-specs no respeta MAX_PREGUNTAS"
-W6="$TMP/p5"; make_ws "$W6"; sed -i 's/^- ¿Qué responde el servicio de identidad.*/- ¿Qué pasa con un producto oculto?/' "$W6/$SP"
+W6="$TMP/p5"; make_ws "$W6"; sed -i 's/^- PA-1: ¿Qué responde el servicio de identidad.*/- ¿Qué pasa con un producto oculto?/' "$W6/$SP"
 expect_fail tl-specs "$W6" "verify-tl-specs acepta el producto oculto como pregunta abierta"
 W6="$TMP/p6"; make_ws "$W6"; for c in alfa beta gamma; do sed -i '/^MJ-1:/d' "$W6/migration/specs/$c.md"; echo "Ninguna" >> "$W6/migration/specs/$c.md"; done
 expect_fail tl-specs "$W6" "verify-tl-specs acepta que el producto oculto no esté entre las mejoras"
@@ -333,15 +333,15 @@ W6="$TMP/p9"; make_ws "$W6"; sed -i 's/^bloqueada_por: \[0002\]/bloqueada_por: [
 expect_fail tl-tasks "$W6" "verify-tl-tasks acepta una MJ en bloqueada_por"
 
 PL="migration/test-plans/alfa.md"
-W6="$TMP/p10"; make_ws "$W6"; sed -i 's/^- \*\*Pendiente 1\*\*: .*/&\n- **Pendiente 2**: MJ-1 responder 404 para un producto oculto./' "$W6/$PL"
+W6="$TMP/p10"; make_ws "$W6"; sed -i 's/^- \*\*Pendiente PA-1\*\*: .*/&\n- **Pendiente PA-2**: MJ-1 responder 404 para un producto oculto./' "$W6/$PL"
 expect_fail qa "$W6" "verify-qa acepta mejoras entre los casos pendientes"
-W6="$TMP/p11"; make_ws "$W6"; sed -i 's/^- \*\*Pendiente 1\*\*: .*/&\n- **Pendiente 2**: otra cosa./' "$W6/$PL"
+W6="$TMP/p11"; make_ws "$W6"; sed -i 's/^- \*\*Pendiente PA-1\*\*: .*/&\n- **Pendiente PA-2**: otra cosa./' "$W6/$PL"
 expect_fail qa "$W6" "verify-qa acepta más pendientes que preguntas abiertas"
 # Sin preguntas abiertas ni pendientes: válido bajo paridad
 W6="$TMP/p12"; make_ws "$W6"
 for c in alfa beta gamma; do
-  sed -i 's/^- ¿Qué responde el servicio de identidad.*/Ninguna./' "$W6/migration/specs/$c.md"
-  sed -i 's/^- \*\*Pendiente 1\*\*: .*/Ninguno./' "$W6/migration/test-plans/$c.md"
+  sed -i 's/^- PA-1: ¿Qué responde el servicio de identidad.*/Ninguna./' "$W6/migration/specs/$c.md"
+  sed -i 's/^- \*\*Pendiente PA-1\*\*: .*/Ninguno./' "$W6/migration/test-plans/$c.md"
 done
 WORKDIR="$W6" bash "$ROOT/scripts/verify-qa.sh" >/dev/null 2>&1 || fail "verify-qa rechaza un workspace sin preguntas abiertas"
 WORKDIR="$W6" bash "$ROOT/scripts/verify-tl-specs.sh" >/dev/null 2>&1 || fail "verify-tl-specs rechaza un workspace sin preguntas abiertas"
@@ -399,7 +399,7 @@ W9="$TMP/d3"; make_ws "$W9"; con_endpoint "$W9"; por_defecto "$W9" "Ruta no defi
 WORKDIR="$W9" bash "$ROOT/scripts/verify-tl-specs.sh" >/dev/null 2>&1 || fail "verify-tl-specs rechaza un spec con los cuatro comportamientos por defecto"
 # Uno de los cuatro puede quedar como pregunta abierta si no se puede determinar
 W9="$TMP/d4"; make_ws "$W9"; con_endpoint "$W9"; por_defecto "$W9" "Ruta no definida|Método no permitido|Cuerpo ausente"
-sed -i 's/^- ¿Qué responde el servicio de identidad.*/&\n- Cuerpo mal formado: ¿qué responde el servicio cuando el cuerpo no es JSON válido?/' "$W9/$SP"
+sed -i 's/^- PA-1: ¿Qué responde el servicio de identidad.*/&\n- PA-2: Cuerpo mal formado: ¿qué responde el servicio cuando el cuerpo no es JSON válido?/' "$W9/$SP"
 WORKDIR="$W9" bash "$ROOT/scripts/verify-tl-specs.sh" >/dev/null 2>&1 || fail "verify-tl-specs rechaza un comportamiento por defecto planteado como pregunta abierta"
 # Mencionar un POST de otra capacidad no obliga a los casos de cuerpo: solo los endpoints declarados
 W9="$TMP/d6"; make_ws "$W9"; sed -i 's/^## 5\. Contratos de API$/&\n### GET \/alfa\n- Salida: página con un formulario que se envía por POST a \/beta./' "$W9/$SP"; por_defecto "$W9" "Ruta no definida|Método no permitido"
@@ -535,7 +535,7 @@ W16="$TMP/h3"; make_ws "$W16"; sed -i 's/^## 9\. Dependencias externas$/CB-2: un
 out="$(WORKDIR="$W16" bash "$ROOT/scripts/verify-hechos.sh" 2>&1)" && fail "verify-hechos acepta un spec que cae en una trampa"
 printf '%s' "$out" | grep '^FAIL: trampa S4 ' | grep -q 'beta' || fail "verify-hechos no dice qué spec afirma lo falso"
 # La trampa como pregunta abierta o como mejora es correcta
-W16="$TMP/h4"; make_ws "$W16"; sed -i 's/^- ¿Qué responde el servicio de identidad.*/&\n- ¿Existe un código 410 para un cupón caducado?/' "$W16/migration/specs/beta.md"
+W16="$TMP/h4"; make_ws "$W16"; sed -i 's/^- PA-1: ¿Qué responde el servicio de identidad.*/&\n- PA-2: ¿Existe un código 410 para un cupón caducado?/' "$W16/migration/specs/beta.md"
 WORKDIR="$W16" bash "$ROOT/scripts/verify-hechos.sh" >/dev/null 2>&1 || fail "verify-hechos rechaza una trampa planteada como pregunta abierta"
 # Una regla retirada no cuenta ni como hecho ni como trampa
 W16="$TMP/h5"; make_ws "$W16"; sed -i 's/^## 9\. Dependencias externas$/CB-2: un cupón caducado responde 410. (retirado 2026-10-05) [bff\/a.ts:2]\n&/' "$W16/migration/specs/beta.md"
@@ -593,6 +593,52 @@ Si la consulta no devuelve filas, responde 404.
 Variable de entorno `MAX_HORAS`: valor por defecto 4.
 - from: fecha de inicio (texto, opcional).
 EOF
+
+# 18. Preguntas abiertas con id propio
+T2="migration/tasks/T-002-alfa.md"
+tres_preguntas() { # <ws>: alfa con PA-1, PA-2 y PA-3, y T-002 bloqueada por la tercera
+  sed -i 's/^- PA-1: ¿Qué responde el servicio de identidad.*/- PA-1: ¿Uno?\n- PA-2: ¿Dos?\n- PA-3: ¿Tres?/' "$1/$SP"
+  sed -i 's/^- \*\*Pendiente PA-1\*\*: .*/- **Pendiente PA-1**: ¿Uno?\n- **Pendiente PA-2**: ¿Dos?\n- **Pendiente PA-3**: ¿Tres?/' "$1/migration/test-plans/alfa.md"
+  sed -i 's/^bloqueada_por: \[0002\]/bloqueada_por: [0002, PA:alfa:3]/' "$1/$T2"
+  sed -i 's/^| T-002 | 0002 | aceptar |/&\n| T-002 | PA:alfa:3 | responder |/' "$1/migration/backlog.md"
+}
+cita() { bash "$ROOT/scripts/backlog.sh" calcular "$1" 2>/dev/null | grep 'PA:alfa:3'; }
+W18="$TMP/q0"; make_ws "$W18"; tres_preguntas "$W18"
+for v in tl-specs tl-tasks qa; do ok_ws "$v" "$W18" "verify-$v rechaza un spec con tres preguntas numeradas"; done
+cita "$W18" | grep -q '¿Tres?' || fail "backlog.sh no cita el texto de PA-3: $(cita "$W18")"
+# 18.1 Borrar a mano la línea de PA-2: la referencia a PA-3 no cambia de pregunta
+W18="$TMP/q1"; make_ws "$W18"; tres_preguntas "$W18"; sed -i '/^- PA-2: /d' "$W18/$SP"
+ok_ws tl-tasks "$W18" "verify-tl-tasks rechaza PA:alfa:3 tras borrar la línea de PA-2"
+cita "$W18" | grep -q '¿Tres?' || fail "tras borrar PA-2, backlog.sh ya no cita el texto de PA-3: $(cita "$W18")"
+# 18.2 Insertar una pregunta nueva al principio
+W18="$TMP/q2"; make_ws "$W18"; tres_preguntas "$W18"; sed -i 's/^- PA-1: ¿Uno?/- PA-4: ¿Cuatro, añadida arriba?\n&/' "$W18/$SP"
+ok_ws tl-tasks "$W18" "verify-tl-tasks rechaza PA:alfa:3 tras insertar una pregunta al principio"
+cita "$W18" | grep -q '¿Tres?' || fail "tras insertar una pregunta al principio, backlog.sh cita otra: $(cita "$W18")"
+# 18.3 Referencia a un id que no existe
+W18="$TMP/q3"; make_ws "$W18"; tres_preguntas "$W18"; sed -i 's/PA:alfa:3/PA:alfa:9/' "$W18/$T2"
+out="$(WORKDIR="$W18" bash "$ROOT/scripts/verify-tl-tasks.sh" 2>&1)" && fail "verify-tl-tasks acepta una referencia a una pregunta que no existe"
+printf '%s' "$out" | grep -q 'PA:alfa:9' || fail "verify-tl-tasks no nombra la referencia rota"
+# Con ids, borrar la pregunta citada rompe la referencia y se detecta (antes pasaba a apuntar a otra)
+W18="$TMP/q3b"; make_ws "$W18"; tres_preguntas "$W18"; sed -i '/^- PA-3: /d' "$W18/$SP"
+expect_fail tl-tasks "$W18" "verify-tl-tasks acepta una referencia a una pregunta borrada"
+# 18.4 Ids duplicados y formatos mezclados
+W18="$TMP/q4"; make_ws "$W18"; tres_preguntas "$W18"; sed -i 's/^- PA-3: ¿Tres?/- PA-2: ¿Tres?/' "$W18/$SP"
+out="$(WORKDIR="$W18" bash "$ROOT/scripts/verify-tl-specs.sh" 2>&1)" && fail "verify-tl-specs acepta ids de pregunta repetidos"
+printf '%s' "$out" | grep -q 'PA-2' || fail "verify-tl-specs no nombra el id repetido"
+W18="$TMP/q5"; make_ws "$W18"; tres_preguntas "$W18"; sed -i 's/^- PA-2: ¿Dos?/- ¿Dos, sin id?/' "$W18/$SP"
+expect_fail tl-specs "$W18" "verify-tl-specs acepta una sección 12 con formatos mezclados"
+# 18.5 Formato anterior, sin ids: se acepta y se resuelve por el lugar en la lista
+W18="$TMP/q6"; make_ws "$W18"; tres_preguntas "$W18"; sed -i -E 's/^- PA-[0-9]+: /- /' "$W18/$SP"; sed -i -E 's/\*\*Pendiente PA-([0-9]+)\*\*/**Pendiente \1**/' "$W18/migration/test-plans/alfa.md"
+for v in tl-specs tl-tasks qa; do ok_ws "$v" "$W18" "verify-$v rechaza un spec del formato anterior, sin ids de pregunta"; done
+cita "$W18" | grep -q '¿Tres?' || fail "backlog.sh no resuelve por lugar un spec del formato anterior: $(cita "$W18")"
+# Un plan con el formato anterior de pendientes sigue valiendo tras numerar su spec
+W18="$TMP/q7"; make_ws "$W18"; tres_preguntas "$W18"; sed -i -E 's/\*\*Pendiente PA-([0-9]+)\*\*/**Pendiente \1**/' "$W18/migration/test-plans/alfa.md"
+ok_ws qa "$W18" "verify-qa rechaza 'Pendiente 3' cuando el spec ya tiene PA-3"
+# Una pregunta respondida o retirada no pide caso pendiente; una abierta sin pendiente sí
+W18="$TMP/q8"; make_ws "$W18"; tres_preguntas "$W18"; sed -i 's/^- PA-2: ¿Dos?/&\n  - Respuesta (2026-10-05): sí./; s/^- PA-3: ¿Tres?/& (retirado 2026-10-05: movida a MJ-2)/' "$W18/$SP"; sed -i '/Pendiente PA-2/d; /Pendiente PA-3/d' "$W18/migration/test-plans/alfa.md"
+ok_ws qa "$W18" "verify-qa exige caso pendiente a una pregunta respondida o retirada"
+sed -i '/Pendiente PA-1/d' "$W18/migration/test-plans/alfa.md"
+expect_fail qa "$W18" "verify-qa acepta una pregunta abierta sin caso pendiente"
 
 [ "$fails" -eq 0 ] && { echo "OK: verificadores"; exit 0; }
 exit 1

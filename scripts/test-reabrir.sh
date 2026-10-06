@@ -34,8 +34,8 @@ NUEVA="$(comm -13 <(printf '%s\n' "$ids0") <(grep -oE '^(- )?(RN|CB)-[0-9]+:' "$
 grep -E "^(- )?$NUEVA:" "$SP" | grep -q '\[decisión: ' || fail "la regla $NUEVA, nacida de la mejora, no lleva cita [decisión: ...]"
 RET="$(grep -E '^(- )?(RN|CB)-[0-9]+:' "$SP" | grep '(retirado .*sustituida' | grep -oE '(RN|CB)-[0-9]+' | head -n1)"
 [ -n "$RET" ] || fail "aplicar la mejora no dejó marcada como retirada la regla anterior"
-# Una pregunta abierta con su respuesta, plantadas para no depender de lo generado
-sed -i 's/^## 12\. Preguntas abiertas.*/&\n- ¿Qué responde el sistema externo de pagos ante un cobro duplicado?\n  - Respuesta (2026-10-05): se ignora el segundo cobro./' "$SP"
+# Dos preguntas plantadas, con ids altos para no chocar con las generadas: una respondida y otra abierta
+sed -i 's/^## 12\. Preguntas abiertas.*/&\n- PA-90: ¿Qué responde el sistema externo de pagos ante un cobro duplicado?\n  - Respuesta (2026-10-05): se ignora el segundo cobro.\n- PA-91: ¿Qué formato tiene el identificador que devuelve el sistema externo de facturación?/' "$SP"
 grep -q '^estado: revisado' "$SP" || fail "tras aplicar la mejora el spec no quedó revisado"
 v0="$(rev_de "$SP")"
 echo "--- spec $S: mejora $MJ aplicada como $NUEVA, $RET retirada, rev $v0"
@@ -58,7 +58,10 @@ grep -E "^(- )?$NUEVA:" "$SP" | grep -v '(retirado' | grep -q '\[decisión: ' ||
 grep -E "^(- )?$RET:" "$SP" | grep -q '(retirado' || fail "la regla $RET, retirada por la mejora, volvió a estar vigente o desapareció"
 grep -E "^(- )?$MJ:" "$SP" | grep -q '(aplicada ' || fail "la mejora $MJ perdió su marca de aplicada"
 grep -q 'Respuesta (2026-10-05): se ignora el segundo cobro' "$SP" || fail "se perdió la respuesta a la pregunta abierta"
-grep -q 'cobro duplicado' "$SP" || fail "se perdió la pregunta abierta respondida"
+grep -q '^- PA-90: .*cobro duplicado' "$SP" || fail "la pregunta respondida perdió su id PA-90 o desapareció"
+grep -q '^- PA-91: ' "$SP" || fail "la pregunta abierta perdió su id PA-91 (debe conservarse, vigente o marcada como retirada)"
+[ -z "$(pa_ids "$SP" | sort -n | uniq -d)" ] || fail "al regenerar quedaron ids de pregunta repetidos"
+[ "$(pa_formato "$SP")" = nuevo ] || fail "al regenerar quedaron preguntas sin id (formato: $(pa_formato "$SP"))"
 [ "$(for s in "$M"/specs/[!_]*.md; do [ "$s" = "$SP" ] || md5sum "$s"; done)" = "$otros" ] || fail "regenerar con alcance tocó otros specs"
 REQUIRE_HECHOS=0 bash "$ROOT/scripts/verify-tl-specs.sh" >/dev/null || fail "el spec regenerado no pasa verify-tl-specs"
 

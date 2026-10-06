@@ -93,11 +93,18 @@ for s in "${specs[@]}"; do
     fi
     for frase in "${frases[@]}"; do
       grep -E '^(- )?CB-[0-9]+:' "$s" | grep -v '(retirado' | grep -Eq "^(- )?CB-[0-9]+: $frase:" \
-        || section "$s" 12 | grep -Eq "^- $frase:" \
+        || section "$s" 12 | grep -Eq "^- (PA-[0-9]+: )?$frase:" \
         || fail "$n: falta el comportamiento por defecto '$frase:' (como CB-n o como pregunta abierta)"
     done
   fi
 
+  # Preguntas abiertas: cada una con su id PA-n, sin repetir y sin mezclar con viñetas sin id.
+  # Un spec sin ningún id es del formato anterior y se acepta.
+  case "$(pa_formato "$s")" in
+    mixto) fail "$n: la sección 12 mezcla preguntas con id PA-n y viñetas sin id (numéralas con migration-tl-resolver)" ;;
+  esac
+  rep="$(pa_ids "$s" | sort -n | uniq -d | paste -sd' ' -)"
+  [ -z "$rep" ] || fail "$n: ids de pregunta repetidos: $(printf '%s' "$rep" | sed 's/[0-9]\+/PA-&/g')"
   # Preguntas abiertas: solo incógnitas reales, pocas y sin fórmulas de mejora
   preguntas="$(section "$s" 12 | grep '^- ' | grep -v '(retirado' || true)"
   np="$(printf '%s\n' "$preguntas" | grep -c . || true)"

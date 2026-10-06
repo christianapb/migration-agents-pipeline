@@ -54,10 +54,26 @@ for s in "${specs[@]}"; do
   qa=$(awk '/^## 12\. /{f=1;next} /^## /{f=0} f' "$s" | grep '^- ' | grep -vc '(retirado' || true)
   pendsec="$(awk '/^## Casos pendientes de definición/{f=1;next} /^## /{f=0} f' "$p")"
   pend=$(printf '%s\n' "$pendsec" | grep -c '^- \|^### ' || true)
-  if [ "$qa" -gt 0 ]; then
-    [ "$pend" -ge 1 ] || fail "$slug: el spec tiene $qa preguntas abiertas pero el plan no tiene casos pendientes"
+  if [ "$(pa_formato "$s")" = nuevo ]; then
+    # Cada pendiente cita por su id una pregunta que existe y sigue abierta,
+    # y cada pregunta abierta tiene su pendiente. "Pendiente 3" se lee como PA-3.
+    abiertas="$(pa_abiertas "$s")"
+    citadas="$(printf '%s\n' "$pendsec" | grep -oE '\*\*Pendiente (PA-)?[0-9]+\*\*' | grep -oE '[0-9]+' || true)"
+    for q in $citadas; do
+      printf '%s\n' "$abiertas" | grep -qx "$q" || fail "$slug: el caso pendiente PA-$q no corresponde a ninguna pregunta abierta del spec"
+    done
+    for q in $abiertas; do
+      printf '%s\n' "$citadas" | grep -qx "$q" || fail "$slug: la pregunta abierta PA-$q no tiene caso pendiente en el plan"
+    done
+    nc="$(printf '%s\n' "$citadas" | grep -c . || true)"
+    [ "$pend" -le "$nc" ] || fail "$slug: hay casos pendientes que no citan ninguna pregunta PA-n; las mejoras no generan pendientes"
+  else
+    # Compatibilidad: spec del formato anterior, sin ids; se compara por conteo
+    if [ "$qa" -gt 0 ]; then
+      [ "$pend" -ge 1 ] || fail "$slug: el spec tiene $qa preguntas abiertas pero el plan no tiene casos pendientes"
+    fi
+    [ "$pend" -le "$qa" ] || fail "$slug: $pend casos pendientes para $qa preguntas abiertas; las mejoras no generan pendientes"
   fi
-  [ "$pend" -le "$qa" ] || fail "$slug: $pend casos pendientes para $qa preguntas abiertas; las mejoras no generan pendientes"
   printf '%s' "$pendsec" | grep -q 'MJ-[0-9]' && fail "$slug: los casos pendientes mencionan mejoras MJ-n"
   hall="$(awk '/^## Hallazgos para el tech lead/{f=1;next} /^## /{f=0} f' "$p" | grep -v '^[[:space:]]*$' || true)"
   if [ -n "$hall" ] && ! printf '%s\n' "$hall" | grep -qx 'Ninguno\.\?'; then

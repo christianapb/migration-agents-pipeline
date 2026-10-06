@@ -34,7 +34,7 @@ Copia los diez agentes a `~/.claude/agents/`, retira `migration-techlead` y no s
 Abre Claude Code en la carpeta padre de los repositorios y pide `Usa el subagente migration-indexer`. Desde ahí:
 
 - Para saber qué sigue: `Usa el subagente migration-orchestrator`. Te da el prompt exacto.
-- Para decidir o cambiar algo: `Usa el subagente migration-tl-resolver: <cambio>`. Por ejemplo `en el ADR 0011 elijo Ktor`, `en el spec carrito, respuesta a la pregunta 2: ...`, `resuelve el hallazgo H-1 del plan carrito: ...`, `excluye la capacidad pagos`, `reabre el spec carrito` (un artefacto `revisado` vuelve a poder regenerarse; el resolver avisa de qué se conserva y qué se pierde).
+- Para decidir o cambiar algo: `Usa el subagente migration-tl-resolver: <cambio>`. Por ejemplo `en el ADR 0011 elijo Ktor`, `en el spec carrito, respuesta a la pregunta PA-2: ...`, `resuelve el hallazgo H-1 del plan carrito: ...`, `excluye la capacidad pagos`, `reabre el spec carrito` (un artefacto `revisado` vuelve a poder regenerarse; el resolver avisa de qué se conserva y qué se pierde).
 
 Revisa entre cada paso. Las tareas se generan una sola vez, después de decidir los ADRs.
 
@@ -57,6 +57,8 @@ Viven en el bloque de `CLAUDE.md` que escribe el indexador: estados (`generado`,
 **Diagnóstico del orquestador.** El siguiente paso sale de un procedimiento fijo: indexar, registrar versiones, el agente del punto más temprano de la cadena con algo que falte o esté desactualizado, y tres puertas que resuelve el resolver (destino, ADRs propuestos y hallazgos `H-n` antes de las tareas). La respuesta termina con una sección `## Datos` en forma fija. Diseño: [`docs/specs/2026-10-05-orquestador-estable-design.md`](docs/specs/2026-10-05-orquestador-estable-design.md).
 
 **Fidelidad.** Con `FIXTURE=1`, `verify-tl-specs.sh` comprueba además, con `scripts/verify-hechos.sh`, que las reglas `RN-n` y `CB-n` recogen los hechos del código del fixture y no afirman sus trampas. Los datos están en `fixtures/hechos/<fixture>.txt`; `FIXTURE_NAME` elige el fixture (por defecto `sample-workspace`) y `CONOCIDOS="id ..."` declara fallos conocidos. La comprobación de "sin código del lenguaje origen" reconoce JavaScript, Python y la familia de Java. Diseño: [`docs/specs/2026-10-05-fidelidad-y-segundo-fixture-design.md`](docs/specs/2026-10-05-fidelidad-y-segundo-fixture-design.md).
+
+**Preguntas abiertas con identificador.** En la sección 12 de cada spec, cada pregunta lleva su id escrito: `- PA-3: <pregunta>`. Las tareas la citan como `PA:<capacidad>:3` y las reglas que nacen de su respuesta como `[decisión: PA 3]`; el número es el del id, no el lugar en la lista. Los specs generados antes, sin ids, siguen funcionando, y `numera las preguntas` los pasa al formato nuevo sin rehacer nada. Diseño: [`docs/specs/2026-10-05-ids-de-preguntas-design.md`](docs/specs/2026-10-05-ids-de-preguntas-design.md).
 
 **Política de paridad.** `politica: paridad` es la única política: el destino reproduce el comportamiento observado salvo decisión explícita. En cada spec, `## 12. Preguntas abiertas` contiene solo lo que el código no permite determinar, y `## 13. Posibles mejoras` lista como `MJ-n` lo que el código determina pero parece mejorable. Las mejoras no bloquean tareas ni generan casos pendientes; se aplican o descartan con `migration-tl-resolver`. Diseño: [`docs/specs/2026-10-01-politica-paridad-design.md`](docs/specs/2026-10-01-politica-paridad-design.md).
 

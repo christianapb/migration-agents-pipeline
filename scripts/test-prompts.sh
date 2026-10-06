@@ -220,5 +220,23 @@ has migration-orchestrator.md 'motivo `revisado`'
 has migration-tl-specs.md 'cuya cita es `[decisión: ...]`'
 grep -nE 'cambia a mano su línea|Cambia su estado a `generado`|única edición manual' "$ROOT/docs/tutorial.md" >/dev/null && fail "el tutorial todavía pide cambiar estado a mano"
 
+# Identificador propio para las preguntas abiertas (docs/specs/2026-10-05-ids-de-preguntas-design.md)
+for k in 'preguntas abiertas `PA-n:` al inicio de línea' 'numera las preguntas' 'numera las preguntas del spec <slug>' '(la pregunta `PA-n` de ese mismo spec)'; do
+  printf '%s' "$block" | grep -qF -- "$k" || fail "bloque de CLAUDE.md sin '$k'"
+done
+has migration-indexer.md '- PA-1: <pregunta>'
+has migration-indexer.md '**Pendiente PA-1**'
+has migration-tl-specs.md '`- PA-1: <pregunta>`'
+has migration-tl-specs.md 'conserva también el identificador `PA-n` de cada pregunta abierta que persiste'
+has migration-tl-specs.md 'aunque la plantilla del workspace sea anterior y no lo muestre'
+has migration-tl-tasks.md 'no su lugar en la lista'
+has migration-qa.md '**Pendiente PA-<n>**'
+has migration-tl-resolver.md '**Numerar las preguntas**'
+has migration-tl-resolver.md '"la pregunta 3" es la línea `- PA-3:`'
+has migration-tl-resolver.md 'o numerar sus preguntas'
+has migration-orchestrator.md 'sin-numerar:'
+has migration-orchestrator.md 'numera las preguntas'
+grep -rnE 'por su posición|alterar las posiciones' "$ROOT/agents" "$ROOT/scripts" "$ROOT/docs" "$ROOT/README.md" 2>/dev/null | grep -v 'test-prompts.sh' | grep -q . && fail "queda texto que identifica las preguntas por su posición"
+
 [ "$fails" -eq 0 ] && { echo "OK: prompts"; exit 0; }
 exit 1
